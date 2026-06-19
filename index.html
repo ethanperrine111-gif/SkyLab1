@@ -115,7 +115,9 @@ body.probe-off #ctrl-panel{top:8px;}
 .ppreach{background:#fefce8;border:1px solid #fde047;border-radius:7px;padding:5px 9px;font-size:11px;color:#713f12;margin-bottom:6px;font-weight:600;}
 .ppnote{font-size:10px;color:#aaa;margin-top:5px;line-height:1.4;}
 .pp-fc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin:8px 0 2px;}
-.pp-fc-wrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin;border-radius:8px;border:1px solid #e2e8f0;background:#fff;--fcw:38px;--fcl:50px;margin-bottom:7px;}
+.pp-fc-wrap{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;border-radius:8px;border:1px solid #e2e8f0;background:#fff;--fcw:38px;--fcl:64px;margin-bottom:7px;position:relative;}
+/* Keep the row-label column pinned while the forecast scrolls horizontally (iOS-safe) */
+.pp-fc-wrap .fc-lbl{position:sticky;left:0;z-index:4;}
 .pp-fc-wrap::-webkit-scrollbar{height:5px;}
 .pp-fc-wrap::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:3px;}
 .ppg{display:none;}
@@ -319,7 +321,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   .flybtn,.dirbtn{padding:12px;font-size:14px;}
   /* Floating panels: never overflow the viewport, scroll if tall */
   #menu-panel{left:12px;right:12px;max-width:none;max-height:58vh;overflow-y:auto;}
-  #layer-panel{max-height:58vh;overflow-y:auto;}  /* stays in-flow under the buttons, matching their (wind-box) width */
+  #layer-panel{width:210px;max-height:70vh;overflow-y:auto;}  /* wider than the buttons so rows don't wrap/scroll */
   /* Detail sidebar takes the full screen on a phone */
   #sidebar{width:100%;max-width:100%;}
   #sb-body{padding:calc(15px + env(safe-area-inset-top,0px)) 15px calc(15px + env(safe-area-inset-bottom,0px));}
@@ -328,8 +330,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #sb-close{width:32px;height:32px;font-size:17px;}
   /* Keep the legend tucked into the corner */
   #legend{bottom:calc(8px + env(safe-area-inset-bottom,0px));left:calc(8px + env(safe-area-inset-left,0px));}
-  /* My-location pin sits at the same height as the right-side zoom control */
-  #br-controls{bottom:calc(10px + env(safe-area-inset-bottom,0px));}
+  /* Lift the My-location pin clear of the phone browser's bottom toolbar */
+  #br-controls{bottom:calc(58px + env(safe-area-inset-bottom,0px));}
   /* Remove the +/- zoom buttons on phones (pinch-zoom is used instead); keep attribution */
   .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group{display:none;}
 }
@@ -395,8 +397,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
           <line x1="10.6" y1="10.6" x2="12.4" y2="12.4"/>
         </g>
         <g class="cn" id="compass-needle">
-          <polygon points="23,7.2 18.6,24 23,20.4 27.4,24" fill="#ef4444"/>
-          <polygon points="23,38.8 18.6,22 23,25.6 27.4,22" fill="#e2e8f0"/>
+          <polygon points="23,7.5 18.8,23 23,19 27.2,23" fill="#ef4444"/>
+          <polygon points="23,38.5 18.8,23 23,27 27.2,23" fill="#e2e8f0"/>
           <circle cx="23" cy="23" r="3.1" fill="#0f172a" stroke="#38bdf8" stroke-width="1.3"/>
           <circle cx="23" cy="23" r="1.1" fill="#38bdf8"/>
         </g>
@@ -1065,10 +1067,15 @@ function renderForecast(series){
     const pcell=(i,inner,style)=>`<div class="fc-cell${i===ppNowIdx?' now':''}"${style?` style="${style}"`:''}>${inner}</div>`;
     let ppDay='<div class="fc-lbl"></div>',ppAlt=false;
     ppGroups.forEach(g=>{ppDay+=`<div class="fc-day${ppAlt?' alt':''}" style="width:calc(var(--fcw) * ${g.count})">${g.label}</div>`;ppAlt=!ppAlt;});
+    // Model band — shows where HRRR ends and GFS takes over (same as the top strip).
+    const ppMgroups=[];
+    ppS.forEach(e=>{const last=ppMgroups[ppMgroups.length-1];if(last&&last.label===e.model)last.count++;else ppMgroups.push({label:e.model||'',count:1});});
+    let ppModel='<div class="fc-lbl">Model</div>';
+    ppMgroups.forEach((g,gi)=>{ppModel+=`<div class="fc-mseg${gi>0?' switch':''}" style="width:calc(var(--fcw) * ${g.count})">${gi>0?'→ ':''}${g.label}</div>`;});
     let ppHr='<div class="fc-lbl">Hour</div>',ppSky='<div class="fc-lbl">Sky</div>',
         ppTemp='<div class="fc-lbl">Temp</div>',ppRain='<div class="fc-lbl">Rain%</div>',
         ppWind='<div class="fc-lbl">Wind</div>',ppGust='<div class="fc-lbl">Gusts</div>',
-        ppDir='<div class="fc-lbl">Dir</div>',ppFly='<div class="fc-lbl">Fly</div>';
+        ppDir='<div class="fc-lbl">Direction</div>',ppFly='<div class="fc-lbl">Fly</div>';
     ppS.forEach((e,i)=>{
       const d=new Date(e.t),hr=d.getHours();
       const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
@@ -1085,6 +1092,7 @@ function renderForecast(series){
     });
     ppTrack.innerHTML=
       `<div class="fc-row fc-r-day">${ppDay}</div>`+
+      `<div class="fc-row fc-r-model">${ppModel}</div>`+
       `<div class="fc-row fc-r-hr">${ppHr}</div>`+
       `<div class="fc-row fc-r-sky">${ppSky}</div>`+
       `<div class="fc-row fc-r-temp">${ppTemp}</div>`+
