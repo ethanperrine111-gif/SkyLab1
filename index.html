@@ -670,11 +670,13 @@ function makeFlightLayer(){
       gl.disable(gl.DEPTH_TEST);
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
       const n=Math.max(2,Math.floor(this.count*this.progress));
+      // Solid blue flight path. WebGL line width is capped at 1px on most platforms, so we
+      // overlay round points along every vertex to render a genuinely THICK blue line.
       gl.uniform1f(this.uRound,0.0);
-      // Solid blue line for the full flight path.
       gl.uniform4f(this.uCol,0.10,0.40,1.0,1.0);gl.drawArrays(gl.LINE_STRIP,0,this.count);
       gl.uniform1f(this.uRound,1.0);
-      gl.uniform1f(this.uSize,15.0);gl.uniform4f(this.uCol,1.0,0.80,0.12,1.0);gl.drawArrays(gl.POINTS,Math.max(0,n-1),1);
+      gl.uniform1f(this.uSize,8.5);gl.uniform4f(this.uCol,0.08,0.38,1.0,1.0);gl.drawArrays(gl.POINTS,0,this.count);
+      gl.uniform1f(this.uSize,16.0);gl.uniform4f(this.uCol,1.0,0.80,0.12,1.0);gl.drawArrays(gl.POINTS,Math.max(0,n-1),1);
     }
   };
 }
@@ -714,7 +716,7 @@ async function simulateFlight(sid){
     const fbnds=new maplibregl.LngLatBounds([site.lon,site.lat],[site.lon,site.lat]).extend([site.lzLon,site.lzLat]);
     let fcam=null;try{fcam=mlMap.cameraForBounds(fbnds,{bearing:brg,padding:fpad,maxZoom:14.6});}catch(e){}
     const fcenter=(fcam&&fcam.center)?fcam.center:[(site.lon+site.lzLon)/2,(site.lat+site.lzLat)/2];
-    const fzoom=(fcam&&isFinite(fcam.zoom))?Math.max(9.5,fcam.zoom-(isMob?1.3:0.5)):14.4;
+    const fzoom=(fcam&&isFinite(fcam.zoom))?Math.max(9.5,fcam.zoom-(isMob?0.7:0.1)):14.4;
     mlMap.easeTo({center:fcenter,zoom:fzoom,pitch:76,bearing:brg,duration:900});
     await new Promise(r=>{let done=false;const fin=()=>{if(!done){done=true;r();}};mlMap.once('idle',fin);setTimeout(fin,2600);});
     let startR=null,lzR=null;
@@ -863,7 +865,7 @@ async function fetchHRRRBatch(sites,fallback){
   }
 }
 function setModel(m){currentModel=m;loadWeather();}
-function updateVane(w,label){if(!w)return;if(label)document.getElementById('wvt').textContent=label;document.getElementById('varrow').setAttribute('transform',`rotate(${w.dir},34,34)`);document.getElementById('vspeed').textContent=w.wind+' mph';document.getElementById('vdir').textContent=d2c(w.dir)+' wind';document.getElementById('vgust').textContent='Gust '+(w.gusts??'—')+' mph';const sc=flyS(w.wind,w.gusts??w.wind,w.cloud??0,w.temp??60);document.getElementById('wind-vane').style.borderTopColor=sc==='flyable'?'#22c55e':sc==='caution'?'#facc15':'#ef4444';}
+function updateVane(w,label){if(!w)return;if(label)document.getElementById('wvt').textContent=label;document.getElementById('varrow').setAttribute('transform',`rotate(${w.dir},34,34)`);document.getElementById('vspeed').textContent=w.wind+' mph';document.getElementById('vdir').textContent=d2c(w.dir)+' wind';document.getElementById('vgust').textContent='Gust '+(w.gusts??'—')+' mph';const sc=flyS(w.wind,w.gusts??w.wind,w.cloud??0,w.temp??60);document.getElementById('wind-vane').style.borderTopColor=sc==='flyable'?'#22c55e':sc==='caution'?'#facc15':'#ef4444';syncCtrlPanel();}  // re-match the 2D/Layers row after the wind box resizes with live data
 // Cursor wind probe — debounced + grid-cached current wind wherever the mouse rests.
 let probeTimer=null, probeCache={}, lastProbeKey=null, probeOn=true;
 function toggleProbe(){probeOn=!probeOn;document.body.classList.toggle('probe-off',!probeOn);const b=document.getElementById('probe-btn');if(b){b.classList.toggle('active',probeOn);b.textContent=probeOn?'🌬 Cursor wind: on':'🌬 Cursor wind: off';}const h=document.getElementById('wvprobe');if(h)h.textContent=probeOn?'↖ hover map for wind':'cursor wind off';if(!probeOn){clearTimeout(probeTimer);lastProbeKey=null;if(slcWx)updateVane(slcWx,'SLC Wind');}syncCtrlPanel();}
