@@ -156,8 +156,8 @@ body.probe-off #ctrl-panel{top:8px;}
 #layer-panel.open{display:block;}
 .lp-sec{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.45);margin:8px 0 3px;}
 .lp-sec:first-child{margin-top:0;}
-.lp-row{display:flex;align-items:center;gap:7px;padding:3px 0;cursor:pointer;user-select:none;}
-.lp-row input{cursor:pointer;margin:0;accent-color:#38bdf8;}
+.lp-row{display:flex;align-items:center;gap:10px;padding:9px 4px;cursor:pointer;user-select:none;font-size:13px;}
+.lp-row input{cursor:pointer;margin:0;accent-color:#38bdf8;width:20px;height:20px;flex-shrink:0;}
 .lp-div{height:1px;background:rgba(255,255,255,.12);margin:7px 0 3px;}
 /* 3D popup thumbnail */
 .pp-sat{position:relative;overflow:hidden;}
@@ -191,7 +191,9 @@ body.probe-off #ctrl-panel{top:8px;}
 /* compass indicator (left side, below control buttons) */
 #compass{position:absolute;top:8px;right:calc(8px + env(safe-area-inset-right,0px));z-index:500;width:46px;height:46px;border-radius:50%;background:rgba(17,24,39,.9);box-shadow:0 2px 10px rgba(0,0,0,.45);cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(56,189,248,.3);}
 #compass svg{display:block;}
-#compass .cn{transition:transform .15s linear;transform-box:view-box;transform-origin:23px 23px;}
+/* Needle is rotated via the SVG transform attribute (rotate angle 23 23) in JS.
+   Do NOT set a CSS transform-origin/transform-box here — it would be applied on top
+   of the attribute's own centre and throw the needle out of the circle. */
 /* directions button in sidebar */
 .dirbtn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;background:#fff;border:1.5px solid #2563eb;color:#1d4ed8;border-radius:8px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;}
 .dirbtn:hover{background:#eff6ff;}
@@ -246,6 +248,11 @@ body.probe-off #ctrl-panel{top:8px;}
 /* weather-model selector that lives inside the now-bar */
 .nb-model{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:3px 6px;font-size:11px;font-weight:700;cursor:pointer;align-self:flex-start;}
 .nb-model option{color:#111;}
+/* Weather-model switcher inside the launch detail panel */
+.pp-model-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;color:#475569;margin:9px 0 3px;}
+.pp-model-row select.nb-model{align-self:auto;background:#fff;color:#2563eb;border:1px solid rgba(37,99,235,.4);padding:6px 9px;font-size:13px;}
+body.dark .pp-model-row{color:#94a3b8;}
+body.dark .pp-model-row select.nb-model{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25);}
 textarea.edi{resize:vertical;line-height:1.4;min-height:54px;}
 /* ── Dark mode ─────────────────────────────────────────────────────────────── */
 body.dark #forecast{background:#0f172a;border-color:#1e293b;}
@@ -315,6 +322,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #sb-close{width:32px;height:32px;font-size:17px;}
   /* Keep the legend tucked into the corner */
   #legend{bottom:calc(8px + env(safe-area-inset-bottom,0px));left:calc(8px + env(safe-area-inset-left,0px));}
+  /* Lift the bottom-left controls (My-location pin) above the phone browser's bottom address/search bar */
+  #br-controls{bottom:calc(80px + env(safe-area-inset-bottom,0px));}
 }
 </style>
 </head>
@@ -355,7 +364,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <div class="lp-div"></div>
         <div class="lp-sec">Overlay</div>
         <label class="lp-row"><input type="checkbox" id="ov-sectional" onchange="toggleOverlay('sectional',this.checked)"/> ✈ VFR Sectional</label>
-        <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/> 🥾 Hiking trails <span style="opacity:.6;">(free)</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/> 🥾 Hiking trails</label>
       </div>
     </div>
     <div id="br-controls">
@@ -739,7 +748,7 @@ function launchPop(site,w){
   const dir=`<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to trailhead</a>`;
   const bio=site.desc?`<div class="ppbio"><div class="ppbio-h">📋 About this launch</div><p>${site.desc}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">▲ ${site.name}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div id="pp-fc-track" class="fc-track"><div class="nb-load">Loading…</div></div></div>${dir}${bio}${flyBtn}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">▲ ${site.name}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}<div class="pp-model-row">🌦 Weather model ${modelSelectHTML()}</div>${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div id="pp-fc-track" class="fc-track"><div class="nb-load">Loading…</div></div></div>${dir}${bio}${flyBtn}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
