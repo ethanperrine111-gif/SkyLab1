@@ -172,7 +172,7 @@ body.probe-off #ctrl-panel{top:8px;}
 #sb-close{position:absolute;top:9px;right:11px;z-index:3;border:none;background:rgba(0,0,0,.4);color:#fff;width:27px;height:27px;border-radius:50%;font-size:15px;cursor:pointer;line-height:1;}
 #sb-close:hover{background:rgba(0,0,0,.6);}
 /* Mobile-only pill to bring the detail panel back after it's stashed to reveal the map */
-#sb-reopen{position:absolute;top:10px;right:10px;z-index:701;display:none;align-items:center;gap:6px;background:rgba(37,99,235,.96);color:#fff;border:none;border-radius:18px;padding:9px 14px;font-size:13px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,.35);cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+#sb-reopen{position:absolute;top:62px;right:10px;z-index:701;display:none;align-items:center;gap:6px;background:rgba(37,99,235,.96);color:#fff;border:none;border-radius:18px;padding:9px 14px;font-size:13px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,.35);cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
 #sb-body{padding:13px;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 #sb-body::-webkit-scrollbar{display:none;}
 #sidebar .pp{min-width:0;max-width:none;}
@@ -311,7 +311,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #sidebar{width:100%;max-width:100%;}
   #sb-body{padding:calc(15px + env(safe-area-inset-top,0px)) 15px calc(15px + env(safe-area-inset-bottom,0px));}
   #sb-close{top:calc(9px + env(safe-area-inset-top,0px));}
-  #sb-reopen{top:calc(10px + env(safe-area-inset-top,0px));}
+  #sb-reopen{top:calc(62px + env(safe-area-inset-top,0px));}
   #sb-close{width:32px;height:32px;font-size:17px;}
   /* Keep the legend tucked into the corner */
   #legend{bottom:calc(8px + env(safe-area-inset-bottom,0px));left:calc(8px + env(safe-area-inset-left,0px));}
@@ -650,10 +650,9 @@ function makeFlightLayer(){
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
       const n=Math.max(2,Math.floor(this.count*this.progress));
       gl.uniform1f(this.uRound,0.0);
-      gl.uniform4f(this.uCol,0.20,0.50,0.98,0.40);gl.drawArrays(gl.LINE_STRIP,0,this.count);
-      gl.uniform4f(this.uCol,0.10,0.40,1.0,1.0);gl.drawArrays(gl.LINE_STRIP,0,n);
+      // Solid blue line for the full flight path.
+      gl.uniform4f(this.uCol,0.10,0.40,1.0,1.0);gl.drawArrays(gl.LINE_STRIP,0,this.count);
       gl.uniform1f(this.uRound,1.0);
-      gl.uniform1f(this.uSize,6.0);gl.uniform4f(this.uCol,0.35,0.65,1.0,0.95);gl.drawArrays(gl.POINTS,0,n);
       gl.uniform1f(this.uSize,15.0);gl.uniform4f(this.uCol,1.0,0.80,0.12,1.0);gl.drawArrays(gl.POINTS,Math.max(0,n-1),1);
     }
   };
@@ -688,11 +687,13 @@ async function simulateFlight(sid){
   if(useMapLibre&&mlMap){
     const brg=(bearingTo(site.lat,site.lon,site.lzLat,site.lzLon)+180+62)%360;
     const isMob=window.innerWidth<=768;
-    const fpad=isMob?{top:80,bottom:110,left:36,right:36}:{top:70,bottom:70,left:60,right:330};
+    // Mobile: bigger top padding pushes the framing lower on screen (it sat too high),
+    // and a larger zoom-out keeps the whole path comfortably in view.
+    const fpad=isMob?{top:200,bottom:80,left:30,right:30}:{top:70,bottom:70,left:60,right:330};
     const fbnds=new maplibregl.LngLatBounds([site.lon,site.lat],[site.lon,site.lat]).extend([site.lzLon,site.lzLat]);
     let fcam=null;try{fcam=mlMap.cameraForBounds(fbnds,{bearing:brg,padding:fpad,maxZoom:14.6});}catch(e){}
     const fcenter=(fcam&&fcam.center)?fcam.center:[(site.lon+site.lzLon)/2,(site.lat+site.lzLat)/2];
-    const fzoom=(fcam&&isFinite(fcam.zoom))?Math.max(9.5,fcam.zoom-0.5):14.4;
+    const fzoom=(fcam&&isFinite(fcam.zoom))?Math.max(9.5,fcam.zoom-(isMob?1.3:0.5)):14.4;
     mlMap.easeTo({center:fcenter,zoom:fzoom,pitch:76,bearing:brg,duration:900});
     await new Promise(r=>{let done=false;const fin=()=>{if(!done){done=true;r();}};mlMap.once('idle',fin);setTimeout(fin,2600);});
     let startR=null,lzR=null;
@@ -1081,7 +1082,16 @@ function togglePitch(){
 }
 function resetNorth(){if(useMapLibre&&mlMap)mlMap.resetNorth();else if(lfMap)lfMap.setBearing&&lfMap.setBearing(0);}
 // Compass: rotate the needle to show where geographic north is as the map turns.
-function updateCompass(){const n=document.getElementById('compass-needle');if(!n||!useMapLibre||!mlMap)return;n.style.transform=`rotate(${-mlMap.getBearing()}deg)`;}
+// Accumulate a continuous, unwrapped angle (always move by the shortest delta) so the
+// needle never does a full reverse spin when the bearing wraps past ±180°. Rotation is
+// applied via the SVG transform attribute about the exact circle centre (23,23) so it
+// stays concentric with the background ring.
+let _compassAngle=0;
+function updateCompass(){const n=document.getElementById('compass-needle');if(!n||!useMapLibre||!mlMap)return;
+  const target=-mlMap.getBearing();
+  let d=((target-_compassAngle)%360+540)%360-180;   // shortest signed delta
+  _compassAngle+=d;
+  n.setAttribute('transform',`rotate(${_compassAngle} 23 23)`);}
 // Geolocation — drops a single clickable blue pin at your location and recenters.
 let myLocMarker=null, lastGeo=null, geoAsked=false, geoWatchId=null;
 // Circular "you are here" dot: soft outer halo + solid blue core with white ring.
@@ -1201,14 +1211,13 @@ let lpTimer=null, lpStart=null, suppressMapClick=false;
 function setupLongPress(){
   const el=document.getElementById('map');
   if(!el||el._lpBound)return; el._lpBound=true;
-  const CANCEL=14, HOLD=2500;
+  const CANCEL=14, HOLD=1500;                                     // press-and-hold 1.5s to summon "Fly from here?"
   const clear=()=>{if(lpTimer){clearTimeout(lpTimer);lpTimer=null;}};
-  el.addEventListener('touchstart',e=>{
+  const start=(x,y,target)=>{
     clear();
-    if(e.touches.length!==1)return;
     if(drawingFor||addingLaunch||addingLZ)return;                 // don't hijack edit / draw modes
-    if(e.target.closest&&e.target.closest('.maplibregl-marker,.leaflet-marker-icon,.leaflet-popup,.maplibregl-popup,.flyprompt-btn,#br-controls,#ctrl-panel,#wind-vane,#compass,#menu-panel,#layer-panel'))return;
-    const t=e.touches[0];lpStart={x:t.clientX,y:t.clientY};
+    if(target&&target.closest&&target.closest('.maplibregl-marker,.leaflet-marker-icon,.leaflet-popup,.maplibregl-popup,.flyprompt-btn,#br-controls,#ctrl-panel,#wind-vane,#compass,#menu-panel,#layer-panel'))return;
+    lpStart={x,y};
     lpTimer=setTimeout(()=>{
       lpTimer=null;
       const rect=el.getBoundingClientRect(),px=lpStart.x-rect.left,py=lpStart.y-rect.top;
@@ -1216,18 +1225,22 @@ function setupLongPress(){
       if(useMapLibre&&mlMap){const ll=mlMap.unproject([px,py]);lat=ll.lat;lon=ll.lng;}
       else if(lfMap){const ll=lfMap.containerPointToLatLng([px,py]);lat=ll.lat;lon=ll.lng;}
       else return;
-      suppressMapClick=true;                                       // swallow the trailing tap-click
+      suppressMapClick=true;                                       // swallow the trailing tap/click
       try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}   // little haptic confirm
       showFlyPrompt(lat,lon);                                      // ask first, then flyFromHere on confirm
     },HOLD);
-  },{passive:true});
-  el.addEventListener('touchmove',e=>{
-    if(!lpStart||!lpTimer)return;
-    const t=e.touches[0];
-    if(Math.abs(t.clientX-lpStart.x)>CANCEL||Math.abs(t.clientY-lpStart.y)>CANCEL)clear();
-  },{passive:true});
+  };
+  const move=(x,y)=>{if(!lpStart||!lpTimer)return;if(Math.abs(x-lpStart.x)>CANCEL||Math.abs(y-lpStart.y)>CANCEL)clear();};
+  // Touch
+  el.addEventListener('touchstart',e=>{if(e.touches.length!==1){clear();return;}const t=e.touches[0];start(t.clientX,t.clientY,e.target);},{passive:true});
+  el.addEventListener('touchmove',e=>{const t=e.touches[0];if(t)move(t.clientX,t.clientY);},{passive:true});
   el.addEventListener('touchend',clear,{passive:true});
   el.addEventListener('touchcancel',clear,{passive:true});
+  // Mouse (desktop) — same press-and-hold instead of an instant click
+  el.addEventListener('mousedown',e=>{if(e.button!==0)return;start(e.clientX,e.clientY,e.target);});
+  el.addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+  el.addEventListener('mouseup',clear);
+  el.addEventListener('mouseleave',clear);
 }
 
 // ── Click handler ─────────────────────────────────────────────────────────────
@@ -1333,7 +1346,7 @@ function initMapLibre(){
         m.addControl(geoCtrl,'bottom-right');
         m.on('rotate',updateCompass);m.on('pitchend',updateCompass);
         m.on('move',cullGhostMarkers);m.on('idle',cullGhostMarkers);m.on('idle',reprojectFlight);
-        m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}if(handleEditClick(e.lngLat.lng,e.lngLat.lat))return;showFlyPrompt(e.lngLat.lat,e.lngLat.lng);});
+        m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}handleEditClick(e.lngLat.lng,e.lngLat.lat);});  // "Fly from here?" now needs a 1.5s press-and-hold
         m.on('dblclick',e=>{if(drawingFor){e.preventDefault();finishDraw();}});
         m.on('mousemove',e=>probeWind(e.lngLat.lat,e.lngLat.lng));
         mlMap=m;window.mlMap=m;updateCompass();
@@ -1361,7 +1374,7 @@ function initLeaflet(){
     hiking:L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png',{attribution:'Trails © waymarkedtrails.org, OSM',maxZoom:18,opacity:0.9})
   };
   lfBaseLayers.streets.addTo(m);
-  m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}if(handleEditClick(e.latlng.lng,e.latlng.lat))return;showFlyPrompt(e.latlng.lat,e.latlng.lng);});
+  m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}handleEditClick(e.latlng.lng,e.latlng.lat);});  // "Fly from here?" now needs a 1.5s press-and-hold
   m.on('dblclick',()=>{if(drawingFor)finishDraw();});
   m.on('mousemove',e=>probeWind(e.latlng.lat,e.latlng.lng));
   lfMap=m;
