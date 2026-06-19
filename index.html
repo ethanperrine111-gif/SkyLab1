@@ -105,6 +105,8 @@ body.probe-off #ctrl-panel{top:8px;}
 .pp{min-width:232px;max-width:268px;font-family:system-ui,sans-serif;}
 .pp-sat{width:100%;height:148px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:block;background:#dde8dd;}
 .ppn{font-size:18px;font-weight:800;color:#111;margin-bottom:2px;line-height:1.2;}
+.ppn-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px;}
+.ppn-row .ppn{margin-bottom:0;}
 .pps{font-size:11px;color:#888;margin-bottom:6px;}
 .ppb{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9px;margin-bottom:7px;}
 .ppg{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:7px;}
@@ -758,7 +760,8 @@ function launchPop(site,w){
   const dir=`<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to trailhead</a>`;
   const bio=site.desc?`<div class="ppbio"><div class="ppbio-h">📋 About this launch</div><p>${site.desc}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">▲ ${site.name}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}<div class="pp-model-row">🌦 Weather model ${modelSelectHTML()}</div>${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div id="pp-fc-track" class="fc-track"><div class="nb-load">Loading…</div></div></div>${dir}${bio}${flyBtn}${launchEditorHTML(site)}</div>`;
+  const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}<div class="pp-model-row">🌦 Weather model ${modelSelectHTML()}</div>${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div id="pp-fc-track" class="fc-track"><div class="nb-load">Loading…</div></div></div>${dir}${bio}${flyBtn}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
@@ -1203,33 +1206,43 @@ function windowFor(site){
   const f=site.facing??270;return[(f-45+360)%360,(f+45)%360];   // default: facing ±45°
 }
 function compassPt(cx,cy,r,deg){const a=deg*Math.PI/180;return[cx+r*Math.sin(a),cy-r*Math.cos(a)];}  // bearing → screen xy (N up)
-// Launch pin: a north-up compass head showing the GREEN allowable-wind window, a black arrow for
-// the launch facing direction, and (if known) a small blue tick for the current wind direction.
-// The teardrop body keeps the fly-status colour.
-function mkLaunchSVG(col,site,w){
-  const cx=18,cy=14.5,r=10.5;
+// Inner compass graphic: a north-up dial with the allowable-wind wedge (coloured by fly-status)
+// and an arrow whose TIP sits at the centre, coming in from the launch-facing side.
+function compassInner(cx,cy,r,col,site){
   const win=windowFor(site);
   let delta=((win[1]-win[0])%360+360)%360;
   const[x1,y1]=compassPt(cx,cy,r,win[0]),[x2,y2]=compassPt(cx,cy,r,win[1]);
   const wedge=delta>=359
-    ?`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#22c55e" opacity=".85"/>`
-    :`<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${delta>180?1:0} 1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="#22c55e" opacity=".9"/>`;
+    ?`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col}" opacity=".92"/>`
+    :`<path d="M${cx.toFixed(1)},${cy.toFixed(1)} L${x1.toFixed(1)},${y1.toFixed(1)} A${r.toFixed(1)},${r.toFixed(1)} 0 ${delta>180?1:0} 1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${col}" opacity=".92"/>`;
   const fa=site.facing??270,ux=Math.sin(fa*Math.PI/180),uy=-Math.cos(fa*Math.PI/180),px=-uy,py=ux; // facing unit + perp
-  const tip=[cx+ux*r,cy+uy*r],base=[cx+ux*(r-4),cy+uy*(r-4)];
-  const wL=[base[0]+px*2.6,base[1]+py*2.6],wR=[base[0]-px*2.6,base[1]-py*2.6];
+  const sw=r/10.5;                                   // scale strokes/arrowhead with radius
+  const tail=[cx+ux*r,cy+uy*r];                      // arrow tail at the rim (facing side)
+  const ah=3.6*sw;                                   // arrowhead length from centre
+  const back=[cx+ux*ah,cy+uy*ah];                    // arrowhead base
+  const wL=[back[0]+px*2.6*sw,back[1]+py*2.6*sw],wR=[back[0]-px*2.6*sw,back[1]-py*2.6*sw];
   const f2=(p)=>p[0].toFixed(1)+','+p[1].toFixed(1);
-  let windTick='';
-  if(w&&w.dir!=null){const[wx,wy]=compassPt(cx,cy,r-0.5,w.dir);windTick=`<circle cx="${wx.toFixed(1)}" cy="${wy.toFixed(1)}" r="1.7" fill="#1d4ed8" stroke="#fff" stroke-width=".7"/>`;}
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#f8fafc"/>`+
+    wedge+
+    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(15,23,42,.35)" stroke-width="${(0.8*sw).toFixed(2)}"/>`+
+    `<line x1="${cx}" y1="${(cy-r).toFixed(1)}" x2="${cx}" y2="${(cy-r+2.2*sw).toFixed(1)}" stroke="rgba(15,23,42,.55)" stroke-width="${(1.1*sw).toFixed(2)}"/>`+
+    `<line x1="${tail[0].toFixed(1)}" y1="${tail[1].toFixed(1)}" x2="${back[0].toFixed(1)}" y2="${back[1].toFixed(1)}" stroke="#0f172a" stroke-width="${(2*sw).toFixed(2)}" stroke-linecap="round"/>`+
+    `<polygon points="${cx.toFixed(1)},${cy.toFixed(1)} ${f2(wL)} ${f2(wR)}" fill="#0f172a"/>`;
+}
+// Launch pin: teardrop body (fly-status colour) with the compass dial inside.
+function mkLaunchSVG(col,site,w){
+  const cx=18,cy=14.5,r=10.5;
   return`<svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg">`+
     `<path d="M18 2C11 2 5 8 5 14.5c0 10 13 29.5 13 29.5S31 24.5 31 14.5C31 8 25 2 18 2z" fill="${col}" stroke="white" stroke-width="2.5"/>`+
-    `<circle cx="${cx}" cy="${cy}" r="${r+0.8}" fill="#f8fafc"/>`+
-    wedge+
-    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(15,23,42,.35)" stroke-width=".8"/>`+
-    `<line x1="${cx}" y1="${(cy-r).toFixed(1)}" x2="${cx}" y2="${(cy-r+2.2).toFixed(1)}" stroke="rgba(15,23,42,.55)" stroke-width="1.1"/>`+
-    `<line x1="${cx}" y1="${cy}" x2="${base[0].toFixed(1)}" y2="${base[1].toFixed(1)}" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/>`+
-    `<polygon points="${f2(tip)} ${f2(wL)} ${f2(wR)}" fill="#0f172a"/>`+
-    `<circle cx="${cx}" cy="${cy}" r="1.6" fill="#0f172a"/>`+
-    windTick+
+    compassInner(cx,cy,r,col,site)+
+    `</svg>`;
+}
+// Standalone compass dial for the launch popup header.
+function windCompassSVG(site,col,size){
+  size=size||38;const c=size/2,r=size/2-2.5;
+  return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="flex:0 0 auto;">`+
+    `<circle cx="${c}" cy="${c}" r="${(r+2).toFixed(1)}" fill="#fff" stroke="rgba(15,23,42,.15)" stroke-width="1"/>`+
+    compassInner(c,c,r,col,site)+
     `</svg>`;
 }
 function mkLZSVG(gold){return`<svg width="36" height="22" viewBox="0 0 36 22" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9));"><rect x="2.5" y="2.5" width="31" height="17" rx="5" fill="${gold?'#d97706':'#3b82f6'}" stroke="${gold?'#fde047':'#ffffff'}" stroke-width="3.5" paint-order="stroke"/><text x="18" y="15" text-anchor="middle" font-size="9" fill="white" font-weight="800" font-family="Arial,sans-serif">LZ</text></svg>`;}
@@ -1257,9 +1270,11 @@ function showFlyPrompt(lat,lon){
   closeFlyPrompt();
   const html=`<div class="flyprompt"><button class="flyprompt-btn" onclick="flyFromHere(${lat.toFixed(6)},${lon.toFixed(6)})">🪂 Fly from here?</button></div>`;
   if(useMapLibre&&mlMap){
-    flyPromptPopup=new maplibregl.Popup({closeButton:false,closeOnClick:true,offset:6,className:'flyprompt-pop'}).setLngLat([lon,lat]).setHTML(html).addTo(mlMap);
+    // closeOnClick must be false: the long-press releases a trailing map click that
+    // would otherwise close the popup the instant it opens.
+    flyPromptPopup=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:6,className:'flyprompt-pop'}).setLngLat([lon,lat]).setHTML(html).addTo(mlMap);
   }else if(lfMap){
-    flyPromptPopup=L.popup({closeButton:false,className:'flyprompt-pop',autoPan:false}).setLatLng([lat,lon]).setContent(html).openOn(lfMap);
+    flyPromptPopup=L.popup({closeButton:false,closeOnClick:false,className:'flyprompt-pop',autoPan:false}).setLatLng([lat,lon]).setContent(html).openOn(lfMap);
   }
 }
 // Remove the previous ad-hoc takeoff (marker + caches) so only one exists at a time.
