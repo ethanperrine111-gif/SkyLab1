@@ -54,6 +54,12 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 .fc-r-day .fc-lbl{background:#eef2f7;}
 .fc-day{flex-shrink:0;display:flex;align-items:center;justify-content:flex-start;padding-left:8px;font-size:12px;font-weight:800;color:#1e293b;border-right:1px solid #d8dee9;background:#eef2f7;}
 .fc-day.alt{background:#e2e8f0;}
+/* Model provenance band — shows where HRRR ends and GFS begins */
+.fc-r-model{height:16px;}
+.fc-mseg{flex-shrink:0;display:flex;align-items:center;padding-left:8px;font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#1e40af;background:#dbeafe;border-right:1px solid #bfdbfe;white-space:nowrap;overflow:hidden;}
+.fc-mseg.switch{border-left:2px solid #2563eb;color:#0f172a;background:#bfdbfe;}
+body.dark .fc-mseg{background:#172554;color:#bfdbfe;border-color:#1e3a8a;}
+body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b82f6;}
 /* hours */
 .fc-r-hr{height:18px;}.fc-r-hr .fc-cell{font-size:10px;font-weight:600;color:#64748b;}
 .fc-r-hr .fc-cell.now{color:#2563eb;font-weight:800;}
@@ -313,7 +319,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   .flybtn,.dirbtn{padding:12px;font-size:14px;}
   /* Floating panels: never overflow the viewport, scroll if tall */
   #menu-panel{left:12px;right:12px;max-width:none;max-height:58vh;overflow-y:auto;}
-  #layer-panel{left:auto;right:8px;top:60px;max-height:58vh;overflow-y:auto;}
+  #layer-panel{max-height:58vh;overflow-y:auto;}  /* stays in-flow under the buttons, matching their (wind-box) width */
   /* Detail sidebar takes the full screen on a phone */
   #sidebar{width:100%;max-width:100%;}
   #sb-body{padding:calc(15px + env(safe-area-inset-top,0px)) 15px calc(15px + env(safe-area-inset-bottom,0px));}
@@ -322,8 +328,10 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #sb-close{width:32px;height:32px;font-size:17px;}
   /* Keep the legend tucked into the corner */
   #legend{bottom:calc(8px + env(safe-area-inset-bottom,0px));left:calc(8px + env(safe-area-inset-left,0px));}
-  /* Lift the bottom-left controls (My-location pin) above the phone browser's bottom address/search bar */
-  #br-controls{bottom:calc(80px + env(safe-area-inset-bottom,0px));}
+  /* My-location pin sits at the same height as the right-side zoom control */
+  #br-controls{bottom:calc(10px + env(safe-area-inset-bottom,0px));}
+  /* Remove the +/- zoom buttons on phones (pinch-zoom is used instead); keep attribution */
+  .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group{display:none;}
 }
 </style>
 </head>
@@ -943,9 +951,13 @@ async function loadForecast(){
   const lastT=series.length?new Date(series[series.length-1].t):null;
   const reachH=lastT?(lastT-Date.now())/36e5:0;
   // If the chosen model can't reach our target horizon, extend with a long-range model.
+  // HRRR is short-range (~48h), so once it runs out we continue with GFS; other models
+  // fall back to best-match.
   if(currentModel!=='best_match'&&reachH<FC_TARGET_H-12){
-    let jx=null;try{jx=await fetchSeries('best_match',16);}catch(e){}
-    const ext=entriesFrom(jx,'Best match').filter(e=>!lastT||new Date(e.t)>lastT);
+    const extModel=currentModel==='gfs_hrrr'?'gfs_seamless':'best_match';
+    const extLabel=MODEL_LABELS[extModel]||'GFS';
+    let jx=null;try{jx=await fetchSeries(extModel,16);}catch(e){}
+    const ext=entriesFrom(jx,extLabel).filter(e=>!lastT||new Date(e.t)>lastT);
     series=series.concat(ext);
   }
   if(!series.length){
@@ -997,6 +1009,12 @@ function renderForecast(series){
   const cell=(i,inner,style)=>`<div class="fc-cell${i===nowIdx?' now':''}${series[i].model!==(series[i-1]||{}).model&&i>0?' mswitch':''}"${style?` style="${style}"`:''}>${inner}</div>`;
   let dayRow='<div class="fc-lbl"></div>',alt=false;
   groups.forEach(g=>{dayRow+=`<div class="fc-day${alt?' alt':''}" style="width:calc(var(--fcw) * ${g.count})">${g.label}</div>`;alt=!alt;});
+  // Model band: group consecutive hours by which model produced them, so you can see
+  // exactly where HRRR runs out and GFS takes over.
+  const mgroups=[];
+  series.forEach(e=>{const last=mgroups[mgroups.length-1];if(last&&last.label===e.model)last.count++;else mgroups.push({label:e.model||'',count:1});});
+  let modelRow='<div class="fc-lbl">Model</div>';
+  mgroups.forEach((g,gi)=>{modelRow+=`<div class="fc-mseg${gi>0?' switch':''}" style="width:calc(var(--fcw) * ${g.count})">${gi>0?'→ ':''}${g.label}</div>`;});
   let hrRow='<div class="fc-lbl">Hour</div>',skyRow='<div class="fc-lbl">Sky</div>',tempRow='<div class="fc-lbl">Temp °F</div>',
       rainRow='<div class="fc-lbl">Rain %</div>',windRow='<div class="fc-lbl">Wind</div>',gustRow='<div class="fc-lbl">Gusts</div>',
       dirRow='<div class="fc-lbl">Wind dir</div>',flyRow='<div class="fc-lbl">Fly</div>';
@@ -1016,6 +1034,7 @@ function renderForecast(series){
   });
   track.innerHTML=
     `<div class="fc-row fc-r-day">${dayRow}</div>`+
+    `<div class="fc-row fc-r-model">${modelRow}</div>`+
     `<div class="fc-row fc-r-hr">${hrRow}</div>`+
     `<div class="fc-row fc-r-sky">${skyRow}</div>`+
     `<div class="fc-row fc-r-temp">${tempRow}</div>`+
