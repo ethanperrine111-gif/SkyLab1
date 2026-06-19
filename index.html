@@ -1231,13 +1231,24 @@ function compassInner(cx,cy,r,col,site){
     `<line x1="${tail[0].toFixed(1)}" y1="${tail[1].toFixed(1)}" x2="${back[0].toFixed(1)}" y2="${back[1].toFixed(1)}" stroke="#0f172a" stroke-width="${(2*sw).toFixed(2)}" stroke-linecap="round"/>`+
     `<polygon points="${cx.toFixed(1)},${cy.toFixed(1)} ${f2(wL)} ${f2(wR)}" fill="#0f172a"/>`;
 }
-// Launch pin: teardrop body (fly-status colour) with the compass dial inside.
+// Launch pin: teardrop body (fly-status colour) with the compass dial inside. The dial is
+// wrapped in a .pin-dial group that is counter-rotated by the map bearing (see rotatePins),
+// so the allowable-wind wedge stays aligned to true compass bearings as the map is twisted.
 function mkLaunchSVG(col,site,w){
   const cx=18,cy=14.5,r=10.5;
+  const brg=(useMapLibre&&mlMap)?(-mlMap.getBearing()).toFixed(1):0;
   return`<svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg">`+
     `<path d="M18 2C11 2 5 8 5 14.5c0 10 13 29.5 13 29.5S31 24.5 31 14.5C31 8 25 2 18 2z" fill="${col}" stroke="white" stroke-width="2.5"/>`+
+    `<g class="pin-dial" transform="rotate(${brg} ${cx} ${cy})">`+
     compassInner(cx,cy,r,col,site)+
+    `</g>`+
     `</svg>`;
+}
+// Spin every pin's compass dial to keep north-up as the map rotates.
+function rotatePins(){
+  if(!useMapLibre||!mlMap)return;
+  const t=`rotate(${(-mlMap.getBearing()).toFixed(1)} 18 14.5)`;
+  document.querySelectorAll('.pin-dial').forEach(g=>g.setAttribute('transform',t));
 }
 // Standalone compass dial for the launch popup header.
 function windCompassSVG(site,col,size){
@@ -1442,7 +1453,7 @@ function initMapLibre(){
         // Blue-dot geolocation (the native button is hidden via CSS; #geo-btn drives it).
         geoCtrl=new maplibregl.GeolocateControl({positionOptions:{enableHighAccuracy:true},trackUserLocation:false,showUserHeading:false,fitBoundsOptions:{maxZoom:12}});
         m.addControl(geoCtrl,'bottom-right');
-        m.on('rotate',updateCompass);m.on('pitchend',updateCompass);
+        m.on('rotate',()=>{updateCompass();rotatePins();});m.on('pitchend',updateCompass);
         m.on('move',cullGhostMarkers);m.on('idle',cullGhostMarkers);m.on('idle',reprojectFlight);
         m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}handleEditClick(e.lngLat.lng,e.lngLat.lat);});  // "Fly from here?" now needs a 1.5s press-and-hold
         m.on('dblclick',e=>{if(drawingFor){e.preventDefault();finishDraw();}});
