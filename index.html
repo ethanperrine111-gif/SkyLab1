@@ -1178,7 +1178,52 @@ function toggleDark(){const on=!document.body.classList.contains('dark');applyDa
 function toggleExag(){exagOn=!exagOn;if(useMapLibre&&mlMap){try{mlMap.setTerrain({source:'terrain',exaggeration:exagOn?1.5:1});}catch(e){}}document.getElementById('exbtn').textContent=`⛰ Exaggeration ${exagOn?'1.5×':'1×'}`;document.getElementById('exbtn').classList.toggle('active',exagOn);}
 
 // ── Marker elements ───────────────────────────────────────────────────────────
-function mkLaunchSVG(col,ar){return`<svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg"><path d="M18 2C11 2 5 8 5 15c0 10 13 29 13 29S31 25 31 15C31 8 25 2 18 2z" fill="${col}" stroke="white" stroke-width="2.5"/><circle cx="18" cy="15" r="9" fill="rgba(0,0,0,.18)"/><g transform="rotate(${ar},18,15)"><polygon points="18,7 15,17 18,14 21,17" fill="white" opacity=".95"/><line x1="18" y1="14" x2="18" y2="22" stroke="white" stroke-width="2" stroke-linecap="round"/></g></svg>`;}
+// Allowable take-off wind windows per site [fromDeg, toDeg] clockwise (compass bearings the
+// wind may be blowing FROM). Derived from each site's UHGPGA description; tune as needed.
+const WIND_WINDOWS={
+  pom_s:[160,200], pom_n:[315,20], cherry:[248,293], the_g:[225,315], camels:[180,270],
+  commodore:[180,270], buffalo_pk:[270,330], rock_canyon:[225,315], mahogany:[200,290],
+  crawford:[225,275], francis:[202,292], the_v:[225,315], bigbeacon:[210,330], grandeur:[225,315],
+  olympus:[240,300], midfinger:[225,315], jupiter:[157,247], snowbird:[240,300], inspo:[202,292],
+  y_mtn:[225,315], west_mtn:[350,110], lake_mtn:[45,135], nebo:[225,315], horse_hv:[225,315],
+  cove:[250,290], monroe_pk:[200,280], mt_edna:[200,250], mollies:[225,315], brianhead:[135,225],
+  wm_stg:[180,270], ibepah:[225,315]
+};
+function windowFor(site){
+  if(Array.isArray(site.wind)&&site.wind.length===2)return site.wind;
+  if(WIND_WINDOWS[site.id])return WIND_WINDOWS[site.id];
+  const f=site.facing??270;return[(f-45+360)%360,(f+45)%360];   // default: facing ±45°
+}
+function compassPt(cx,cy,r,deg){const a=deg*Math.PI/180;return[cx+r*Math.sin(a),cy-r*Math.cos(a)];}  // bearing → screen xy (N up)
+// Launch pin: a north-up compass head showing the GREEN allowable-wind window, a black arrow for
+// the launch facing direction, and (if known) a small blue tick for the current wind direction.
+// The teardrop body keeps the fly-status colour.
+function mkLaunchSVG(col,site,w){
+  const cx=18,cy=14.5,r=10.5;
+  const win=windowFor(site);
+  let delta=((win[1]-win[0])%360+360)%360;
+  const[x1,y1]=compassPt(cx,cy,r,win[0]),[x2,y2]=compassPt(cx,cy,r,win[1]);
+  const wedge=delta>=359
+    ?`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#22c55e" opacity=".85"/>`
+    :`<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${delta>180?1:0} 1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="#22c55e" opacity=".9"/>`;
+  const fa=site.facing??270,ux=Math.sin(fa*Math.PI/180),uy=-Math.cos(fa*Math.PI/180),px=-uy,py=ux; // facing unit + perp
+  const tip=[cx+ux*r,cy+uy*r],base=[cx+ux*(r-4),cy+uy*(r-4)];
+  const wL=[base[0]+px*2.6,base[1]+py*2.6],wR=[base[0]-px*2.6,base[1]-py*2.6];
+  const f2=(p)=>p[0].toFixed(1)+','+p[1].toFixed(1);
+  let windTick='';
+  if(w&&w.dir!=null){const[wx,wy]=compassPt(cx,cy,r-0.5,w.dir);windTick=`<circle cx="${wx.toFixed(1)}" cy="${wy.toFixed(1)}" r="1.7" fill="#1d4ed8" stroke="#fff" stroke-width=".7"/>`;}
+  return`<svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg">`+
+    `<path d="M18 2C11 2 5 8 5 14.5c0 10 13 29.5 13 29.5S31 24.5 31 14.5C31 8 25 2 18 2z" fill="${col}" stroke="white" stroke-width="2.5"/>`+
+    `<circle cx="${cx}" cy="${cy}" r="${r+0.8}" fill="#f8fafc"/>`+
+    wedge+
+    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(15,23,42,.35)" stroke-width=".8"/>`+
+    `<line x1="${cx}" y1="${(cy-r).toFixed(1)}" x2="${cx}" y2="${(cy-r+2.2).toFixed(1)}" stroke="rgba(15,23,42,.55)" stroke-width="1.1"/>`+
+    `<line x1="${cx}" y1="${cy}" x2="${base[0].toFixed(1)}" y2="${base[1].toFixed(1)}" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/>`+
+    `<polygon points="${f2(tip)} ${f2(wL)} ${f2(wR)}" fill="#0f172a"/>`+
+    `<circle cx="${cx}" cy="${cy}" r="1.6" fill="#0f172a"/>`+
+    windTick+
+    `</svg>`;
+}
 function mkLZSVG(gold){return`<svg width="36" height="22" viewBox="0 0 36 22" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9));"><rect x="2.5" y="2.5" width="31" height="17" rx="5" fill="${gold?'#d97706':'#3b82f6'}" stroke="${gold?'#fde047':'#ffffff'}" stroke-width="3.5" paint-order="stroke"/><text x="18" y="15" text-anchor="middle" font-size="9" fill="white" font-weight="800" font-family="Arial,sans-serif">LZ</text></svg>`;}
 
 // ── "Fly from here" — click any empty spot to treat it as an ad-hoc takeoff ────
@@ -1627,13 +1672,12 @@ function resetLZ(){if(!confirm('Reset all LZ edits back to defaults?'))return;lo
 function createLaunchMarker(site){
   const w=siteWx[site.id];
   const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[w?.status||'caution'];
-  const ar=Math.round(w?.dir||0); // wind arrow, consistent with the SLC vane
   const el=document.createElement('div');
   el.style.cursor='pointer';
-  el.innerHTML=mkLaunchSVG(col,ar);
+  el.innerHTML=mkLaunchSVG(col,site,w);
   el.addEventListener('click',e=>onLaunchClick(site,e));
   if(useMapLibre&&mlMap){launchElMap[site.id]=el;const mk=new maplibregl.Marker({element:el,anchor:'bottom',draggable:false,opacityWhenCovered:'1'}).setLngLat([site.lon,site.lat]).addTo(mlMap);mk.on('dragend',()=>{const ll=mk.getLngLat();site.lat=ll.lat;site.lon=ll.lng;applyConnections();saveLaunchPos();saveCustomLaunches();});launchMarkerMap[site.id]=mk;}
-  else if(lfMap){const icon=L.divIcon({html:mkLaunchSVG(col,ar),iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:''});const mk=L.marker([site.lat,site.lon],{icon,draggable:false}).addTo(lfMap).on('click',e=>onLaunchClick(site,e));mk.on('dragend',()=>{const ll=mk.getLatLng();site.lat=ll.lat;site.lon=ll.lng;applyConnections();saveLaunchPos();saveCustomLaunches();});launchElMap[site.id]=mk;launchMarkerMap[site.id]=mk;}
+  else if(lfMap){const icon=L.divIcon({html:mkLaunchSVG(col,site,w),iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:''});const mk=L.marker([site.lat,site.lon],{icon,draggable:false}).addTo(lfMap).on('click',e=>onLaunchClick(site,e));mk.on('dragend',()=>{const ll=mk.getLatLng();site.lat=ll.lat;site.lon=ll.lng;applyConnections();saveLaunchPos();saveCustomLaunches();});launchElMap[site.id]=mk;launchMarkerMap[site.id]=mk;}
 }
 function addMarkers(){
   drawLZZones();                                  // landing-field boundaries under the pins
@@ -1674,7 +1718,7 @@ async function loadWeather(){
   recolorMarkers();
 }
 function recolorMarkers(){
-  LAUNCHES.forEach(site=>{const ref=launchElMap[site.id];if(!ref)return;const w=siteWx[site.id];const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[w?.status||'caution'];const svg=mkLaunchSVG(col,Math.round(w?.dir||0));
+  LAUNCHES.forEach(site=>{const ref=launchElMap[site.id];if(!ref)return;const w=siteWx[site.id];const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[w?.status||'caution'];const svg=mkLaunchSVG(col,site,w);
     if(useMapLibre)ref.innerHTML=svg;
     else if(ref.setIcon)ref.setIcon(L.divIcon({html:svg,iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:''}));
   });
