@@ -48,7 +48,7 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 .fc-cell{width:var(--fcw);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-right:1px solid #eef1f5;}
 .fc-cell.now{background:rgba(37,99,235,.08);box-shadow:inset 2px 0 0 #2563eb,inset -2px 0 0 #2563eb;}
 .fc-cell.mswitch{border-left:2px dashed #93c5fd;}
-.fc-lbl{width:var(--fcl);flex-shrink:0;position:sticky;left:0;z-index:3;background:#f8fafc;border-right:1px solid #d8dee9;display:flex;align-items:center;padding:0 7px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;}
+.fc-lbl{width:var(--fcl);flex-shrink:0;position:sticky;left:0;z-index:6;background:#f8fafc;border-right:2px solid #cbd5e1;border-bottom:1px solid #d8dee9;box-shadow:2px 0 4px rgba(0,0,0,.06);display:flex;align-items:center;padding:0 7px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;}
 /* day header row */
 .fc-r-day{height:22px;background:#eef2f7;}
 .fc-r-day .fc-lbl{background:#eef2f7;}
@@ -76,7 +76,7 @@ body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b
 /* wind direction arrows */
 .fc-r-dir{height:22px;}
 /* flyability bar */
-.fc-r-fly{height:5px;}.fc-r-fly .fc-cell{padding:0;border-right:1px solid rgba(255,255,255,.4);}
+.fc-r-fly{height:14px;}.fc-r-fly .fc-cell{padding:0;border-right:1px solid rgba(255,255,255,.4);}
 .fc-r-fly .fc-lbl{background:#f8fafc;}
 #map-wrap{position:relative;flex:1;min-height:0;}
 /* Keep the library zoom/nav controls clear of the iOS home indicator & right notch */
@@ -131,6 +131,20 @@ body.probe-off #ctrl-panel{top:8px;}
 .ppbio p:last-child{margin-bottom:0;}
 .ppbio-hz{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
 .ppbio-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:#fef3c7;color:#92400e;}
+/* ── "Allowable to fly" wind spec box ───────────────────────────────────────── */
+.ppwind{margin-top:10px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:9px 11px;}
+.ppwind-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#047857;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+.ppwind-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;padding:2px 0;border-top:1px solid rgba(5,150,105,.12);}
+.ppwind-row:first-of-type{border-top:none;}
+.ppwind-k{color:#475569;font-weight:600;}
+.ppwind-v{color:#064e3b;font-weight:800;text-align:right;white-space:nowrap;}
+.ppwind-note{font-size:10px;color:#64748b;margin-top:6px;line-height:1.4;}
+body.dark .ppwind{background:#052e23;border-color:#065f46;}
+body.dark .ppwind-h{color:#6ee7b7;}
+body.dark .ppwind-k{color:#94a3b8;}
+body.dark .ppwind-v{color:#a7f3d0;}
+body.dark .ppwind-row{border-color:rgba(167,243,208,.12);}
+body.dark .ppwind-note{color:#94a3b8;}
 .spin{display:inline-block;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 /* Live location dot */
@@ -377,6 +391,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <div class="lp-sec">Overlay</div>
         <label class="lp-row"><input type="checkbox" id="ov-sectional" onchange="toggleOverlay('sectional',this.checked)"/> ✈ VFR Sectional</label>
         <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/> 🥾 Hiking trails</label>
+        <label class="lp-row"><input type="checkbox" id="ov-power" onchange="toggleOverlay('power',this.checked)"/> ⚡ Power lines</label>
       </div>
     </div>
     <div id="br-controls">
@@ -511,10 +526,10 @@ let launchElMap={};                              // launch id -> marker DOM elem
 let launchMarkerMap={};                          // launch id -> marker object (for drag/move)
 const LAUNCH_POS_KEY='updraft_launchpos_v1';     // persisted launch pin moves / edits
 const CUSTOM_LAUNCH_KEY='updraft_customlaunch_v1'; // user-added takeoffs (full objects)
-function saveLaunchPos(){const m={};LAUNCHES.forEach(s=>{m[s.id]={lat:s.lat,lon:s.lon,name:s.name,facing:s.facing,alt:s.alt,desc:s.desc};});try{localStorage.setItem(LAUNCH_POS_KEY,JSON.stringify(m));}catch(e){}}
+function saveLaunchPos(){const m={};LAUNCHES.forEach(s=>{m[s.id]={lat:s.lat,lon:s.lon,name:s.name,facing:s.facing,alt:s.alt,desc:s.desc,wind:s.wind};});try{localStorage.setItem(LAUNCH_POS_KEY,JSON.stringify(m));}catch(e){}}
 function loadLaunchPos(){try{const m=JSON.parse(localStorage.getItem(LAUNCH_POS_KEY));if(!m)return;LAUNCHES.forEach(s=>{const o=m[s.id];if(!o)return;
   if(Array.isArray(o)){s.lat=o[0];s.lon=o[1];return;}                 // legacy [lat,lon]
-  if(o.lat!=null){s.lat=o.lat;s.lon=o.lon;}if(o.name)s.name=o.name;if(o.facing!=null)s.facing=o.facing;if(o.alt!=null)s.alt=o.alt;if(o.desc!=null)s.desc=o.desc;});}catch(e){}}
+  if(o.lat!=null){s.lat=o.lat;s.lon=o.lon;}if(o.name)s.name=o.name;if(o.facing!=null)s.facing=o.facing;if(o.alt!=null)s.alt=o.alt;if(o.desc!=null)s.desc=o.desc;if(Array.isArray(o.wind)&&o.wind.length===2)s.wind=o.wind;});}catch(e){}}
 function saveCustomLaunches(){try{localStorage.setItem(CUSTOM_LAUNCH_KEY,JSON.stringify(LAUNCHES.filter(s=>s.custom)));}catch(e){}}
 function loadCustomLaunches(){try{const a=JSON.parse(localStorage.getItem(CUSTOM_LAUNCH_KEY));if(Array.isArray(a))a.forEach(s=>{if(!LAUNCHES.some(x=>x.id===s.id))LAUNCHES.push(s);});}catch(e){}}
 let geoCtrl=null, lfBlueDot=null;                // geolocation: MapLibre control + Leaflet blue dot
@@ -541,7 +556,24 @@ let civilDawnH=null, civilDuskH=null;
 function hourOf(iso){const t=(iso||'').split('T')[1]||'0:0';const p=t.split(':');return (+p[0])+(+p[1]||0)/60;}
 function curHourLocal(){const n=new Date();return n.getHours()+n.getMinutes()/60;}
 function isNight(h){if(civilDawnH==null)return false;return h<civilDawnH||h>civilDuskH;}
-function flyS(w,g,c,t,hour){if(isNight(hour==null?curHourLocal():hour))return'no';if(t<35||w>30||g>38)return'no';if(w>18||g>25||c>85)return'caution';return'flyable';}
+// Fly status. Optional `site`+`dir` tighten the call with that site's allowable
+// wind window (direction the wind blows FROM) and its per-rating strength limits.
+function flyS(w,g,c,t,hour,site,dir){
+  if(isNight(hour==null?curHourLocal():hour))return'no';
+  if(t<35||w>30||g>38)return'no';
+  let st=(w>18||g>25||c>85)?'caution':'flyable';
+  if(site){
+    const L=windStrengthFor(site);
+    if(w>L.max||g>L.max+L.gust)return'no';            // over this site's strength ceiling
+    if(w>L.idealHi||(g-w)>L.gust)st='caution';        // above ideal, or gusty
+    if(dir!=null&&w>=4){                               // only judge direction in real wind
+      const win=windowFor(site);
+      if(!inWindow(dir,expandWin(win,25)))return'no';  // cross / tail wind — outside window
+      if(!inWindow(dir,win))st='caution';              // marginal edge of the window
+    }
+  }
+  return st;
+}
 function thStr(c,t,w){if(c>80)return'Weak/overcast';if(w>22)return'Rotor risk';if(t>78)return'Strong thermals';if(t>62)return'Good thermals';if(t>50)return'Light thermals';return'Minimal';}
 function hav(a,b,c,d){const R=3958.8,dL=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dl/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function dest(lat,lon,brg,mi){const R=3958.8,d=mi/R,b=brg*Math.PI/180,la1=lat*Math.PI/180,lo1=lon*Math.PI/180,la2=Math.asin(Math.sin(la1)*Math.cos(d)+Math.cos(la1)*Math.sin(d)*Math.cos(b)),lo2=lo1+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(la1),Math.cos(d)-Math.sin(la1)*Math.sin(la2));return[la2*180/Math.PI,lo2*180/Math.PI];}
@@ -758,12 +790,12 @@ function clearAll(){clearFlight();}
 function bdg(s){const m={flyable:['#d1fae5','#065f46','✓ Flyable now'],caution:['#fef3c7','#92400e','⚠ Use caution'],no:['#fee2e2','#991b1b','✗ No fly']}[s]||['#f3f4f6','#374151','— Loading'];return`<span class="ppb" style="background:${m[0]};color:${m[1]};">${m[2]}</span>`;}
 function wxG(w){if(!w)return`<div class="ppg"><div class="ppc"><div class="ppcl">Wind</div><div class="ppcv">Loading...</div></div><div class="ppc"><div class="ppcl">Gusts</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Direction</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Temp</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Clouds</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Thermals</div><div class="ppcv">—</div></div></div>`;return`<div class="ppg"><div class="ppc"><div class="ppcl">Wind</div><div class="ppcv">${w.wind} mph</div></div><div class="ppc"><div class="ppcl">Gusts</div><div class="ppcv">${w.gusts} mph</div></div><div class="ppc"><div class="ppcl">Direction</div><div class="ppcv">${d2c(w.dir)} (${w.dir}°)</div></div><div class="ppc"><div class="ppcl">Temp</div><div class="ppcv">${w.temp}°F</div></div><div class="ppc"><div class="ppcl">Clouds</div><div class="ppcv">${w.cloud}%</div></div><div class="ppc"><div class="ppcl">Thermals</div><div class="ppcv" style="font-size:10px;">${thStr(w.cloud,w.temp,w.wind)}</div></div></div>`;}
 function launchPop(site,w){
-  const s=w?flyS(w.wind,w.gusts,w.cloud,w.temp):'caution';
+  const s=w?flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir):'caution';
   const dir=`<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to trailhead</a>`;
   const bio=site.desc?`<div class="ppbio"><div class="ppbio-h">📋 About this launch</div><p>${site.desc}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}<div class="pp-model-row">🌦 Weather model ${modelSelectHTML()}</div>${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div id="pp-fc-track" class="fc-track"><div class="nb-load">Loading…</div></div></div>${dir}${bio}${flyBtn}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}<div class="pp-model-row">🌦 Weather model ${modelSelectHTML()}</div>${wxG(w)}${windSpecHTML(site)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div id="pp-fc-track" class="fc-track"><div class="nb-load">Loading…</div></div></div>${dir}${bio}${flyBtn}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
@@ -818,8 +850,14 @@ function setBaseLayer(name){
   }
 }
 function toggleOverlay(name,on){
-  if(useMapLibre&&mlMap){try{mlMap.setLayoutProperty(name,'visibility',on?'visible':'none');}catch(e){}}
-  else if(lfMap){const l=lfOverlays[name];if(!l)return;if(on){l.addTo(lfMap);try{l.bringToFront();}catch(e){}}else lfMap.removeLayer(l);}
+  if(useMapLibre&&mlMap){
+    const ids=name==='power'?['power-line','power-minor','power-sub']:[name];
+    ids.forEach(id=>{try{mlMap.setLayoutProperty(id,'visibility',on?'visible':'none');}catch(e){}});
+  }
+  else if(lfMap){
+    if(name==='power'){const cb=document.getElementById('ov-power');if(cb)cb.checked=false;setBadge('⚡ Power-line overlay needs the 3D map — not available on the 2D fallback.');return;}
+    const l=lfOverlays[name];if(!l)return;if(on){l.addTo(lfMap);try{l.bringToFront();}catch(e){}}else lfMap.removeLayer(l);
+  }
 }
 
 // ── Simulated flight path (8:1 glide → corkscrew spiral to the LZ) ─────────────
@@ -860,7 +898,7 @@ async function fetchHRRRBatch(sites,fallback){
         eff={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),pres:Math.round(c.surface_pressure),hourly:d.hourly};
         wxCache[`${currentModel}|${s.lat.toFixed(2)},${s.lon.toFixed(2)}`]=eff;
       }
-      if(eff)siteWx[s.id]={...eff,status:flyS(eff.wind,eff.gusts,eff.cloud,eff.temp)};
+      if(eff)siteWx[s.id]={...eff,status:flyS(eff.wind,eff.gusts,eff.cloud,eff.temp,null,s,eff.dir)};
     });
   }
 }
@@ -920,9 +958,9 @@ function renderNow(w,label){
 // ── Long scrollable forecast (auto-extends, switches models for range) ─────────
 let fcSeries=[];
 const FC_TARGET_H=14*24;   // aim for ~14 days of hours
-let fcTarget={lat:40.52,lon:-111.87,label:'Salt Lake City'};   // which site the forecast bar is showing
-function setForecastSite(lat,lon,label){
-  fcTarget={lat,lon,label};
+let fcTarget={lat:40.52,lon:-111.87,label:'Salt Lake City',site:null};   // which site the forecast bar is showing
+function setForecastSite(lat,lon,label,site){
+  fcTarget={lat,lon,label,site:site||null};
   // On mobile, expand the forecast strip so the user can see it.
   if(document.body.classList.contains('fc-collapsed')){
     document.body.classList.remove('fc-collapsed');
@@ -934,7 +972,7 @@ function setForecastSite(lat,lon,label){
 async function fetchSeries(model,days){
   const u=`https://api.open-meteo.com/v1/forecast?latitude=${fcTarget.lat}&longitude=${fcTarget.lon}`+
     `&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,precipitation_probability,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,surface_pressure`+
-    `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}`;
+    `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}&past_days=1`;
   const r=await fetch(u);return r.json();
 }
 function entriesFrom(j,label){
@@ -1002,7 +1040,9 @@ function renderForecast(series){
   const fail=()=>{track.innerHTML='<div class="nb-load" style="color:#64748b">Forecast unavailable</div>';};
   if(!series||!series.length){fail();return;}
   const now=Date.now();
-  series=series.filter(e=>new Date(e.t).getTime()>=now-60*60*1000);   // drop hours already past
+  // Keep from the start of YESTERDAY so you can scroll back a day; drop anything older.
+  const backStart=new Date();backStart.setHours(0,0,0,0);backStart.setDate(backStart.getDate()-1);
+  series=series.filter(e=>new Date(e.t).getTime()>=backStart.getTime());
   if(!series.length){fail();return;}
   const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   // figure out which column is "now" and where the day groups / model switches fall
@@ -1028,7 +1068,7 @@ function renderForecast(series){
   series.forEach((e,i)=>{
     const d=new Date(e.t),hr=d.getHours();
     const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
-    const fs=flyS(e.wind,e.gust,e.cloud,e.temp,hr);
+    const fs=flyS(e.wind,e.gust,e.cloud,e.temp,hr,fcTarget.site,e.dir);
     const dc={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[fs];
     hrRow+=cell(i,i===nowIdx?'Now':ap);
     skyRow+=cell(i,skyIcon(e.cloud,e.pop));
@@ -1084,7 +1124,7 @@ function renderForecast(series){
     ppS.forEach((e,i)=>{
       const d=new Date(e.t),hr=d.getHours();
       const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
-      const fs=flyS(e.wind,e.gust,e.cloud,e.temp,hr);
+      const fs=flyS(e.wind,e.gust,e.cloud,e.temp,hr,fcTarget.site,e.dir);
       const dc={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[fs];
       ppHr+=pcell(i,i===ppNowIdx?'Now':ap);
       ppSky+=pcell(i,skyIcon(e.cloud,e.pop));
@@ -1207,17 +1247,55 @@ function windowFor(site){
   if(WIND_WINDOWS[site.id])return WIND_WINDOWS[site.id];
   const f=site.facing??270;return[(f-45+360)%360,(f+45)%360];   // default: facing ±45°
 }
+// Is bearing `dir` inside the clockwise window [from,to]? (handles wraparound past 360°)
+function inWindow(dir,win){
+  const span=((win[1]-win[0])%360+360)%360;
+  const off=((dir-win[0])%360+360)%360;
+  return off<=span;
+}
+// Grow a window by `m` degrees on each side (used for the marginal cross-wind band).
+function expandWin(win,m){return[(win[0]-m+360)%360,(win[1]+m)%360];}
+// Allowable wind STRENGTH (mph) by pilot rating. Sensible UHGPGA-style defaults; a site
+// may override with its own `winds:{idealLo,idealHi,max,gust}`. PG baseline; HG runs higher.
+function windStrengthFor(site){
+  if(site&&site.winds)return site.winds;
+  const r=((site&&site.rating)||'P3').toUpperCase();
+  const isHG=r.charAt(0)==='H';
+  const lvl=parseInt(r.replace(/[^0-9]/g,''),10)||3;
+  let s=lvl<=2?{idealLo:5,idealHi:12,max:15,gust:5}
+       :lvl===3?{idealLo:5,idealHi:14,max:18,gust:6}
+       :{idealLo:5,idealHi:16,max:20,gust:8};
+  if(isHG)s={idealLo:s.idealLo,idealHi:s.idealHi+4,max:s.max+6,gust:s.gust+2};
+  return s;
+}
+// Human-readable allowable wind direction, e.g. "SW–W (202°–292°)".
+function windDirText(site){const w=windowFor(site);return`${d2c(w[0])}–${d2c(w[1])} (${Math.round(w[0])}°–${Math.round(w[1])}°)`;}
+// "Allowable to fly" spec box for the launch popup.
+function windSpecHTML(site){
+  const L=windStrengthFor(site);
+  const disc=(((site.rating||'P').toUpperCase().charAt(0))==='H')?'Hang glider':'Paraglider';
+  return`<div class="ppwind"><div class="ppwind-h">🪂 Allowable to fly</div>`+
+    `<div class="ppwind-row"><span class="ppwind-k">Wind direction</span><span class="ppwind-v">${windDirText(site)}</span></div>`+
+    `<div class="ppwind-row"><span class="ppwind-k">Ideal speed</span><span class="ppwind-v">${L.idealLo}–${L.idealHi} mph</span></div>`+
+    `<div class="ppwind-row"><span class="ppwind-k">Max speed</span><span class="ppwind-v">${L.max} mph</span></div>`+
+    `<div class="ppwind-row"><span class="ppwind-k">Max gust spread</span><span class="ppwind-v">${L.gust} mph</span></div>`+
+    `<div class="ppwind-note">${disc} limits for a ${site.rating} site. Wind direction is where the wind blows FROM; speeds are rating-based defaults — fly only within both.</div></div>`;
+}
 function compassPt(cx,cy,r,deg){const a=deg*Math.PI/180;return[cx+r*Math.sin(a),cy-r*Math.cos(a)];}  // bearing → screen xy (N up)
 // Inner compass graphic: a north-up dial with the allowable-wind wedge (coloured by fly-status)
-// and an arrow whose TIP sits at the centre, coming in from the launch-facing side.
-function compassInner(cx,cy,r,col,site){
+// and an arrow showing where the wind is blowing FROM, its TIP at the centre (i.e. the wind
+// arrives at the launch from that bearing). When live wind (`windDir`) is known the arrow is a
+// real wind vane; with no weather yet it falls back to the launch-facing/ideal direction.
+function compassInner(cx,cy,r,col,site,windDir){
   const win=windowFor(site);
   let delta=((win[1]-win[0])%360+360)%360;
   const[x1,y1]=compassPt(cx,cy,r,win[0]),[x2,y2]=compassPt(cx,cy,r,win[1]);
   const wedge=delta>=359
     ?`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col}" opacity=".92"/>`
     :`<path d="M${cx.toFixed(1)},${cy.toFixed(1)} L${x1.toFixed(1)},${y1.toFixed(1)} A${r.toFixed(1)},${r.toFixed(1)} 0 ${delta>180?1:0} 1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${col}" opacity=".92"/>`;
-  const fa=site.facing??270,ux=Math.sin(fa*Math.PI/180),uy=-Math.cos(fa*Math.PI/180),px=-uy,py=ux; // facing unit + perp
+  const live=(typeof windDir==='number');
+  const fa=live?windDir:(site.facing??270),ux=Math.sin(fa*Math.PI/180),uy=-Math.cos(fa*Math.PI/180),px=-uy,py=ux; // wind-from (or facing) unit + perp
+  const arrowCol=live?'#0f172a':'rgba(15,23,42,.45)';  // dim the arrow when it's only the facing fallback
   const sw=r/10.5;                                   // scale strokes/arrowhead with radius
   const tail=[cx+ux*r,cy+uy*r];                      // arrow tail at the rim (facing side)
   const ah=3.6*sw;                                   // arrowhead length from centre
@@ -1228,8 +1306,8 @@ function compassInner(cx,cy,r,col,site){
     wedge+
     `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(15,23,42,.35)" stroke-width="${(0.8*sw).toFixed(2)}"/>`+
     `<line x1="${cx}" y1="${(cy-r).toFixed(1)}" x2="${cx}" y2="${(cy-r+2.2*sw).toFixed(1)}" stroke="rgba(15,23,42,.55)" stroke-width="${(1.1*sw).toFixed(2)}"/>`+
-    `<line x1="${tail[0].toFixed(1)}" y1="${tail[1].toFixed(1)}" x2="${back[0].toFixed(1)}" y2="${back[1].toFixed(1)}" stroke="#0f172a" stroke-width="${(2*sw).toFixed(2)}" stroke-linecap="round"/>`+
-    `<polygon points="${cx.toFixed(1)},${cy.toFixed(1)} ${f2(wL)} ${f2(wR)}" fill="#0f172a"/>`;
+    `<line x1="${tail[0].toFixed(1)}" y1="${tail[1].toFixed(1)}" x2="${back[0].toFixed(1)}" y2="${back[1].toFixed(1)}" stroke="${arrowCol}" stroke-width="${(2*sw).toFixed(2)}" stroke-linecap="round"/>`+
+    `<polygon points="${cx.toFixed(1)},${cy.toFixed(1)} ${f2(wL)} ${f2(wR)}" fill="${arrowCol}"/>`;
 }
 // Launch pin: teardrop body (fly-status colour) with the compass dial inside. The dial is
 // wrapped in a .pin-dial group that is counter-rotated by the map bearing (see rotatePins),
@@ -1240,7 +1318,7 @@ function mkLaunchSVG(col,site,w){
   return`<svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg">`+
     `<path d="M18 2C11 2 5 8 5 14.5c0 10 13 29.5 13 29.5S31 24.5 31 14.5C31 8 25 2 18 2z" fill="${col}" stroke="white" stroke-width="2.5"/>`+
     `<g class="pin-dial" transform="rotate(${brg} ${cx} ${cy})">`+
-    compassInner(cx,cy,r,col,site)+
+    compassInner(cx,cy,r,col,site,w&&typeof w.dir==='number'?w.dir:null)+
     `</g>`+
     `</svg>`;
 }
@@ -1251,11 +1329,11 @@ function rotatePins(){
   document.querySelectorAll('.pin-dial').forEach(g=>g.setAttribute('transform',t));
 }
 // Standalone compass dial for the launch popup header.
-function windCompassSVG(site,col,size){
+function windCompassSVG(site,col,size,w){
   size=size||38;const c=size/2,r=size/2-2.5;
   return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="flex:0 0 auto;">`+
     `<circle cx="${c}" cy="${c}" r="${(r+2).toFixed(1)}" fill="#fff" stroke="rgba(15,23,42,.15)" stroke-width="1"/>`+
-    compassInner(c,c,r,col,site)+
+    compassInner(c,c,r,col,site,w&&typeof w.dir==='number'?w.dir:null)+
     `</svg>`;
 }
 function mkLZSVG(gold){return`<svg width="36" height="22" viewBox="0 0 36 22" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9));"><rect x="2.5" y="2.5" width="31" height="17" rx="5" fill="${gold?'#d97706':'#3b82f6'}" stroke="${gold?'#fde047':'#ffffff'}" stroke-width="3.5" paint-order="stroke"/><text x="18" y="15" text-anchor="middle" font-size="9" fill="white" font-weight="800" font-family="Arial,sans-serif">LZ</text></svg>`;}
@@ -1311,7 +1389,7 @@ async function flyFromHere(lat,lon){
   createLaunchMarker(site);
   onLaunchClick(site);                                   // opens the standard takeoff menu
   // Weather arrives async; once it does, recolour the pin.
-  fetchHRRR(site.lat,site.lon).then(w=>{if(!w)return;siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp)};recolorMarkers();});
+  fetchHRRR(site.lat,site.lon).then(w=>{if(!w)return;siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};recolorMarkers();});
 }
 
 // Press-and-hold anywhere on the map (touch) to drop an ad-hoc takeoff right there and run the
@@ -1358,7 +1436,7 @@ function onLaunchClick(site,e){
   clearZones();currentEditLZ=null;
   currentLaunchId=site.id;
   const w=siteWx[site.id];
-  setForecastSite(site.lat,site.lon,site.name);   // forecast bar follows the clicked site
+  setForecastSite(site.lat,site.lon,site.name,site);   // forecast bar follows the clicked site
   showPopup(site.lat,site.lon,launchPop(site,w));
   wireLaunchEditor(site);
   mountThumb(site,site.facing);
@@ -1449,6 +1527,12 @@ function initMapLibre(){
         // Free hiking-trail overlay (Waymarked Trails) — transparent route lines on top of the base map.
         m.addSource('hiking',{type:'raster',tiles:[TILES.hiking],tileSize:256,maxzoom:18,attribution:'Trails © waymarkedtrails.org, OSM'});
         m.addLayer({id:'hiking',type:'raster',source:'hiking',layout:{visibility:'none'},paint:{'raster-opacity':0.9}});
+        // Power-line hazard overlay (OpenInfraMap vector tiles). power_line = transmission,
+        // minor_line = lower-voltage distribution; both are real wire-strike hazards.
+        m.addSource('power',{type:'vector',tiles:['https://openinframap.org/tiles/{z}/{x}/{y}.pbf'],minzoom:0,maxzoom:17,attribution:'Power data © OpenInfraMap / OpenStreetMap contributors'});
+        m.addLayer({id:'power-line',type:'line',source:'power','source-layer':'power_line',layout:{visibility:'none','line-cap':'round','line-join':'round'},paint:{'line-color':'#f97316','line-width':['interpolate',['linear'],['zoom'],7,1,12,2.2,16,3.4],'line-opacity':0.95}});
+        m.addLayer({id:'power-minor',type:'line',source:'power','source-layer':'minor_line',minzoom:11,layout:{visibility:'none','line-cap':'round'},paint:{'line-color':'#fb923c','line-width':['interpolate',['linear'],['zoom'],11,0.6,16,2],'line-dasharray':[2,1.5],'line-opacity':0.9}});
+        m.addLayer({id:'power-sub',type:'circle',source:'power','source-layer':'power_substation_point',minzoom:10,layout:{visibility:'none'},paint:{'circle-radius':3,'circle-color':'#ea580c','circle-stroke-color':'#fff','circle-stroke-width':1}});
         m.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
         // Blue-dot geolocation (the native button is hidden via CSS; #geo-btn drives it).
         geoCtrl=new maplibregl.GeolocateControl({positionOptions:{enableHighAccuracy:true},trackUserLocation:false,showUserHeading:false,fitBoundsOptions:{maxZoom:12}});
@@ -1620,7 +1704,7 @@ function setBadge(t){const b=document.getElementById('mode-badge');if(b){b.textC
 function startAddLZ(){addingLZ=true;addingLaunch=false;setBadge('📍 Click the map to drop a new LZ');}
 function startAddLaunch(){addingLaunch=true;addingLZ=false;setBadge('📍 Click the map to drop a new takeoff');}
 function handleEditClick(lon,lat){
-  if(addingLaunch){addingLaunch=false;setBadge('');const site={id:'lnch_user_'+Date.now(),name:'New Takeoff',sub:'Custom',lat,lon,alt:6000,lzAlt:4500,rating:'P2',facing:270,lzLat:null,lzLon:null,desc:'User-added takeoff.',custom:true};LAUNCHES.push(site);saveCustomLaunches();createLaunchMarker(site);fetchHRRR(site.lat,site.lon).then(w=>{if(w){siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp)};recolorMarkers();}});onLaunchClick(site);return true;}
+  if(addingLaunch){addingLaunch=false;setBadge('');const site={id:'lnch_user_'+Date.now(),name:'New Takeoff',sub:'Custom',lat,lon,alt:6000,lzAlt:4500,rating:'P2',facing:270,lzLat:null,lzLon:null,desc:'User-added takeoff.',custom:true};LAUNCHES.push(site);saveCustomLaunches();createLaunchMarker(site);fetchHRRR(site.lat,site.lon).then(w=>{if(w){siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};recolorMarkers();}});onLaunchClick(site);return true;}
   if(addingLZ){addingLZ=false;setBadge('');const lz={id:'lz_user_'+Date.now(),name:'New LZ',sub:'Custom',lat,lon,alt:4500,desc:'User-added landing zone.',launchIds:[],boundary:null,custom:true};lzStore.push(lz);saveLZStore();buildLZMarkers();drawConnectors();openLZ(lz);return true;}
   if(drawingFor){drawVerts.push([lon,lat]);updateDrawPreview();return true;}
   return false;
@@ -1669,7 +1753,8 @@ function wireLZEditor(lz){
 function flashSaved(b){if(!b)return;const t=b.textContent;b.textContent='✓ Saved';b.classList.add('saved-ok');const det=b.closest('details');setTimeout(()=>{b.textContent=t;b.classList.remove('saved-ok');if(det)det.open=false;},1000);}
 // ── Takeoff (launch) editor: collapsible dropdown in the launch popup ──────────
 function launchEditorHTML(site){
-  return`<details class="lzedit"><summary class="lzedit-t">✎ Edit this takeoff</summary><div class="lzedit-body"><label class="edl">Name</label><input class="edi" id="led-name" value="${(site.name||'').replace(/"/g,'&quot;')}"/><div class="edrow"><div style="flex:1"><label class="edl">Facing (°)</label><input class="edi" id="led-facing" type="number" min="0" max="359" value="${site.facing}"/></div><div style="flex:1"><label class="edl">Altitude (ft)</label><input class="edi" id="led-alt" type="number" value="${site.alt}"/></div></div><label class="edl">Bio / notes</label><textarea class="edi" id="led-desc" rows="3">${(site.desc||'').replace(/</g,'&lt;')}</textarea><button class="edbtn" id="led-move">✥ Move pin</button><button class="edbtn save" id="led-save">💾 Save changes</button><div class="ppnote" style="margin-top:6px;">Move pin: drag the takeoff on the map, then click lock. Facing drives the glide cone.</div></div></details>`;
+  const win=windowFor(site);
+  return`<details class="lzedit"><summary class="lzedit-t">✎ Edit this takeoff</summary><div class="lzedit-body"><label class="edl">Name</label><input class="edi" id="led-name" value="${(site.name||'').replace(/"/g,'&quot;')}"/><div class="edrow"><div style="flex:1"><label class="edl">Facing (°)</label><input class="edi" id="led-facing" type="number" min="0" max="359" value="${site.facing}"/></div><div style="flex:1"><label class="edl">Altitude (ft)</label><input class="edi" id="led-alt" type="number" value="${site.alt}"/></div></div><label class="edl">Allowable wind direction (° wind blows FROM)</label><div class="edrow"><div style="flex:1"><label class="edl">From</label><input class="edi" id="led-windfrom" type="number" min="0" max="359" value="${Math.round(win[0])}"/></div><div style="flex:1"><label class="edl">To (clockwise)</label><input class="edi" id="led-windto" type="number" min="0" max="359" value="${Math.round(win[1])}"/></div></div><div class="ppnote" style="margin-top:2px;margin-bottom:4px;">e.g. From 202 → To 292 = a SW–W window. Drives the green wedge on the pin and the fly/no-fly check.</div><label class="edl">Bio / notes</label><textarea class="edi" id="led-desc" rows="3">${(site.desc||'').replace(/</g,'&lt;')}</textarea><button class="edbtn" id="led-move">✥ Move pin</button><button class="edbtn save" id="led-save">💾 Save changes</button><div class="ppnote" style="margin-top:6px;">Move pin: drag the takeoff on the map, then click lock. Facing drives the glide cone.</div></div></details>`;
 }
 function wireLaunchEditor(site){
   const nameEl=document.getElementById('led-name');if(!nameEl)return;
@@ -1677,6 +1762,12 @@ function wireLaunchEditor(site){
   nameEl.oninput=e=>{site.name=e.target.value;persist();};
   document.getElementById('led-facing').oninput=e=>{const v=parseInt(e.target.value);if(!isNaN(v))site.facing=((v%360)+360)%360;persist();};
   document.getElementById('led-alt').oninput=e=>{const v=parseInt(e.target.value);if(!isNaN(v))site.alt=v;persist();};
+  const wf=document.getElementById('led-windfrom'),wt=document.getElementById('led-windto');
+  const setWin=()=>{const a=parseInt(wf.value),b=parseInt(wt.value);if(isNaN(a)||isNaN(b))return;
+    site.wind=[((a%360)+360)%360,((b%360)+360)%360];persist();
+    recolorMarkers();                                    // redraw the pin's allowable-wind wedge
+    const w=siteWx[site.id];if(w)siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};};
+  if(wf&&wt){wf.oninput=setWin;wt.oninput=setWin;}
   document.getElementById('led-desc').oninput=e=>{site.desc=e.target.value;persist();};
   document.getElementById('led-move').onclick=()=>toggleMoveLaunch(site.id);
   document.getElementById('led-save').onclick=e=>{saveLaunchPos();saveCustomLaunches();flashSaved(e.target);};
