@@ -414,7 +414,11 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="radio" name="baselayer" value="topo" onchange="setBaseLayer('topo')"/> Topo</label>
         <div class="lp-div"></div>
         <div class="lp-sec">Overlay</div>
+        <label class="lp-row"><input type="checkbox" id="ov-radar" onchange="toggleOverlay('radar',this.checked)"/> 🌧 Radar (precip)</label>
+        <label class="lp-row"><input type="checkbox" id="ov-satellite" onchange="toggleOverlay('satellite',this.checked)"/> ☁ Satellite (clouds)</label>
         <label class="lp-row"><input type="checkbox" id="ov-sectional" onchange="toggleOverlay('sectional',this.checked)"/> ✈ VFR Sectional</label>
+        <label class="lp-row"><input type="checkbox" id="ov-airspace" onchange="toggleOverlay('airspace',this.checked)"/> 🚫 Airspace (OpenAIP)</label>
+        <label class="lp-row"><input type="checkbox" id="ov-relief" onchange="toggleOverlay('relief',this.checked)"/> ⛰ Hillshade (terrain)</label>
         <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/> 🥾 Hiking trails</label>
         <label class="lp-row"><input type="checkbox" id="ov-power" onchange="toggleOverlay('power',this.checked)"/> ⚡ Power lines</label>
       </div>
@@ -565,9 +569,31 @@ const TILES={
   sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   topo:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
   sectional:'https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Sectional/MapServer/tile/{z}/{y}/{x}',
-  hiking:'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png'   // free Waymarked Trails hiking overlay (CC-BY-SA, OSM data)
+  hiking:'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png',   // free Waymarked Trails hiking overlay (CC-BY-SA, OSM data)
+  relief:'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}'   // free Esri World Hillshade (slope/aspect relief)
 };
+// OpenAIP airspace tiles need a free API key (sign up at openaip.net → My Account → API key).
+// Paste it here to enable the ✈ Airspace overlay; leave blank and the toggle will prompt you.
+const OPENAIP_KEY='';
+const openAipTiles=()=>OPENAIP_KEY?`https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=${OPENAIP_KEY}`:null;
 const DEM_URL='https://tiles.mapterhorn.com/tilejson.json';
+// RainViewer: free, key-less animated weather. We grab the latest radar + IR-satellite
+// frame paths from their public index, then build standard XYZ raster tile URLs.
+let RV=null;
+async function loadRainviewer(){
+  if(RV)return RV;
+  try{
+    const j=await(await fetch('https://api.rainviewer.com/public/weather-maps.json')).json();
+    RV={host:j.host,radar:[...((j.radar&&j.radar.past)||[]),...((j.radar&&j.radar.nowcast)||[])],satellite:((j.satellite&&j.satellite.infrared)||[])};
+  }catch(e){RV={host:'',radar:[],satellite:[]};}
+  return RV;
+}
+function rvUrl(kind){
+  if(!RV||!RV.host)return null;
+  const arr=kind==='radar'?RV.radar:RV.satellite,f=arr[arr.length-1];
+  if(!f)return null;
+  return kind==='radar'?`${RV.host}${f.path}/256/{z}/{x}/{y}/4/1_1.png`:`${RV.host}${f.path}/256/{z}/{x}/{y}/0/0_0.png`;
+}
 
 // ── Satellite tile ────────────────────────────────────────────────────────────
 function lon2t(lon,z){return Math.floor((lon+180)/360*Math.pow(2,z));}
@@ -874,13 +900,50 @@ function setBaseLayer(name){
     if(lfOverlays.sectional&&lfMap.hasLayer(lfOverlays.sectional)){try{lfOverlays.sectional.bringToFront();}catch(e){}}
   }
 }
+function uncheck(name){const cb=document.getElementById('ov-'+name);if(cb)cb.checked=false;}
 function toggleOverlay(name,on){
+  // RainViewer radar / satellite: tile URL is fetched live, so add the source lazily on first use.
+  if(name==='radar'||name==='satellite'){
+    if(!on){
+      if(useMapLibre&&mlMap){try{mlMap.setLayoutProperty(name,'visibility','none');}catch(e){}}
+      else if(lfMap&&lfOverlays[name]){try{lfMap.removeLayer(lfOverlays[name]);}catch(e){}}
+      return;
+    }
+    loadRainviewer().then(()=>{
+      const u=rvUrl(name);
+      if(!u){uncheck(name);setBadge('⚠ Live '+(name==='radar'?'radar':'satellite')+' unavailable right now. Try again shortly.');return;}
+      if(useMapLibre&&mlMap){
+        if(mlMap.getLayer(name)){try{mlMap.removeLayer(name);}catch(e){}try{mlMap.removeSource(name);}catch(e){}}
+        mlMap.addSource(name,{type:'raster',tiles:[u],tileSize:256,attribution:'© RainViewer'});
+        mlMap.addLayer({id:name,type:'raster',source:name,paint:{'raster-opacity':name==='radar'?0.7:0.55}});
+      }else if(lfMap){
+        if(lfOverlays[name]){try{lfMap.removeLayer(lfOverlays[name]);}catch(e){}}
+        lfOverlays[name]=L.tileLayer(u,{attribution:'© RainViewer',opacity:name==='radar'?0.7:0.55,maxZoom:18});
+        lfOverlays[name].addTo(lfMap);try{lfOverlays[name].bringToFront();}catch(e){}
+      }
+    });
+    return;
+  }
+  // OpenAIP airspace needs a free API key (see OPENAIP_KEY at the top of the script).
+  if(name==='airspace'&&on&&!openAipTiles()){
+    uncheck('airspace');
+    setBadge('🚫 Airspace overlay needs a free OpenAIP API key — add it to OPENAIP_KEY in the code. Until then, use the ✈ VFR Sectional layer for US airspace.');
+    return;
+  }
   if(useMapLibre&&mlMap){
+    if(name==='airspace'){
+      if(!on){try{mlMap.setLayoutProperty('airspace','visibility','none');}catch(e){}return;}
+      if(!mlMap.getLayer('airspace')){
+        mlMap.addSource('airspace',{type:'raster',tiles:[openAipTiles()],tileSize:256,maxzoom:14,attribution:'Airspace © OpenAIP'});
+        mlMap.addLayer({id:'airspace',type:'raster',source:'airspace',paint:{'raster-opacity':0.85}});
+      }else{try{mlMap.setLayoutProperty('airspace','visibility','visible');}catch(e){}}
+      return;
+    }
     const ids=name==='power'?['power-line','power-minor','power-sub']:[name];
     ids.forEach(id=>{try{mlMap.setLayoutProperty(id,'visibility',on?'visible':'none');}catch(e){}});
   }
   else if(lfMap){
-    if(name==='power'){const cb=document.getElementById('ov-power');if(cb)cb.checked=false;setBadge('⚡ Power-line overlay needs the 3D map — not available on the 2D fallback.');return;}
+    if(name==='power'){uncheck('power');setBadge('⚡ Power-line overlay needs the 3D map — not available on the 2D fallback.');return;}
     const l=lfOverlays[name];if(!l)return;if(on){l.addTo(lfMap);try{l.bringToFront();}catch(e){}}else lfMap.removeLayer(l);
   }
 }
@@ -1603,6 +1666,9 @@ function initMapLibre(timeoutMs){
         // Free hiking-trail overlay (Waymarked Trails) — transparent route lines on top of the base map.
         m.addSource('hiking',{type:'raster',tiles:[TILES.hiking],tileSize:256,maxzoom:18,attribution:'Trails © waymarkedtrails.org, OSM'});
         m.addLayer({id:'hiking',type:'raster',source:'hiking',layout:{visibility:'none'},paint:{'raster-opacity':0.9}});
+        // Free Esri World Hillshade relief overlay — multiply-blends to read slope/aspect.
+        m.addSource('relief',{type:'raster',tiles:[TILES.relief],tileSize:256,attribution:'Hillshade © Esri'});
+        m.addLayer({id:'relief',type:'raster',source:'relief',layout:{visibility:'none'},paint:{'raster-opacity':0.55}});
         // Power-line hazard overlay (OpenInfraMap vector tiles). power_line = transmission,
         // minor_line = lower-voltage distribution; both are real wire-strike hazards.
         m.addSource('power',{type:'vector',tiles:['https://openinframap.org/tiles/{z}/{x}/{y}.pbf'],minzoom:0,maxzoom:17,attribution:'Power data © OpenInfraMap / OpenStreetMap contributors'});
@@ -1641,8 +1707,11 @@ function initLeaflet(){
   };
   lfOverlays={
     sectional:L.tileLayer('https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Sectional/MapServer/tile/{z}/{y}/{x}',{attribution:'FAA / Esri',maxZoom:11,opacity:0.85}),
-    hiking:L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png',{attribution:'Trails © waymarkedtrails.org, OSM',maxZoom:18,opacity:0.9})
+    hiking:L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png',{attribution:'Trails © waymarkedtrails.org, OSM',maxZoom:18,opacity:0.9}),
+    relief:L.tileLayer(TILES.relief,{attribution:'Hillshade © Esri',maxZoom:19,opacity:0.55})
   };
+  const oa=openAipTiles();
+  if(oa)lfOverlays.airspace=L.tileLayer(oa,{attribution:'Airspace © OpenAIP',maxZoom:14,opacity:0.85});
   lfBaseLayers.streets.addTo(m);
   m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}handleEditClick(e.latlng.lng,e.latlng.lat);});  // "Fly from here?" now needs a 1.5s press-and-hold
   m.on('dblclick',()=>{if(drawingFor)finishDraw();});
