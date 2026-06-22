@@ -36,6 +36,8 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 .fc-model-sel option{color:#111;}
 #fc-head-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
 #fc-toggle{display:none;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;line-height:1;}
+#fc-now{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer;line-height:1;white-space:nowrap;flex-shrink:0;}
+#fc-now:hover{background:rgba(255,255,255,.22);}
 #fc-left{display:flex;align-items:center;gap:8px;min-width:0;}
 #menu-btn{flex-shrink:0;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:6px 9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:0;}
 #menu-btn:hover{background:rgba(255,255,255,.2);}
@@ -383,6 +385,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <option value="gem_seamless">GEM</option>
         <option value="best_match">Best match</option>
       </select>
+      <button id="fc-now" onclick="forecastNow()" title="Jump to now" aria-label="Jump to current time">⦿ Now</button>
       <button id="fc-toggle" onclick="toggleForecast()" title="Show/hide forecast" aria-label="Toggle forecast">▴</button>
     </div>
   </div>
@@ -1087,7 +1090,7 @@ function buildForecast(container,series,labels){
     rainRow+=cell(i,e.pop>=10?e.pop:'');
     windRow+=cell(i,e.wind,`background:${windColor(e.wind)}`);
     gustRow+=cell(i,e.gust,`background:${windColor(e.gust)}`);
-    dirRow+=cell(i,dirArrowCell(e.dir));
+    dirRow+=cell(i,(fcTarget.site&&fcTarget.site.facing!=null)?windDirCellSVG(e.dir,fcTarget.site,dc):dirArrowCell(e.dir));
     flyRow+=cell(i,'',`background:${dc}`);
   });
   // row order: [rowClass, frozen label, data cells]
@@ -1117,7 +1120,8 @@ function buildForecast(container,series,labels){
   if(scroll){
     const upd=()=>{const idx=Math.min(models.length-1,Math.max(0,Math.round(scroll.scrollLeft/colW)));if(nameEl)nameEl.textContent=models[idx]||'';if(dayEl)dayEl.textContent=dayCols[idx]||'';};
     scroll.addEventListener('scroll',upd,{passive:true});
-    if(nowIdx>0)scroll.scrollLeft=Math.max(0,(nowIdx-1)*colW);
+    scroll._nowLeft=nowIdx>0?Math.max(0,(nowIdx-1)*colW):0;   // remembered target for the "Now" button
+    scroll.scrollLeft=scroll._nowLeft;
     upd();
   }
 }
@@ -1131,6 +1135,12 @@ function renderForecast(series){
   // Also render the mini forecast inside an open launch/LZ popup, if present.
   const ppWrap=document.querySelector('.pp-fc-wrap');
   if(ppWrap)buildForecast(ppWrap,series.slice(0,336),{temp:'Temp',rain:'Rain%',dir:'Direction'});
+}
+// "Now" button: smooth-scroll every visible forecast back to the current-hour column.
+function forecastNow(){
+  document.querySelectorAll('#forecast .fc-scroll,.pp-fc-wrap .fc-scroll').forEach(s=>{
+    try{s.scrollTo({left:s._nowLeft||0,behavior:'smooth'});}catch(e){s.scrollLeft=s._nowLeft||0;}
+  });
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────────
@@ -1315,6 +1325,13 @@ function windCompassSVG(site,col,size,w){
     `<circle cx="${c}" cy="${c}" r="${(r+2).toFixed(1)}" fill="#fff" stroke="rgba(15,23,42,.15)" stroke-width="1"/>`+
     compassInner(c,c,r,col,site,w&&typeof w.dir==='number'?w.dir:null)+
     `</svg>`;
+}
+// Tiny per-hour wind dial for the forecast: same north-up compass as the pin, showing the
+// site's allowable-wind wedge (coloured by that hour's fly status) plus the hour's wind arrow.
+function windDirCellSVG(dir,site,col){
+  const size=18,c=size/2,r=c-1.5;
+  return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:block">`+
+    compassInner(c,c,r,col,site,typeof dir==='number'?dir:null)+`</svg>`;
 }
 function mkLZSVG(gold){return`<svg width="36" height="22" viewBox="0 0 36 22" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9));"><rect x="2.5" y="2.5" width="31" height="17" rx="5" fill="${gold?'#d97706':'#3b82f6'}" stroke="${gold?'#fde047':'#ffffff'}" stroke-width="3.5" paint-order="stroke"/><text x="18" y="15" text-anchor="middle" font-size="9" fill="white" font-weight="800" font-family="Arial,sans-serif">LZ</text></svg>`;}
 
