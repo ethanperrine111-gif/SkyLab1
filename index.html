@@ -71,8 +71,7 @@ body.dark .fc-r-model .fc-lbl{background:#172554;}
 body.dark .fc-model-name{color:#bfdbfe;}
 /* Linked-LZ highlight: pulse + gold glow on the landing zone connected to a clicked launch.
    Animate the inner SVG only, so the marker's own positioning transform is left untouched. */
-@keyframes lzpulse{0%,100%{transform:scale(1);}50%{transform:scale(1.4);}}
-.lz-hl svg{transform-origin:center center;animation:lzpulse 1s ease-in-out infinite;filter:drop-shadow(0 0 6px #fde047) drop-shadow(0 0 4px #f59e0b);}
+.lz-hl svg{filter:drop-shadow(0 0 6px #fde047) drop-shadow(0 0 4px #f59e0b);}
 .fc-mseg{flex-shrink:0;display:flex;align-items:center;padding-left:8px;font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#1e40af;background:#dbeafe;border-right:1px solid #bfdbfe;white-space:nowrap;overflow:hidden;}
 .fc-mseg.switch{border-left:2px solid #2563eb;color:#0f172a;background:#bfdbfe;}
 body.dark .fc-mseg{background:#172554;color:#bfdbfe;border-color:#1e3a8a;}
@@ -631,15 +630,16 @@ async function oaFetchRaw(ep){
 }
 function oaPt(it,name){const c=(it.geometry&&it.geometry.coordinates)||[];return{lon:c[0],lat:c[1],name};}
 // OpenAIP obstacle "type" enum → readable label (best-effort; unmapped codes fall back).
-const OBST_TYPES={0:'Obstacle',1:'Antenna',2:'Building',3:'Chimney',4:'Mast',5:'Tower',6:'Wind turbine',7:'Wind-turbine farm',8:'Cooling tower',9:'Crane',10:'Power line',11:'Refinery',12:'Bridge',13:'Dam',14:'Silo',15:'Lighthouse'};
-function fmtHeight(h){if(h==null)return'';const v=typeof h==='number'?h:(h&&h.value);if(v==null)return'';const u=(h&&h.unit===1)?'ft':(h&&h.unit===0)?'m':'';return Math.round(v)+(u?' '+u:'');}
+const OBST_TYPES={0:'Obstacle',1:'Antenna',2:'Tower',3:'Wind turbine',4:'Building',5:'Chimney',6:'Mast',7:'Power line',8:'Crane',9:'Bridge',10:'Cable car',11:'Refinery',12:'Silo',13:'Cooling tower',14:'Dam',15:'Lighthouse',16:'Wind-turbine farm'};
+// Height comes back as {value, unit} (unit 0 = m, 1 = ft) or a bare number (metres).
+function fmtHeight(h){if(h==null)return'';const v=typeof h==='number'?h:(h&&h.value);if(v==null)return'';const u=(h&&h.unit===1)?'ft':'m';return Math.round(v)+' '+u;}
 // Obstacles: OpenAIP gives a type (antenna / mast / tower / wind turbine / building…) and a height.
 async function fetchObstacles(){
   const items=await oaFetchRaw('obstacles');if(!items)return null;
   return items.map(it=>{
-    const t=(typeof it.type==='string')?it.type:(OBST_TYPES[it.type]||'Obstacle');
+    const kind=(it.name&&it.name.trim())||(typeof it.type==='string'?it.type:(OBST_TYPES[it.type]||(it.type!=null?('Obstacle (type '+it.type+')'):'Obstacle')));
     const h=fmtHeight(it.height!=null?it.height:it.elevation);
-    return oaPt(it,`${t}${h?' · '+h:''}`);
+    return oaPt(it,`${kind}${h?' · '+h+' tall':''}`);
   }).filter(p=>typeof p.lon==='number');
 }
 async function fetchAirports(){
@@ -673,14 +673,17 @@ const FEATURE_LAYERS={
   airports:{color:'#2563eb',marker:'runway',fetch:fetchAirports},
   wx:{color:'#0891b2',marker:'vane',fetch:fetchWxStations}
 };
-const VANE_SVG='<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#0891b2" stroke="#fff" stroke-width="2"/><path d="M12 3 L16 13 L12 11 L8 13 Z" fill="#fff"/><circle cx="12" cy="12" r="1.8" fill="#fff"/></svg>';
+// Windsock graphic for weather stations (pole + striped orange/white sock).
+const VANE_SVG='<svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><line x1="5" y1="3" x2="5" y2="23" stroke="#475569" stroke-width="2" stroke-linecap="round"/><polygon points="5,4 22,7 22,10 5,12" fill="#f97316"/><polygon points="10,5 13,5.5 13,11 10,11.5" fill="#fff"/><polygon points="17,6 19.5,6.4 19.5,10.3 17,10.7" fill="#fff"/></svg>';
 function ensureVaneIcon(){
   if(!mlMap||(mlMap.hasImage&&mlMap.hasImage('vane')))return;
-  const s=24,cv=document.createElement('canvas');cv.width=cv.height=s;const x=cv.getContext('2d');
-  x.fillStyle='#0891b2';x.strokeStyle='#fff';x.lineWidth=2;
-  x.beginPath();x.arc(12,12,10,0,2*Math.PI);x.fill();x.stroke();
-  x.fillStyle='#fff';x.beginPath();x.moveTo(12,3);x.lineTo(16,13);x.lineTo(12,11);x.lineTo(8,13);x.closePath();x.fill();
-  x.beginPath();x.arc(12,12,1.8,0,2*Math.PI);x.fill();
+  const s=26,cv=document.createElement('canvas');cv.width=cv.height=s;const x=cv.getContext('2d');
+  x.strokeStyle='#475569';x.lineWidth=2;x.lineCap='round';
+  x.beginPath();x.moveTo(5,3);x.lineTo(5,23);x.stroke();
+  x.fillStyle='#f97316';x.beginPath();x.moveTo(5,4);x.lineTo(22,7);x.lineTo(22,10);x.lineTo(5,12);x.closePath();x.fill();
+  x.fillStyle='#fff';
+  x.beginPath();x.moveTo(10,5);x.lineTo(13,5.5);x.lineTo(13,11);x.lineTo(10,11.5);x.closePath();x.fill();
+  x.beginPath();x.moveTo(17,6);x.lineTo(19.5,6.4);x.lineTo(19.5,10.3);x.lineTo(17,10.7);x.closePath();x.fill();
   try{mlMap.addImage('vane',{width:s,height:s,data:x.getImageData(0,0,s,s).data});}catch(e){}
 }
 const RUNWAY_SVG='<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(45 11 11)"><rect x="8" y="2" width="6" height="18" rx="2" fill="#334155" stroke="#fff" stroke-width="1.5"/><line x1="11" y1="4" x2="11" y2="18" stroke="#fff" stroke-width="1" stroke-dasharray="2 2"/></g></svg>';
@@ -727,7 +730,7 @@ function renderFeatures(name,pts){
     lfFeatureGroups[name]=L.layerGroup(pts.map(p=>{
       let mk;
       if(cfg.marker==='runway')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:RUNWAY_SVG,className:'',iconSize:[22,22],iconAnchor:[11,11]})});
-      else if(cfg.marker==='vane')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[24,24],iconAnchor:[12,12]})});
+      else if(cfg.marker==='vane')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[26,26],iconAnchor:[5,23]})});
       else mk=L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:1.5,fillColor:cfg.color,fillOpacity:0.9});
       if(name==='wx'){mk.bindPopup('<b>🌡 '+(p.name||'Station')+'</b><br>Loading…');mk.on('click',()=>fetchStationObs(p.id).then(o=>mk.setPopupContent(obsHTML(p.name||'Station',o))));}
       else mk.bindPopup(emoji+(p.name||''));
@@ -762,19 +765,20 @@ async function importUtahPGSites(){
   try{
     const r=await fetch(`https://www.paraglidingearth.com/api/geojson/getBoundingBoxSites.php?north=${UT_BBOX[3]}&south=${UT_BBOX[1]}&east=${UT_BBOX[2]}&west=${UT_BBOX[0]}&style=detailled`);
     if(!r.ok)return;
-    const j=await r.json();let added=0;
+    const j=await r.json();const newSites=[];
     ((j&&j.features)||[]).forEach(f=>{
       const c=f.geometry&&f.geometry.coordinates;if(!c)return;
       const lon=c[0],lat=c[1],p=f.properties||{},name=(p.name||'PG site').trim();
       if(LAUNCHES.some(s=>kmBetween(lat,lon,s.lat,s.lon)<1.5))return;            // proximity dup
       if(LAUNCHES.some(s=>s.name.toLowerCase()===name.toLowerCase()))return;     // name dup
       const altM=parseFloat(p.takeoff_altitude);
-      const site={id:'pge_'+(p.pge_site_id||p.id||(Date.now()+'_'+added)),name,sub:'Utah · ParaglidingEarth',
+      const site={id:'pge_'+(p.pge_site_id||p.id||(Date.now()+'_'+newSites.length)),name,sub:'Utah · ParaglidingEarth',
         lat,lon,alt:Math.round((isFinite(altM)?altM:1800)*3.281),lzAlt:4500,rating:'PGE',facing:parseInt(p.takeoff_winds_main||p.orientation)||270,
         lzLat:null,lzLon:null,desc:String(p.takeoff_description||'Imported paragliding / hang-gliding site (ParaglidingEarth).').replace(/<[^>]+>/g,'').slice(0,400),imported:true};
-      LAUNCHES.push(site);createLaunchMarker(site);added++;
+      LAUNCHES.push(site);createLaunchMarker(site);newSites.push(site);
     });
-    if(added)loadWeather();   // colour the new pins once weather lands
+    // Fetch weather for ONLY the new pins (don't trigger a full reload — saves Open-Meteo calls).
+    if(newSites.length){await fetchHRRRBatch(newSites,slcWx);recolorMarkers();}
   }catch(e){}
 }
 
@@ -841,7 +845,8 @@ async function toggleWindAnim(on){
   windState.particles=[];
   if(!windState.bound){
     window.addEventListener('resize',resizeWindCanvas);
-    const refetch=()=>{if(windState.on){resizeWindCanvas();fetchWindGrid().then(g=>{if(g)windState.grid=g;});}};
+    // Debounce the grid refetch so a pan/zoom session fires at most one Open-Meteo call.
+    let t=null;const refetch=()=>{if(!windState.on)return;resizeWindCanvas();clearTimeout(t);t=setTimeout(()=>{if(windState.on)fetchWindGrid().then(g=>{if(g)windState.grid=g;});},1200);};
     if(useMapLibre&&mlMap)mlMap.on('moveend',refetch);else if(lfMap)lfMap.on('moveend',refetch);
     windState.bound=true;
   }
