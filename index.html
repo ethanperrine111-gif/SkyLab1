@@ -19,6 +19,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- Supabase client (cloud sync for launch / LZ edits) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;}
@@ -112,8 +114,8 @@ body.probe-off #ctrl-panel{top:8px;}
 .cbtn.active{background:rgba(56,189,248,.28);border-color:#38bdf8;color:#7dd3fc;}
 #trow{display:flex;gap:6px;}
 #trow .cbtn{flex:1;height:34px;padding:0;display:flex;align-items:center;justify-content:center;}
-/* Compact map-layers button (doesn't stretch the full row) */
-#trow #layers-btn{flex:0 0 auto;width:42px;height:30px;padding:0;}
+/* Compact 2D/3D + map-layers buttons (matched size, don't stretch the full row) */
+#trow #layers-btn,#trow #b2d{flex:0 0 auto;width:42px;height:30px;padding:0;font-size:13px;}
 #layers-btn svg{width:15px;height:15px;}
 #wind-vane{position:absolute;top:8px;left:8px;z-index:500;background:rgba(17,24,39,.92);border-radius:12px;padding:9px 11px;color:white;min-width:116px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.4);border-top:3px solid #38bdf8;}
 .wvt{font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
@@ -180,6 +182,10 @@ body.dark .ppwind-note{color:#94a3b8;}
 @keyframes locpulse{0%{transform:scale(1);opacity:.8}70%{transform:scale(2.4);opacity:0}100%{transform:scale(2.4);opacity:0}}
 .leaflet-div-icon.myloc-dot{background:none!important;border:none!important;}
 .maplibregl-popup-content{padding:12px;border-radius:10px;max-height:80vh;overflow-y:auto;}
+/* Hide the map attribution control */
+.maplibregl-ctrl-attrib,.leaflet-control-attribution{display:none!important;}
+/* Hide the +/- zoom buttons */
+.maplibregl-ctrl-zoom-in,.maplibregl-ctrl-zoom-out,.leaflet-control-zoom{display:none!important;}
 /* ── polish ─────────────────────────────────────────────────────────────────── */
 #wx-strip::-webkit-scrollbar,#hourly::-webkit-scrollbar{display:none;}
 #wx-strip,#hourly{scrollbar-width:none;-webkit-overflow-scrolling:touch;}
@@ -216,7 +222,7 @@ body.dark .ppwind-note{color:#94a3b8;}
 .pp-sat .maplibregl-canvas{border-radius:8px;}
 .pp-sat-tag{position:absolute;left:6px;bottom:5px;z-index:2;font-size:9px;color:#fff;background:rgba(0,0,0,.42);padding:1px 6px;border-radius:7px;pointer-events:none;}
 .thumb-compass{position:absolute;right:6px;bottom:5px;z-index:3;pointer-events:auto;touch-action:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
-.thumb-takeoff-dot{width:14px;height:14px;border-radius:50%;background:rgba(56,189,248,.28);border:2.5px solid rgba(56,189,248,.55);box-shadow:0 1px 3px rgba(0,0,0,.4);}
+.thumb-takeoff-dot{width:14px;height:14px;border-radius:50%;background:rgba(125,211,252,.4);border:2.5px solid rgba(125,211,252,.4);box-shadow:none;}
 .oa-pop{font-size:12px;color:#0f172a;line-height:1.45;min-width:120px;}
 #mobile-logo{display:none;}
 @media(max-width:768px){#mobile-logo{display:block;position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:1100;font-size:12px;font-weight:800;letter-spacing:.3px;color:#fff;background:rgba(17,24,39,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:3px 11px;border-radius:11px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.4);}}
@@ -578,11 +584,46 @@ let launchElMap={};                              // launch id -> marker DOM elem
 let launchMarkerMap={};                          // launch id -> marker object (for drag/move)
 const LAUNCH_POS_KEY='updraft_launchpos_v1';     // persisted launch pin moves / edits
 const CUSTOM_LAUNCH_KEY='updraft_customlaunch_v1'; // user-added takeoffs (full objects)
-function saveLaunchPos(){const m={};LAUNCHES.forEach(s=>{m[s.id]={lat:s.lat,lon:s.lon,name:s.name,facing:s.facing,alt:s.alt,desc:s.desc,wind:s.wind};});try{localStorage.setItem(LAUNCH_POS_KEY,JSON.stringify(m));}catch(e){}}
+// ── Cloud sync (Supabase) ─────────────────────────────────────────────────────
+// Edits are saved to localStorage AND mirrored to a Supabase table so they persist
+// across devices/browsers. Paste your project's URL + anon (public) key below to turn
+// it on; until then the app runs exactly as before, localStorage-only.
+//   1. Create a project at https://supabase.com
+//   2. In the SQL editor run:
+//        create table skylab_state (key text primary key, value jsonb, updated_at timestamptz default now());
+//        alter table skylab_state enable row level security;
+//        create policy "read"   on skylab_state for select using (true);
+//        create policy "insert" on skylab_state for insert with check (true);
+//        create policy "update" on skylab_state for update using (true);
+//   3. Settings → API → paste the Project URL and the anon public key here:
+const SUPABASE_URL='https://zfzayopcdswmkwgugyqp.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_W6hy8Ev6a9e14ycny11YPw__sMmWAWZ';   // publishable (safe for the browser) — NEVER put the secret key here
+let sbClient=null;
+function initBackend(){
+  if(!SUPABASE_URL||!SUPABASE_ANON_KEY||typeof supabase==='undefined')return;   // not configured → stay local-only
+  try{sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){sbClient=null;}
+}
+const _cloudTimers={};
+function cloudSave(key,value){
+  if(!sbClient)return;
+  clearTimeout(_cloudTimers[key]);                                    // debounce rapid edits
+  _cloudTimers[key]=setTimeout(()=>{
+    try{sbClient.from('skylab_state').upsert({key,value,updated_at:new Date().toISOString()}).then(()=>{},()=>{});}catch(e){}
+  },600);
+}
+// Pull saved state from the cloud into localStorage BEFORE the normal loaders run.
+async function hydrateFromCloud(){
+  if(!sbClient)return;
+  try{
+    const{data}=await sbClient.from('skylab_state').select('key,value');
+    if(Array.isArray(data))data.forEach(r=>{try{localStorage.setItem(r.key,JSON.stringify(r.value));}catch(e){}});
+  }catch(e){}
+}
+function saveLaunchPos(){const m={};LAUNCHES.forEach(s=>{m[s.id]={lat:s.lat,lon:s.lon,name:s.name,facing:s.facing,alt:s.alt,desc:s.desc,wind:s.wind};});try{localStorage.setItem(LAUNCH_POS_KEY,JSON.stringify(m));}catch(e){}cloudSave(LAUNCH_POS_KEY,m);}
 function loadLaunchPos(){try{const m=JSON.parse(localStorage.getItem(LAUNCH_POS_KEY));if(!m)return;LAUNCHES.forEach(s=>{const o=m[s.id];if(!o)return;
   if(Array.isArray(o)){s.lat=o[0];s.lon=o[1];return;}                 // legacy [lat,lon]
   if(o.lat!=null){s.lat=o.lat;s.lon=o.lon;}if(o.name)s.name=o.name;if(o.facing!=null)s.facing=o.facing;if(o.alt!=null)s.alt=o.alt;if(o.desc!=null)s.desc=o.desc;if(Array.isArray(o.wind)&&o.wind.length===2)s.wind=o.wind;});}catch(e){}}
-function saveCustomLaunches(){try{localStorage.setItem(CUSTOM_LAUNCH_KEY,JSON.stringify(LAUNCHES.filter(s=>s.custom)));}catch(e){}}
+function saveCustomLaunches(){const v=LAUNCHES.filter(s=>s.custom);try{localStorage.setItem(CUSTOM_LAUNCH_KEY,JSON.stringify(v));}catch(e){}cloudSave(CUSTOM_LAUNCH_KEY,v);}
 function loadCustomLaunches(){try{const a=JSON.parse(localStorage.getItem(CUSTOM_LAUNCH_KEY));if(Array.isArray(a))a.forEach(s=>{if(!LAUNCHES.some(x=>x.id===s.id))LAUNCHES.push(s);});}catch(e){}}
 let geoCtrl=null, lfBlueDot=null;                // geolocation: MapLibre control + Leaflet blue dot
 let currentModel='gfs_hrrr';                     // selected weather model
@@ -1171,30 +1212,34 @@ function mountThumb(site,facing){
     c.innerHTML=`<img src="${satUrl(site.lat,site.lon)}" style="width:100%;height:148px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'"/>`;
   }
 }
-// Draggable thumbnail compass. N stays up (true north); the blue needle/dot is the camera
-// look-direction. Scrubbing the dot rotates the live 3D mini-map's bearing.
+// Heading-up thumbnail compass. The mini-map is rendered "view-up", so the blue needle (the
+// camera's look-direction) stays pointing straight up, and the red "N" dial ROTATES so it always
+// points to true north for the current bearing. Drag anywhere to spin the dial / rotate the map.
 function buildThumbCompass(container,brg){
   const wrap=document.createElement('div');wrap.className='thumb-compass';
   wrap.innerHTML=`<svg viewBox="0 0 40 40" width="40" height="40">
     <circle cx="20" cy="20" r="17" fill="rgba(0,0,0,.5)" stroke="rgba(255,255,255,.55)" stroke-width="1.2"/>
-    <line x1="20" y1="20" x2="20" y2="6" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
-    <text x="20" y="10" text-anchor="middle" font-size="7" font-weight="800" fill="#ef4444" font-family="Arial">N</text>
-    <line class="tc-look" x1="20" y1="20" x2="20" y2="20" stroke="#38bdf8" stroke-width="2.4" stroke-linecap="round"/>
-    <circle class="tc-dot" r="5" fill="#38bdf8" stroke="#fff" stroke-width="1.6" style="cursor:grab"/>
+    <g class="tc-north">
+      <line x1="20" y1="20" x2="20" y2="6" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
+      <text x="20" y="10" text-anchor="middle" font-size="7" font-weight="800" fill="#ef4444" font-family="Arial">N</text>
+    </g>
+    <line x1="20" y1="20" x2="20" y2="8" stroke="#38bdf8" stroke-width="2.4" stroke-linecap="round"/>
+    <circle class="tc-dot" cx="20" cy="8" r="5" fill="#38bdf8" stroke="#fff" stroke-width="1.6" style="cursor:grab"/>
   </svg>`;
   container.appendChild(wrap);
-  const svg=wrap.querySelector('svg'),dot=wrap.querySelector('.tc-dot'),look=wrap.querySelector('.tc-look');
+  const svg=wrap.querySelector('svg'),north=wrap.querySelector('.tc-north');
   svg.style.cursor='grab';svg.style.touchAction='none';
-  const R=14,CX=20,CY=20;
-  const setBrg=b=>{b=((b%360)+360)%360;const a=b*Math.PI/180,x=CX+R*Math.sin(a),y=CY-R*Math.cos(a);dot.setAttribute('cx',x);dot.setAttribute('cy',y);look.setAttribute('x2',x);look.setAttribute('y2',y);wrap.__brg=b;};
+  // Point the N dial at true north for a given map bearing (north sits at screen-angle -bearing).
+  const setBrg=b=>{b=((b%360)+360)%360;north.setAttribute('transform',`rotate(${-b},20,20)`);wrap.__brg=b;};
   setBrg(brg);
   const angleAt=ev=>{const r=svg.getBoundingClientRect();const dx=ev.clientX-r.left-r.width/2,dy=ev.clientY-r.top-r.height/2;return((Math.atan2(dx,-dy)*180/Math.PI)%360+360)%360;};
   let dragging=false;
-  const apply=ev=>{const b=angleAt(ev);setBrg(b);if(miniMap){try{miniMap.setBearing(b);}catch(e){}}};
-  // Drag from anywhere on the compass face (not just the small dot) so it's easy to grab and move.
-  svg.addEventListener('pointerdown',ev=>{ev.preventDefault();dragging=true;svg.style.cursor=dot.style.cursor='grabbing';try{svg.setPointerCapture(ev.pointerId);}catch(e){}apply(ev);});
+  // Drag the dial: the spot you grab becomes true north, so the red N follows your finger and the
+  // map rotates to match (bearing = -north-angle).
+  const apply=ev=>{const b=((-angleAt(ev))%360+360)%360;setBrg(b);if(miniMap){try{miniMap.setBearing(b);}catch(e){}}};
+  svg.addEventListener('pointerdown',ev=>{ev.preventDefault();dragging=true;svg.style.cursor='grabbing';try{svg.setPointerCapture(ev.pointerId);}catch(e){}apply(ev);});
   svg.addEventListener('pointermove',ev=>{if(!dragging)return;apply(ev);});
-  const end=ev=>{dragging=false;svg.style.cursor=dot.style.cursor='grab';try{svg.releasePointerCapture(ev.pointerId);}catch(e){}};
+  const end=ev=>{dragging=false;svg.style.cursor='grab';try{svg.releasePointerCapture(ev.pointerId);}catch(e){}};
   svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
 }
 
@@ -1776,7 +1821,7 @@ function windDirCellSVG(dir,site,col){
 function mkLZSVG(gold){return`<svg width="36" height="22" viewBox="0 0 36 22" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9));"><rect x="2.5" y="2.5" width="31" height="17" rx="5" fill="${gold?'#d97706':'#3b82f6'}" stroke="${gold?'#fde047':'#ffffff'}" stroke-width="3.5" paint-order="stroke"/><text x="18" y="15" text-anchor="middle" font-size="9" fill="white" font-weight="800" font-family="Arial,sans-serif">LZ</text></svg>`;}
 
 // ── "Fly from here" — click any empty spot to treat it as an ad-hoc takeoff ────
-let flyPromptPopup=null, adhocId=null, flyPromptOpenedAt=0, highlightedLZId=null;
+let flyPromptPopup=null, adhocId=null, flyPromptOpenedAt=0, ignoreNextDocClick=false, highlightedLZId=null;
 // Average downhill bearing from the terrain sample: vector-sum each ray weighted by how
 // far the ground drops ~0.6 mi out. Points the glide fan the way the slope actually falls.
 function adhocDownhill(site,cache){
@@ -1817,6 +1862,7 @@ function showFlyPrompt(lat,lon){
   closeFlyPrompt();
   setForecastSite(lat,lon,'Selected point');   // forecast follows the tapped point right away
   flyPromptOpenedAt=Date.now();
+  ignoreNextDocClick=true;   // swallow the release-click that ends the press-and-hold (any hold length)
   const html=`<div class="flyprompt"><button class="flyprompt-btn" onclick="flyFromHere(${lat.toFixed(6)},${lon.toFixed(6)})">🪂 Fly from here?</button></div>`;
   if(useMapLibre&&mlMap){
     // closeOnClick must be false: the long-press releases a trailing map click that
@@ -1868,7 +1914,7 @@ async function flyFromHere(lat,lon){
   const desc=downhill!=null
     ?`Ad-hoc takeoff. Slope faces ${d2c(facing)} — you'd launch toward ${d2c(facing)}, needing wind from the ${d2c(facing)} (up the slope).`
     :'Ad-hoc takeoff from a tapped point.';
-  const site={id:'flyhere_'+Date.now(),name:'Fly from here',sub:'Tapped point',lat,lon,alt,lzAlt:4500,rating:'Ad-hoc',facing,lzLat:null,lzLon:null,desc,adhoc:true};
+  const site={id:'flyhere_'+Date.now(),name:'PIN',sub:'Tapped point',lat,lon,alt,lzAlt:4500,rating:'Ad-hoc',facing,lzLat:null,lzLon:null,desc,adhoc:true};
   adhocId=site.id;
   LAUNCHES.push(site);
   createLaunchMarker(site);
@@ -1883,9 +1929,9 @@ let lpTimer=null, lpStart=null, suppressMapClick=false;
 function setupLongPress(){
   const el=document.getElementById('map');
   if(!el||el._lpBound)return; el._lpBound=true;
-  const CANCEL=14, HOLD=650;                                      // mobile: press-and-hold to summon "Fly from here?" (desktop uses a single click instead)
+  const CANCEL=14, HOLD=650, MOUSE_HOLD=280;                      // press-and-hold to summon "Fly from here?" — short on desktop, longer on touch
   const clear=()=>{if(lpTimer){clearTimeout(lpTimer);lpTimer=null;}};
-  const start=(x,y,target)=>{
+  const start=(x,y,target,hold)=>{
     clear();
     if(drawingFor||addingLaunch||addingLZ)return;                 // don't hijack edit / draw modes
     if(target&&target.closest&&target.closest('.maplibregl-marker,.leaflet-marker-icon,.leaflet-popup,.maplibregl-popup,.flyprompt-btn,#br-controls,#ctrl-panel,#wind-vane,#compass,#menu-panel,#layer-panel'))return;
@@ -1900,16 +1946,19 @@ function setupLongPress(){
       suppressMapClick=true;                                       // swallow the trailing tap/click
       try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}   // little haptic confirm
       showFlyPrompt(lat,lon);                                      // ask first, then flyFromHere on confirm
-    },HOLD);
+    },hold||HOLD);
   };
   const move=(x,y)=>{if(!lpStart||!lpTimer)return;if(Math.abs(x-lpStart.x)>CANCEL||Math.abs(y-lpStart.y)>CANCEL)clear();};
-  // Touch
-  el.addEventListener('touchstart',e=>{if(e.touches.length!==1){clear();return;}const t=e.touches[0];start(t.clientX,t.clientY,e.target);},{passive:true});
+  // Touch (longer hold so a normal tap/pan doesn't drop a pin)
+  el.addEventListener('touchstart',e=>{if(e.touches.length!==1){clear();return;}const t=e.touches[0];start(t.clientX,t.clientY,e.target,HOLD);},{passive:true});
   el.addEventListener('touchmove',e=>{const t=e.touches[0];if(t)move(t.clientX,t.clientY);},{passive:true});
   el.addEventListener('touchend',clear,{passive:true});
   el.addEventListener('touchcancel',clear,{passive:true});
-  // Desktop uses a single map click (wired on the map's own 'click' event) to drop the
-  // "Fly from here?" pin — no press-and-hold here, so the mouse handlers are intentionally omitted.
+  // Mouse (desktop) — a short press-and-hold drops the "Fly from here?" pin
+  el.addEventListener('mousedown',e=>{if(e.button!==0)return;start(e.clientX,e.clientY,e.target,MOUSE_HOLD);});
+  el.addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+  el.addEventListener('mouseup',clear);
+  el.addEventListener('mouseleave',clear);
 }
 
 // ── Click handler ─────────────────────────────────────────────────────────────
@@ -1981,6 +2030,35 @@ function closeSidebar(){
   // Leave the top weather panel on the last selected spot (no revert to the regional default).
   if(useMapLibre&&mlMap){try{mlMap.easeTo({padding:{right:0,left:0,top:0,bottom:0},duration:400});}catch(e){}}
 }
+// Mobile: swipe the detail panel to the right to dismiss it (it slides in from the right).
+// Horizontal-only: a mostly-vertical drag is left to the panel's own scrolling.
+function setupSidebarSwipe(){
+  const sb=document.getElementById('sidebar');
+  if(!sb||sb._swipeBound)return; sb._swipeBound=true;
+  let sx=0,sy=0,active=false,dragging=false;
+  sb.addEventListener('touchstart',e=>{
+    if(!isMobileView()||e.touches.length!==1){active=false;return;}
+    const t=e.touches[0];sx=t.clientX;sy=t.clientY;active=true;dragging=false;
+  },{passive:true});
+  sb.addEventListener('touchmove',e=>{
+    if(!active)return;
+    const t=e.touches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+    if(!dragging){
+      if(Math.abs(dx)<10&&Math.abs(dy)<10)return;
+      if(Math.abs(dy)>=Math.abs(dx)){active=false;return;}   // vertical → let the panel scroll
+      dragging=true;
+    }
+    if(dx>0){sb.style.transition='none';sb.style.transform=`translateX(${dx}px)`;}
+  },{passive:true});
+  const end=e=>{
+    if(!active)return;active=false;
+    const t=e.changedTouches&&e.changedTouches[0],dx=t?t.clientX-sx:0;
+    sb.style.transition='';sb.style.transform='';
+    if(dragging&&dx>80)closeSidebar();
+  };
+  sb.addEventListener('touchend',end,{passive:true});
+  sb.addEventListener('touchcancel',()=>{active=false;sb.style.transition='';sb.style.transform='';},{passive:true});
+}
 
 // ── MapLibre 3D map ───────────────────────────────────────────────────────────
 function initMapLibre(timeoutMs){
@@ -2032,7 +2110,7 @@ function initMapLibre(timeoutMs){
         m.on('rotate',()=>{updateCompass();rotatePins();});m.on('pitchend',updateCompass);
         m.on('move',cullGhostMarkers);m.on('idle',cullGhostMarkers);m.on('idle',reprojectFlight);
         m.on('moveend',()=>{if(centerProbeActive())probeCenter();});   // touch: re-sample wind at screen centre
-        m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}if(handleEditClick(e.lngLat.lng,e.lngLat.lat))return;if(!isMobileView())showFlyPrompt(e.lngLat.lat,e.lngLat.lng);});  // desktop: a single click instantly drops the "Fly from here?" pin (mobile still uses press-and-hold)
+        m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}handleEditClick(e.lngLat.lng,e.lngLat.lat);});  // "Fly from here?" uses a press-and-hold (short on desktop, longer on mobile)
         m.on('dblclick',e=>{if(drawingFor){e.preventDefault();finishDraw();}});
         m.on('mousemove',e=>probeWind(e.lngLat.lat,e.lngLat.lng));
         mlMap=m;window.mlMap=m;updateCompass();
@@ -2064,7 +2142,7 @@ function initLeaflet(){
   const oa=openAipTiles();
   if(oa)lfOverlays.airspace=L.tileLayer(oa,{attribution:'Airspace © OpenAIP',maxZoom:14,opacity:0.85});
   lfBaseLayers.streets.addTo(m);
-  m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}if(handleEditClick(e.latlng.lng,e.latlng.lat))return;if(!isMobileView())showFlyPrompt(e.latlng.lat,e.latlng.lng);});  // desktop: a single click instantly drops the "Fly from here?" pin (mobile still uses press-and-hold)
+  m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}handleEditClick(e.latlng.lng,e.latlng.lat);});  // "Fly from here?" uses a press-and-hold (short on desktop, longer on mobile)
   m.on('dblclick',()=>{if(drawingFor)finishDraw();});
   m.on('mousemove',e=>probeWind(e.latlng.lat,e.latlng.lng));
   m.on('moveend',()=>{if(centerProbeActive())probeCenter();});   // touch: re-sample wind at screen centre
@@ -2091,7 +2169,7 @@ function loadLZStore(){
   try{const s=JSON.parse(localStorage.getItem(LZ_STORE_KEY));if(Array.isArray(s)&&s.length)return s.map(norm);}catch(e){}
   return ALL_LZS.filter(z=>z.lat&&z.lon).map(z=>{const m=LAUNCHES.find(L=>'lz_'+L.id===z.id);return{id:z.id,name:z.name,sub:z.sub||'',lat:z.lat,lon:z.lon,alt:z.alt||4500,desc:z.desc||'',lzBio:z.lzBio||'',hazards:z.hazards||[],launchIds:m?[m.id]:[],boundary:null,custom:false};});
 }
-function saveLZStore(){try{localStorage.setItem(LZ_STORE_KEY,JSON.stringify(lzStore));}catch(e){}}
+function saveLZStore(){try{localStorage.setItem(LZ_STORE_KEY,JSON.stringify(lzStore));}catch(e){}cloudSave(LZ_STORE_KEY,lzStore);}
 function initLZStore(){lzStore=loadLZStore();applyConnections();}
 // A linked LZ becomes the launch's landing point used by glide + flight sim.
 function applyConnections(){LAUNCHES.forEach(L=>{const lz=lzStore.find(z=>(z.launchIds||[]).includes(L.id));if(lz){L.lzLat=lz.lat;L.lzLon=lz.lon;L.lzAlt=lz.alt;}});}
@@ -2199,7 +2277,8 @@ document.addEventListener('click',e=>{
   if(lp&&lp.classList.contains('open')&&!lp.contains(e.target)&&!e.target.closest('#layers-btn'))lp.classList.remove('open');
   // Clicking anywhere other than the prompt itself dismisses "Fly from here?" (ignore the
   // trailing click that the long-press releases right as the prompt opens).
-  if(flyPromptPopup&&Date.now()-flyPromptOpenedAt>300&&!e.target.closest('.flyprompt-pop'))closeFlyPrompt();
+  if(ignoreNextDocClick){ignoreNextDocClick=false;return;}
+  if(flyPromptPopup&&!e.target.closest('.flyprompt-pop'))closeFlyPrompt();
 });
 function setBadge(t){const b=document.getElementById('mode-badge');if(b){b.textContent=t||'';b.style.opacity=t?'1':'0';}}
 function startAddLZ(){addingLZ=true;addingLaunch=false;setBadge('📍 Click the map to drop a new LZ');}
@@ -2391,6 +2470,8 @@ function cullGhostMarkers(){
   }
   updateXhair();
   window.addEventListener('resize',()=>{clearTimeout(window._rsz);window._rsz=setTimeout(()=>{resizeActiveMap();syncCtrlPanel();updateXhair();},200);});
+  initBackend();       // connect to Supabase if configured
+  await hydrateFromCloud(); // pull any cloud-saved edits into localStorage before the loaders read it
   loadCustomLaunches();// user-added takeoffs (localStorage) appended to LAUNCHES
   loadLaunchPos();     // apply any persisted launch-pin moves/edits before drawing markers
   initLZStore();       // editable LZ store (localStorage), feeds markers + connections
@@ -2418,6 +2499,7 @@ function cullGhostMarkers(){
     initLeaflet();   // no auto-geolocate on load — use 📍 My location
   }
   setupLongPress();    // touch press-and-hold → drop an ad-hoc takeoff at that point
+  setupSidebarSwipe(); // mobile: swipe the detail panel right to dismiss it
   addMarkers();        // draw pins immediately (coloured 'caution' until weather lands)
   loadWeather();       // background: fills the strip + recolours pins when done
   importUtahPGSites(); // background: pull Utah PG/HG sites (ParaglidingEarth) into our launches
