@@ -54,7 +54,7 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 .fc-cell{width:var(--fcw);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-right:1px solid #eef1f5;}
 .fc-cell.now{background:rgba(37,99,235,.08);box-shadow:inset 2px 0 0 #2563eb,inset -2px 0 0 #2563eb;}
 .fc-cell.mswitch{border-left:2px dashed #93c5fd;}
-.fc-lbl{width:var(--fcl);flex-shrink:0;background:#f8fafc;border-right:2px solid #cbd5e1;border-bottom:1px solid #d8dee9;box-shadow:2px 0 4px rgba(0,0,0,.06);display:flex;align-items:center;padding:0 7px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;}
+.fc-lbl{width:var(--fcl);flex-shrink:0;background:#f8fafc;border-right:2px solid #cbd5e1;border-bottom:1px solid #d8dee9;box-shadow:2px 0 4px rgba(0,0,0,.06);display:flex;align-items:center;padding:0 7px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;}
 /* day header row */
 .fc-r-day{height:22px;background:#eef2f7;}
 .fc-r-day .fc-lbl{background:#eef2f7;}
@@ -153,7 +153,11 @@ body.probe-off #ctrl-panel{top:8px;}
 .ppbio-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:#fef3c7;color:#92400e;}
 /* ── "Allowable to fly" wind spec box ───────────────────────────────────────── */
 .ppwind{margin-top:10px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:9px 11px;}
-.ppwind-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#047857;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+.ppwind-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#047857;display:flex;align-items:center;gap:5px;cursor:pointer;list-style:none;user-select:none;}
+.ppwind-h::-webkit-details-marker{display:none;}
+.ppwind-h::after{content:'▾';margin-left:auto;font-size:10px;transition:transform .15s;}
+details.ppwind[open] .ppwind-h{margin-bottom:6px;}
+details.ppwind[open] .ppwind-h::after{transform:rotate(180deg);}
 .ppwind-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;padding:2px 0;border-top:1px solid rgba(5,150,105,.12);}
 .ppwind-row:first-of-type{border-top:none;}
 .ppwind-k{color:#475569;font-weight:600;}
@@ -169,7 +173,7 @@ body.dark .ppwind-note{color:#94a3b8;}
 @keyframes spin{to{transform:rotate(360deg)}}
 /* Live location dot */
 .myloc-dot{position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center;}
-.myloc-dot::before{content:'';position:absolute;width:24px;height:24px;border-radius:50%;background:rgba(37,99,235,0.35);animation:locpulse 2s ease-out infinite;}
+.myloc-dot::before{display:none;}
 @keyframes locpulse{0%{transform:scale(1);opacity:.8}70%{transform:scale(2.4);opacity:0}100%{transform:scale(2.4);opacity:0}}
 .leaflet-div-icon.myloc-dot{background:none!important;border:none!important;}
 .maplibregl-popup-content{padding:12px;border-radius:10px;max-height:80vh;overflow-y:auto;}
@@ -196,7 +200,8 @@ body.dark .ppwind-note{color:#94a3b8;}
   #legend{font-size:10px;padding:6px 8px;}
 }
 /* layer panel */
-#layer-panel{width:100%;background:rgba(17,24,39,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 9px;color:#fff;font-size:11px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.45);max-height:calc(100dvh - 160px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+#layer-panel{width:100%;background:rgba(17,24,39,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 9px;color:#fff;font-size:11px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.45);max-height:calc(100dvh - 310px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none;}
+#layer-panel::-webkit-scrollbar{display:none;}
 #layer-panel.open{display:block;}
 .lp-sec{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.45);margin:8px 0 3px;}
 .lp-sec:first-child{margin-top:0;}
@@ -208,7 +213,7 @@ body.dark .ppwind-note{color:#94a3b8;}
 .pp-sat .maplibregl-canvas{border-radius:8px;}
 .pp-sat-tag{position:absolute;left:6px;bottom:5px;z-index:2;font-size:9px;color:#fff;background:rgba(0,0,0,.42);padding:1px 6px;border-radius:7px;pointer-events:none;}
 .thumb-compass{position:absolute;right:6px;bottom:5px;z-index:3;pointer-events:auto;touch-action:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
-.thumb-takeoff-dot{width:14px;height:14px;border-radius:50%;background:#ef4444;border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4),0 1px 4px rgba(0,0,0,.6);}
+.thumb-takeoff-dot{width:14px;height:14px;border-radius:50%;background:rgba(56,189,248,.45);border:2.5px solid rgba(255,255,255,.9);box-shadow:0 0 0 1px rgba(0,0,0,.4),0 1px 4px rgba(0,0,0,.6);}
 .oa-pop{font-size:12px;color:#0f172a;line-height:1.45;min-width:120px;}
 #mobile-logo{display:none;}
 @media(max-width:768px){#mobile-logo{display:block;position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:1100;font-size:12px;font-weight:800;letter-spacing:.3px;color:#fff;background:rgba(17,24,39,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:3px 11px;border-radius:11px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.4);}}
@@ -340,9 +345,13 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   body.fc-collapsed #forecast{display:none;}   /* collapse only applies on mobile */
   #fc-loc{font-size:15px;}
   #fc-head{padding:calc(8px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 8px calc(12px + env(safe-area-inset-left,0px));}
-  /* Bigger, equal-sized 2D / layers tap targets on phones (width is synced to the wind box in JS) */
+  /* Bigger layers tap target on phones (width is synced to the wind box in JS) */
   #trow .cbtn{height:40px;font-size:14px;}
+  #trow #b2d{display:none;}              /* hide the 2D toggle on phones */
   #trow #layers-btn{font-size:20px;}
+  #layers-btn svg{width:22px;height:22px;}
+  /* Bigger, easier-to-grab direction compass on the launch thumbnail */
+  .thumb-compass svg{width:58px;height:58px;}
   #model-select{padding:7px 9px;font-size:13px;border-radius:12px;}
   /* Compact forecast columns so more hours fit without wide scrolling */
   #forecast{--fcw:42px;--fcl:54px;}
@@ -356,7 +365,9 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   .wv-probe{display:none;}
   /* Hide desktop-only chrome to reduce clutter on small screens */
   #mode-badge{display:none;}
-  #logo-overlay{display:none;}
+  /* Use the real SkyLab paraglider logo at the bottom (instead of the plain text chip) */
+  #mobile-logo{display:none;}
+  #logo-overlay{display:flex;bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:4px 12px 4px 6px;}
   /* Bigger tap targets for thumbs */
   .cbtn{padding:9px 13px;font-size:13px;border-radius:11px;}
   .icon-btn{padding:9px;}
@@ -364,7 +375,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   .flybtn,.dirbtn{padding:12px;font-size:14px;}
   /* Floating panels: never overflow the viewport, scroll if tall */
   #menu-panel{left:12px;right:12px;max-width:none;max-height:58vh;overflow-y:auto;}
-  #layer-panel{width:210px;max-height:calc(100dvh - 270px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}  /* fit within the viewport from its anchor so all rows are reachable by scrolling */
+  #layer-panel{width:210px;max-height:calc(100dvh - 72px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:16px;}  /* fit within the viewport from its anchor so all rows are reachable by scrolling */
   /* Detail sidebar takes the full screen on a phone */
   #sidebar{width:100%;max-width:100%;}
   #sb-body{padding:calc(15px + env(safe-area-inset-top,0px)) 15px calc(96px + env(safe-area-inset-bottom,0px));}  /* extra bottom space so content clears the phone browser's bottom bar */
@@ -396,7 +407,6 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <option value="gem_seamless">GEM</option>
         <option value="best_match">Best match</option>
       </select>
-      <button id="fc-now" onclick="forecastNow()" title="Jump to now" aria-label="Jump to current time">⦿ Now</button>
       <button id="fc-toggle" onclick="toggleForecast()" title="Show/hide forecast" aria-label="Toggle forecast">▴</button>
     </div>
   </div>
@@ -411,7 +421,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
     <div id="ctrl-panel">
       <div id="trow">
         <button class="cbtn" id="b2d" onclick="togglePitch()">2D</button>
-        <button class="cbtn icon-btn" id="layers-btn" onclick="toggleLayerPanel()" title="Layers" aria-label="Map layers">🗺</button>
+        <button class="cbtn icon-btn" id="layers-btn" onclick="toggleLayerPanel()" title="Layers" aria-label="Map layers"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><polygon points="12 2 22 8.5 12 15 2 8.5 12 2"/><polyline points="2 15.5 12 22 22 15.5"/></svg></button>
       </div>
       <div id="layer-panel">
         <div class="lp-sec">Base map</div>
@@ -1109,7 +1119,7 @@ function launchPop(site,w){
   const bio=site.desc?`<div class="ppbio"><div class="ppbio-h">📋 About this launch</div><p>${site.desc}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}<div class="pp-model-row">🌦 Weather model ${modelSelectHTML()}<button class="pp-now-btn" onclick="forecastNow()" title="Jump to now" aria-label="Jump to current time">⦿ Now</button></div>${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${windSpecHTML(site)}${bio}${flyBtn}${dir}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${windSpecHTML(site)}${bio}${flyBtn}${dir}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
@@ -1166,20 +1176,23 @@ function buildThumbCompass(container,brg){
     <circle cx="20" cy="20" r="17" fill="rgba(0,0,0,.5)" stroke="rgba(255,255,255,.55)" stroke-width="1.2"/>
     <line x1="20" y1="20" x2="20" y2="6" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
     <text x="20" y="10" text-anchor="middle" font-size="7" font-weight="800" fill="#ef4444" font-family="Arial">N</text>
-    <line class="tc-look" x1="20" y1="20" x2="20" y2="20" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
-    <circle class="tc-dot" r="3.6" fill="#38bdf8" stroke="#fff" stroke-width="1.4" style="cursor:grab"/>
+    <line class="tc-look" x1="20" y1="20" x2="20" y2="20" stroke="#38bdf8" stroke-width="2.4" stroke-linecap="round"/>
+    <circle class="tc-dot" r="5" fill="#38bdf8" stroke="#fff" stroke-width="1.6" style="cursor:grab"/>
   </svg>`;
   container.appendChild(wrap);
   const svg=wrap.querySelector('svg'),dot=wrap.querySelector('.tc-dot'),look=wrap.querySelector('.tc-look');
+  svg.style.cursor='grab';svg.style.touchAction='none';
   const R=14,CX=20,CY=20;
   const setBrg=b=>{b=((b%360)+360)%360;const a=b*Math.PI/180,x=CX+R*Math.sin(a),y=CY-R*Math.cos(a);dot.setAttribute('cx',x);dot.setAttribute('cy',y);look.setAttribute('x2',x);look.setAttribute('y2',y);wrap.__brg=b;};
   setBrg(brg);
   const angleAt=ev=>{const r=svg.getBoundingClientRect();const dx=ev.clientX-r.left-r.width/2,dy=ev.clientY-r.top-r.height/2;return((Math.atan2(dx,-dy)*180/Math.PI)%360+360)%360;};
   let dragging=false;
-  dot.addEventListener('pointerdown',ev=>{ev.preventDefault();dragging=true;dot.style.cursor='grabbing';try{dot.setPointerCapture(ev.pointerId);}catch(e){}});
-  dot.addEventListener('pointermove',ev=>{if(!dragging)return;const b=angleAt(ev);setBrg(b);if(miniMap){try{miniMap.setBearing(b);}catch(e){}}});
-  const end=ev=>{dragging=false;dot.style.cursor='grab';try{dot.releasePointerCapture(ev.pointerId);}catch(e){}};
-  dot.addEventListener('pointerup',end);dot.addEventListener('pointercancel',end);
+  const apply=ev=>{const b=angleAt(ev);setBrg(b);if(miniMap){try{miniMap.setBearing(b);}catch(e){}}};
+  // Drag from anywhere on the compass face (not just the small dot) so it's easy to grab and move.
+  svg.addEventListener('pointerdown',ev=>{ev.preventDefault();dragging=true;svg.style.cursor=dot.style.cursor='grabbing';try{svg.setPointerCapture(ev.pointerId);}catch(e){}apply(ev);});
+  svg.addEventListener('pointermove',ev=>{if(!dragging)return;apply(ev);});
+  const end=ev=>{dragging=false;svg.style.cursor=dot.style.cursor='grab';try{svg.releasePointerCapture(ev.pointerId);}catch(e){}};
+  svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
 }
 
 // ── Layer panel (base maps + VFR sectional overlay) ───────────────────────────
@@ -1546,10 +1559,10 @@ function renderForecast(series){
   // Keep from the start of YESTERDAY so you can scroll back a day; drop anything older.
   const backStart=new Date();backStart.setHours(0,0,0,0);backStart.setDate(backStart.getDate()-1);
   series=series.filter(e=>new Date(e.t).getTime()>=backStart.getTime());
-  buildForecast(fcEl,series,{temp:'Temp °F',rain:'Rain %',dir:'Wind dir'});
+  buildForecast(fcEl,series,{temp:'°F',rain:'Rain %',dir:'Wind dir'});
   // Also render the mini forecast inside an open launch/LZ popup, if present.
   const ppWrap=document.querySelector('.pp-fc-wrap');
-  if(ppWrap)buildForecast(ppWrap,series.slice(0,336),{temp:'Temp',rain:'Rain%',dir:'Direction'});
+  if(ppWrap)buildForecast(ppWrap,series.slice(0,336),{temp:'°F',rain:'Rain%',dir:'Direction'});
 }
 // "Now" button: smooth-scroll every visible forecast back to the current-hour column.
 function forecastNow(){
@@ -1615,13 +1628,22 @@ function startLiveTracking(){
     ()=>{},{enableHighAccuracy:true,timeout:20000,maximumAge:1000});
 }
 // Only ever PROMPTS once per session; after that reuse the cached fix (no repeat prompts).
+// On first load, point the forecast/weather panel at the user's real position (once), unless
+// they've already selected a site. The 📍 button (force=true) never hijacks an active selection.
+let geoForecastDone=false;
+function maybeSetGeoForecast(lat,lon){
+  if(geoForecastDone)return;
+  geoForecastDone=true;
+  if(currentLaunchId||currentEditLZ||(fcTarget&&fcTarget.site))return;   // user already picked a spot
+  setForecastSite(lat,lon,'My location');
+}
 function goToMyLocation(fast,force){
-  if(lastGeo){placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();return;}
+  if(lastGeo){placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);return;}
   if((geoAsked&&!force)||!navigator.geolocation)return;   // auto path asks once; the button may force a retry
   geoAsked=true;
   // Fast first: a low-accuracy / cached fix returns almost instantly, so the dot + zoom appear right away.
   navigator.geolocation.getCurrentPosition(
-    p=>{lastGeo={lat:p.coords.latitude,lon:p.coords.longitude};placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();},
+    p=>{lastGeo={lat:p.coords.latitude,lon:p.coords.longitude};placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);},
     ()=>{},{enableHighAccuracy:false,timeout:9000,maximumAge:600000});
   // Then start continuous high-accuracy tracking so the dot follows you live.
   startLiveTracking();
@@ -1681,11 +1703,11 @@ function windDirText(site){const w=windowFor(site);return`${d2c(w[0])}–${d2c(w
 function windSpecHTML(site){
   const L=windStrengthFor(site);
   const disc=(((site.rating||'P').toUpperCase().charAt(0))==='H')?'Hang glider':'Paraglider';
-  return`<div class="ppwind"><div class="ppwind-h">🪂 Ideal conditions</div>`+
+  return`<details class="ppwind"><summary class="ppwind-h">🪂 Ideal conditions</summary>`+
     `<div class="ppwind-row"><span class="ppwind-k">Wind direction</span><span class="ppwind-v">${windDirText(site)}</span></div>`+
     `<div class="ppwind-row"><span class="ppwind-k">Ideal speed</span><span class="ppwind-v">${L.idealLo}–${L.idealHi} mph</span></div>`+
     `<div class="ppwind-row"><span class="ppwind-k">Max speed</span><span class="ppwind-v">${L.max} mph</span></div>`+
-    `<div class="ppwind-row"><span class="ppwind-k">Max gust spread</span><span class="ppwind-v">${L.gust} mph</span></div></div>`;
+    `<div class="ppwind-row"><span class="ppwind-k">Max gust spread</span><span class="ppwind-v">${L.gust} mph</span></div></details>`;
 }
 function compassPt(cx,cy,r,deg){const a=deg*Math.PI/180;return[cx+r*Math.sin(a),cy-r*Math.cos(a)];}  // bearing → screen xy (N up)
 // Inner compass graphic: a north-up dial with the allowable-wind wedge (coloured by fly-status)
@@ -1769,10 +1791,14 @@ function adhocDownhill(site,cache){
 }
 function closeFlyPrompt(){if(flyPromptPopup){try{useMapLibre?flyPromptPopup.remove():lfMap.closePopup(flyPromptPopup);}catch(e){}flyPromptPopup=null;}}
 // Remove any LZ highlight currently applied.
+// Repaint an LZ marker in either its normal (blue) or highlighted (gold) colour.
+function paintLZMarker(id,gold){
+  if(useMapLibre){const el=lzElMap[id];if(el){el.innerHTML=mkLZSVG(gold);el.classList.toggle('lz-hl',gold);}}
+  else{const mk=lzMarkerMap[id];if(mk&&mk.setIcon){mk.setIcon(L.divIcon({html:mkLZSVG(gold),iconSize:[36,22],iconAnchor:[18,11],popupAnchor:[0,-12],className:''}));if(mk._icon)mk._icon.classList.toggle('lz-hl',gold);}}
+}
 function clearLZHighlight(){
   if(!highlightedLZId)return;
-  const el=useMapLibre?lzElMap[highlightedLZId]:(lzMarkerMap[highlightedLZId]&&lzMarkerMap[highlightedLZId]._icon);
-  if(el)el.classList.remove('lz-hl');
+  paintLZMarker(highlightedLZId,false);
   highlightedLZId=null;
 }
 // Highlight the landing zone linked to a given launch so you can see where it lands.
@@ -1780,8 +1806,8 @@ function highlightConnectedLZ(launchId){
   clearLZHighlight();
   const lz=lzStore.find(z=>(z.launchIds||[]).includes(launchId));
   if(!lz)return;
-  const el=useMapLibre?lzElMap[lz.id]:(lzMarkerMap[lz.id]&&lzMarkerMap[lz.id]._icon);
-  if(el){el.classList.add('lz-hl');highlightedLZId=lz.id;}
+  paintLZMarker(lz.id,true);
+  highlightedLZId=lz.id;
 }
 // Small popup at the tapped point offering to launch an ad-hoc glide analysis from there.
 function showFlyPrompt(lat,lon){
@@ -1952,7 +1978,7 @@ function closeSidebar(){
   document.body.classList.remove('popup-open');
   const r=document.getElementById('sb-reopen');if(r)r.style.display='none';
   destroyMini();openPopup=null;clearFlight();currentEditLZ=null;currentLaunchId=null;clearZones();clearLZHighlight();lockAllPins();
-  setForecastSite(40.52,-111.87,'Salt Lake City');   // revert forecast bar to the regional default
+  // Leave the top weather panel on the last selected spot (no revert to the regional default).
   if(useMapLibre&&mlMap){try{mlMap.easeTo({padding:{right:0,left:0,top:0,bottom:0},duration:400});}catch(e){}}
 }
 
