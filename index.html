@@ -43,12 +43,13 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 #forecast{flex-shrink:0;background:#fff;border-bottom:1px solid #d8dee9;overflow-x:auto;overflow-y:hidden;z-index:10;--fcw:46px;--fcl:62px;}
 #forecast::-webkit-scrollbar{height:8px;}
 #forecast::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);border-radius:4px;}
-#fc-track{display:flex;flex-direction:column;width:max-content;font-family:system-ui,sans-serif;}
+#fc-track{display:flex;flex-direction:column;width:max-content;font-family:system-ui,sans-serif;position:relative;}
+#pp-fc-track{position:relative;}
 .fc-row{display:flex;align-items:stretch;}
 .fc-cell{width:var(--fcw);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-right:1px solid #eef1f5;}
 .fc-cell.now{background:rgba(37,99,235,.08);box-shadow:inset 2px 0 0 #2563eb,inset -2px 0 0 #2563eb;}
 .fc-cell.mswitch{border-left:2px dashed #93c5fd;}
-.fc-lbl{width:var(--fcl);flex-shrink:0;position:sticky;left:0;z-index:6;background:#f8fafc;border-right:2px solid #cbd5e1;border-bottom:1px solid #d8dee9;box-shadow:2px 0 4px rgba(0,0,0,.06);display:flex;align-items:center;padding:0 7px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;}
+.fc-lbl{width:var(--fcl);flex-shrink:0;position:relative;z-index:6;will-change:transform;background:#f8fafc;border-right:2px solid #cbd5e1;border-bottom:1px solid #d8dee9;box-shadow:2px 0 4px rgba(0,0,0,.06);display:flex;align-items:center;padding:0 7px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;}
 /* day header row */
 .fc-r-day{height:22px;background:#eef2f7;}
 .fc-r-day .fc-lbl{background:#eef2f7;}
@@ -58,7 +59,7 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 .fc-r-model{height:16px;}
 .fc-mseg{flex-shrink:0;display:flex;align-items:center;padding-left:8px;font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#1e40af;background:#dbeafe;border-right:1px solid #bfdbfe;white-space:nowrap;}
 /* Keep the model name visible while scrolling: the label sticks just right of the pinned label column, clipped to its own segment. */
-.fc-mseg-lbl{position:sticky;left:var(--fcl);z-index:5;background:inherit;padding-right:6px;}
+.fc-mseg-lbl{position:relative;z-index:5;will-change:transform;background:inherit;padding-right:6px;}
 .fc-mseg.switch{border-left:2px solid #2563eb;color:#0f172a;background:#bfdbfe;}
 body.dark .fc-mseg{background:#172554;color:#bfdbfe;border-color:#1e3a8a;}
 body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b82f6;}
@@ -121,7 +122,7 @@ body.probe-off #ctrl-panel{top:8px;}
 .pp-fc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin:8px 0 2px;}
 .pp-fc-wrap{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;border-radius:8px;border:1px solid #e2e8f0;background:#fff;--fcw:38px;--fcl:64px;margin-bottom:7px;position:relative;}
 /* Keep the row-label column pinned while the forecast scrolls horizontally (iOS-safe) */
-.pp-fc-wrap .fc-lbl{position:sticky;left:0;z-index:4;}
+.pp-fc-wrap .fc-lbl{position:relative;z-index:4;}
 .pp-fc-wrap::-webkit-scrollbar{height:5px;}
 .pp-fc-wrap::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:3px;}
 .ppg{display:none;}
@@ -1037,6 +1038,25 @@ function dirArrowCell(dir){
   // small arrow pointing the way the wind blows TO (met dir + 180)
   return`<svg width="16" height="16" viewBox="0 0 16 16"><g transform="rotate(${(dir+180)%360},8,8)"><line x1="8" y1="3" x2="8" y2="13" stroke="#475569" stroke-width="1.6" stroke-linecap="round"/><polygon points="8,2 5,7 11,7" fill="#475569"/></g></svg>`;
 }
+// Freeze the left label column (Hour/Temp/…) and the model name in place while the
+// forecast scrolls horizontally. JS-driven (not position:sticky) because iOS Safari lags
+// sticky elements during momentum scrolling — this stays locked every frame.
+function syncFcSticky(sc){
+  if(!sc)return;
+  const fclpx=parseFloat(getComputedStyle(sc).getPropertyValue('--fcl'))||54;
+  const x=sc.scrollLeft;
+  sc.querySelectorAll('.fc-lbl').forEach(el=>{el.style.transform='translateX('+x+'px)';});
+  sc.querySelectorAll('.fc-mseg').forEach(seg=>{
+    const lbl=seg.querySelector('.fc-mseg-lbl');if(!lbl)return;
+    const t=Math.max(0,Math.min(x+fclpx-seg.offsetLeft,seg.offsetWidth-lbl.offsetWidth-4));
+    lbl.style.transform='translateX('+t+'px)';
+  });
+}
+function wireFcSticky(sc){
+  if(!sc||sc._fcWired)return;sc._fcWired=true;
+  let raf=0;
+  sc.addEventListener('scroll',()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;syncFcSticky(sc);});},{passive:true});
+}
 function renderForecast(series){
   const track=document.getElementById('fc-track');
   const fail=()=>{track.innerHTML='<div class="nb-load" style="color:#64748b">Forecast unavailable</div>';};
@@ -1102,6 +1122,7 @@ function renderForecast(series){
       fc.scrollLeft=lblW+nowIdx*colW-colW;
     }
   }
+  {const fcEl=document.getElementById('forecast');if(fcEl){wireFcSticky(fcEl);syncFcSticky(fcEl);}}
   // Also render the mini forecast inside the popup sidebar if it's open.
   const ppTrack=document.getElementById('pp-fc-track');
   if(ppTrack){
@@ -1150,6 +1171,7 @@ function renderForecast(series){
       `<div class="fc-row fc-r-fly">${ppFly}</div>`;
     const ppWrap=ppTrack.closest('.pp-fc-wrap');
     if(ppWrap&&ppNowIdx>0){ppWrap.scrollLeft=Math.max(0,50+ppNowIdx*38-38);}
+    if(ppWrap){wireFcSticky(ppWrap);syncFcSticky(ppWrap);}
   }
 }
 
@@ -1691,6 +1713,7 @@ function toggleForecast(){
   const collapsed=document.body.classList.toggle('fc-collapsed');
   const b=document.getElementById('fc-toggle');
   if(b)b.textContent=collapsed?'▾':'▴';
+  if(!collapsed)syncFcSticky(document.getElementById('forecast'));   // re-lock labels now that offsets are measurable
   setTimeout(resizeActiveMap,260);   // let layout settle, then refit the map
 }
 // Click anywhere outside an open floating panel (other than its own toggle button) closes it.
