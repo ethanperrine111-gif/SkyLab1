@@ -208,7 +208,10 @@ body.dark .ppwind-note{color:#94a3b8;}
 .pp-sat .maplibregl-canvas{border-radius:8px;}
 .pp-sat-tag{position:absolute;left:6px;bottom:5px;z-index:2;font-size:9px;color:#fff;background:rgba(0,0,0,.42);padding:1px 6px;border-radius:7px;pointer-events:none;}
 .thumb-compass{position:absolute;right:6px;bottom:5px;z-index:3;pointer-events:auto;touch-action:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
+.thumb-takeoff-dot{width:14px;height:14px;border-radius:50%;background:#ef4444;border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4),0 1px 4px rgba(0,0,0,.6);}
 .oa-pop{font-size:12px;color:#0f172a;line-height:1.45;min-width:120px;}
+#mobile-logo{display:none;}
+@media(max-width:768px){#mobile-logo{display:block;position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:1100;font-size:12px;font-weight:800;letter-spacing:.3px;color:#fff;background:rgba(17,24,39,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:3px 11px;border-radius:11px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.4);}}
 /* topbar model selector */
 #topbar-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
 #model-select{background:white;border:none;border-radius:14px;padding:5px 8px;font-size:12px;font-weight:700;color:#2563eb;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.22);}
@@ -632,7 +635,8 @@ function oaPt(it,name){const c=(it.geometry&&it.geometry.coordinates)||[];return
 // OpenAIP obstacle "type" enum → readable label (best-effort; unmapped codes fall back).
 const OBST_TYPES={0:'Obstacle',1:'Antenna',2:'Tower',3:'Wind turbine',4:'Building',5:'Chimney',6:'Mast',7:'Power line',8:'Crane',9:'Bridge',10:'Cable car',11:'Refinery',12:'Silo',13:'Cooling tower',14:'Dam',15:'Lighthouse',16:'Wind-turbine farm'};
 // Height comes back as {value, unit} (unit 0 = m, 1 = ft) or a bare number (metres).
-function fmtHeight(h){if(h==null)return'';const v=typeof h==='number'?h:(h&&h.value);if(v==null)return'';const u=(h&&h.unit===1)?'ft':'m';return Math.round(v)+' '+u;}
+// Always report in feet (paragliding clearances are in ft).
+function fmtHeight(h){if(h==null)return'';const v=typeof h==='number'?h:(h&&h.value);if(v==null)return'';const ft=(h&&typeof h==='object'&&h.unit===1)?v:v*3.28084;return Math.round(ft)+' ft';}
 // Obstacles: OpenAIP gives a type (antenna / mast / tower / wind turbine / building…) and a height.
 async function fetchObstacles(){
   const items=await oaFetchRaw('obstacles');if(!items)return null;
@@ -660,7 +664,7 @@ function fetchStationObs(id){
   return fetch(`https://api.weather.gov/stations/${id}/observations/latest`,{headers:{'Accept':'application/geo+json'}})
     .then(r=>r.ok?r.json():null).then(j=>j&&j.properties).catch(()=>null);
 }
-function stationLink(id){return id?`<br><a href="https://forecast.weather.gov/data/obhistory/${id}.html" target="_blank" rel="noopener" style="color:#2563eb;font-weight:700;">Open full station data →</a>`:'';}
+function stationLink(id){return id?`<br><a href="https://www.weather.gov/wrh/timeseries?site=${id}" target="_blank" rel="noopener" style="color:#2563eb;font-weight:700;">Open full station data →</a>`:'';}
 function obsHTML(name,o,id){
   if(!o)return`<b>🌡 ${name}</b><br><span style="color:#64748b;">No current observation.</span>${stationLink(id)}`;
   const cT=o.temperature&&o.temperature.value,tF=cT!=null?Math.round(cT*9/5+32)+'°F':'—';
@@ -1139,7 +1143,11 @@ function mountThumb(site,facing){
           dem:{type:'raster-dem',url:DEM_URL,tileSize:512}
         },layers:[{id:'sat',type:'raster',source:'sat'}]}
       });
-      mini.on('load',()=>{try{mini.setTerrain({source:'dem',exaggeration:1.5});}catch(e){}});
+      mini.on('load',()=>{
+        try{mini.setTerrain({source:'dem',exaggeration:1.5});}catch(e){}
+        // Mark exactly where the takeoff (or LZ) sits in the 3D view.
+        try{const dot=document.createElement('div');dot.className='thumb-takeoff-dot';new maplibregl.Marker({element:dot,anchor:'center'}).setLngLat([site.lon,site.lat]).addTo(mini);}catch(e){}
+      });
       mini.on('error',()=>{});
       miniMap=mini;
       // Interactive compass (bottom-right): N fixed up; the blue dot/needle is the view
@@ -1411,11 +1419,13 @@ async function loadForecast(){
     series=series.concat(ext);
   }
   if(!series.length){
-    // Forecast strip failed (rate-limited) — reuse cached series for this same site if we have it.
+    // Forecast strip failed (rate-limited) — fall back to the last cached series so the
+    // strip never goes blank. Prefer an exact location match, but show any saved forecast.
     const c=loadFcCache();
-    if(c&&c.series&&c.series.length&&c.lat===fcTarget.lat&&c.lon===fcTarget.lon){
+    if(c&&c.series&&c.series.length){
       series=c.series;
-      showWxBanner(`⚠ Live weather unavailable — showing cached forecast from ${ageStr(c.ts)} ago`);
+      const exact=c.lat===fcTarget.lat&&c.lon===fcTarget.lon;
+      showWxBanner(`⚠ Live weather unavailable — showing cached forecast from ${ageStr(c.ts)} ago${exact?'':' (nearest saved location)'}`);
     }
   }else{
     saveFcCache(series);
@@ -2389,5 +2399,6 @@ function cullGhostMarkers(){
   syncCtrlPanel();setTimeout(syncCtrlPanel,400);window.addEventListener('load',syncCtrlPanel);
 })();
 </script>
+<div id="mobile-logo">🪂 SkyLab</div>
 </body>
 </html>
