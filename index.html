@@ -93,7 +93,7 @@ body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b
 /* wind direction arrows */
 .fc-r-dir{height:28px;}
 /* flyability bar */
-.fc-r-fly{height:14px;}.fc-r-fly .fc-cell{padding:0;border-right:1px solid rgba(255,255,255,.4);}
+.fc-r-fly{height:14px;}.fc-r-fly .fc-cell{padding:0;border-right:none;background:transparent;}
 .fc-r-fly .fc-lbl{background:#f8fafc;}
 #map-wrap{position:relative;flex:1;min-height:0;}
 /* Keep the library zoom/nav controls clear of the iOS home indicator & right notch */
@@ -1102,7 +1102,7 @@ function buildForecast(container,series,labels){
   // data cells (no labels — those live in the static column)
   const cell=(i,inner,style)=>`<div class="fc-cell${i===nowIdx?' now':''}${series[i].model!==(series[i-1]||{}).model&&i>0?' mswitch':''}"${style?` style="${style}"`:''}>${inner}</div>`;
   let hrRow='',skyRow='',tempRow='',rainRow='',windRow='',gustRow='',dirRow='',flyRow='';
-  const windVals=[],gustVals=[];
+  const windVals=[],gustVals=[],flyCols=[];
   series.forEach((e,i)=>{
     const d=new Date(e.t),hr=d.getHours();
     const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
@@ -1114,13 +1114,14 @@ function buildForecast(container,series,labels){
     rainRow+=cell(i,e.pop>=10?e.pop:'');
     windRow+=cell(i,e.wind);
     gustRow+=cell(i,e.gust);
-    windVals.push(e.wind);gustVals.push(e.gust);
     dirRow+=cell(i,(fcTarget.site&&fcTarget.site.facing!=null)?windDirCellSVG(e.dir,fcTarget.site,dc):dirArrowCell(e.dir));
-    flyRow+=cell(i,'',`background:${dc}`);
+    flyRow+=cell(i,'');
+    windVals.push(e.wind);gustVals.push(e.gust);flyCols.push(dc);
   });
   // Continuous horizontal gradient across a whole row: each cell's centre is a
   // colour stop, so neighbouring values fade smoothly into each other (no seams).
   const rowGrad=vals=>{const n=vals.length;if(!n)return'';return`background:linear-gradient(to right,${vals.map((v,i)=>`${windColor(v)} ${(((i+0.5)/n)*100).toFixed(2)}%`).join(',')});`;};
+  const colGrad=cols=>{const n=cols.length;if(!n)return'';return`background:linear-gradient(to right,${cols.map((c,i)=>`${c} ${(((i+0.5)/n)*100).toFixed(2)}%`).join(',')});`;};
   // row order: [rowClass, frozen label, data cells, optional data-row style]
   const rows=[
     ['fc-r-day',`<span class="fc-day-name">${dayCols[nowIdx>0?nowIdx:0]||''}</span>`,dayRow],
@@ -1132,7 +1133,7 @@ function buildForecast(container,series,labels){
     ['fc-r-wind','Wind',windRow,rowGrad(windVals)],
     ['fc-r-gust','Gusts',gustRow,rowGrad(gustVals)],
     ['fc-r-dir',labels.dir,dirRow],
-    ['fc-r-fly','Fly',flyRow]
+    ['fc-r-fly','Fly',flyRow,colGrad(flyCols)]
   ];
   let labelsHTML='',dataHTML='';
   rows.forEach(([cls,lbl,cells,rowStyle])=>{
