@@ -60,6 +60,11 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 .fc-day.alt{background:#e2e8f0;}
 /* Model provenance band — shows where HRRR ends and GFS begins */
 .fc-r-model{height:16px;}
+/* Frozen "which model am I looking at" indicator in the static label column */
+.fc-r-model .fc-lbl{background:#dbeafe;}
+.fc-model-name{color:#1e40af;font-weight:800;font-size:10px;letter-spacing:.3px;}
+body.dark .fc-r-model .fc-lbl{background:#172554;}
+body.dark .fc-model-name{color:#bfdbfe;}
 .fc-mseg{flex-shrink:0;display:flex;align-items:center;padding-left:8px;font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#1e40af;background:#dbeafe;border-right:1px solid #bfdbfe;white-space:nowrap;overflow:hidden;}
 .fc-mseg.switch{border-left:2px solid #2563eb;color:#0f172a;background:#bfdbfe;}
 body.dark .fc-mseg{background:#172554;color:#bfdbfe;border-color:#1e3a8a;}
