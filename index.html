@@ -574,7 +574,7 @@ const TILES={
 };
 // OpenAIP airspace tiles need a free API key (sign up at openaip.net → My Account → API key).
 // Paste it here to enable the ✈ Airspace overlay; leave blank and the toggle will prompt you.
-const OPENAIP_KEY='';
+const OPENAIP_KEY='c0a0689608371ca5313af6fd181f5305';
 const openAipTiles=()=>OPENAIP_KEY?`https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=${OPENAIP_KEY}`:null;
 const DEM_URL='https://tiles.mapterhorn.com/tilejson.json';
 // RainViewer: free, key-less animated weather. We grab the latest radar + IR-satellite
