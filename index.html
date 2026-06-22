@@ -65,6 +65,10 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 .fc-model-name{color:#1e40af;font-weight:800;font-size:10px;letter-spacing:.3px;}
 body.dark .fc-r-model .fc-lbl{background:#172554;}
 body.dark .fc-model-name{color:#bfdbfe;}
+/* Linked-LZ highlight: pulse + gold glow on the landing zone connected to a clicked launch.
+   Animate the inner SVG only, so the marker's own positioning transform is left untouched. */
+@keyframes lzpulse{0%,100%{transform:scale(1);}50%{transform:scale(1.4);}}
+.lz-hl svg{transform-origin:center center;animation:lzpulse 1s ease-in-out infinite;filter:drop-shadow(0 0 6px #fde047) drop-shadow(0 0 4px #f59e0b);}
 .fc-mseg{flex-shrink:0;display:flex;align-items:center;padding-left:8px;font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#1e40af;background:#dbeafe;border-right:1px solid #bfdbfe;white-space:nowrap;overflow:hidden;}
 .fc-mseg.switch{border-left:2px solid #2563eb;color:#0f172a;background:#bfdbfe;}
 body.dark .fc-mseg{background:#172554;color:#bfdbfe;border-color:#1e3a8a;}
@@ -1311,7 +1315,7 @@ function windCompassSVG(site,col,size,w){
 function mkLZSVG(gold){return`<svg width="36" height="22" viewBox="0 0 36 22" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9));"><rect x="2.5" y="2.5" width="31" height="17" rx="5" fill="${gold?'#d97706':'#3b82f6'}" stroke="${gold?'#fde047':'#ffffff'}" stroke-width="3.5" paint-order="stroke"/><text x="18" y="15" text-anchor="middle" font-size="9" fill="white" font-weight="800" font-family="Arial,sans-serif">LZ</text></svg>`;}
 
 // ── "Fly from here" — click any empty spot to treat it as an ad-hoc takeoff ────
-let flyPromptPopup=null, adhocId=null;
+let flyPromptPopup=null, adhocId=null, flyPromptOpenedAt=0, highlightedLZId=null;
 // Average downhill bearing from the terrain sample: vector-sum each ray weighted by how
 // far the ground drops ~0.6 mi out. Points the glide fan the way the slope actually falls.
 function adhocDownhill(site,cache){
@@ -1328,9 +1332,26 @@ function adhocDownhill(site,cache){
   return((Math.atan2(vx,vy)*180/Math.PI)+360)%360;
 }
 function closeFlyPrompt(){if(flyPromptPopup){try{useMapLibre?flyPromptPopup.remove():lfMap.closePopup(flyPromptPopup);}catch(e){}flyPromptPopup=null;}}
+// Remove any LZ highlight currently applied.
+function clearLZHighlight(){
+  if(!highlightedLZId)return;
+  const el=useMapLibre?lzElMap[highlightedLZId]:(lzMarkerMap[highlightedLZId]&&lzMarkerMap[highlightedLZId]._icon);
+  if(el)el.classList.remove('lz-hl');
+  highlightedLZId=null;
+}
+// Highlight the landing zone linked to a given launch so you can see where it lands.
+function highlightConnectedLZ(launchId){
+  clearLZHighlight();
+  const lz=lzStore.find(z=>(z.launchIds||[]).includes(launchId));
+  if(!lz)return;
+  const el=useMapLibre?lzElMap[lz.id]:(lzMarkerMap[lz.id]&&lzMarkerMap[lz.id]._icon);
+  if(el){el.classList.add('lz-hl');highlightedLZId=lz.id;}
+}
 // Small popup at the tapped point offering to launch an ad-hoc glide analysis from there.
 function showFlyPrompt(lat,lon){
   closeFlyPrompt();
+  setForecastSite(lat,lon,'Selected point');   // forecast follows the tapped point right away
+  flyPromptOpenedAt=Date.now();
   const html=`<div class="flyprompt"><button class="flyprompt-btn" onclick="flyFromHere(${lat.toFixed(6)},${lon.toFixed(6)})">🪂 Fly from here?</button></div>`;
   if(useMapLibre&&mlMap){
     // closeOnClick must be false: the long-press releases a trailing map click that
@@ -1370,7 +1391,7 @@ let lpTimer=null, lpStart=null, suppressMapClick=false;
 function setupLongPress(){
   const el=document.getElementById('map');
   if(!el||el._lpBound)return; el._lpBound=true;
-  const CANCEL=14, HOLD=1500;                                     // press-and-hold 1.5s to summon "Fly from here?"
+  const CANCEL=14, HOLD=1000;                                     // press-and-hold 1s to summon "Fly from here?"
   const clear=()=>{if(lpTimer){clearTimeout(lpTimer);lpTimer=null;}};
   const start=(x,y,target)=>{
     clear();
@@ -1405,6 +1426,8 @@ function setupLongPress(){
 // ── Click handler ─────────────────────────────────────────────────────────────
 function onLaunchClick(site,e){
   stopEvt(e);
+  closeFlyPrompt();
+  if(site.id!==adhocId)clearAdhoc();          // selecting a real launch clears any temp "fly from here" pin
   clearZones();currentEditLZ=null;
   currentLaunchId=site.id;
   const w=siteWx[site.id];
@@ -1412,9 +1435,11 @@ function onLaunchClick(site,e){
   showPopup(site.lat,site.lon,launchPop(site,w));
   wireLaunchEditor(site);
   mountThumb(site,site.facing);
+  highlightConnectedLZ(site.id);              // light up the landing zone linked to this launch
 }
 function onLZClick(lz,e){
   stopEvt(e);
+  closeFlyPrompt();clearLZHighlight();
   currentLaunchId=null;currentEditLZ=lz.id;
   clearFlight();
   const w=siteWx[lz.id];
@@ -1463,7 +1488,7 @@ function closeSidebar(){
   document.getElementById('sidebar').classList.remove('open');
   document.body.classList.remove('popup-open');
   const r=document.getElementById('sb-reopen');if(r)r.style.display='none';
-  destroyMini();openPopup=null;clearFlight();currentEditLZ=null;currentLaunchId=null;clearZones();lockAllPins();
+  destroyMini();openPopup=null;clearFlight();currentEditLZ=null;currentLaunchId=null;clearZones();clearLZHighlight();lockAllPins();
   setForecastSite(40.52,-111.87,'Salt Lake City');   // revert forecast bar to the regional default
   if(useMapLibre&&mlMap){try{mlMap.easeTo({padding:{right:0,left:0,top:0,bottom:0},duration:400});}catch(e){}}
 }
@@ -1671,6 +1696,9 @@ document.addEventListener('click',e=>{
   if(mp&&mp.classList.contains('open')&&!mp.contains(e.target)&&!e.target.closest('#menu-btn'))mp.classList.remove('open');
   const lp=document.getElementById('layer-panel');
   if(lp&&lp.classList.contains('open')&&!lp.contains(e.target)&&!e.target.closest('#layers-btn'))lp.classList.remove('open');
+  // Clicking anywhere other than the prompt itself dismisses "Fly from here?" (ignore the
+  // trailing click that the long-press releases right as the prompt opens).
+  if(flyPromptPopup&&Date.now()-flyPromptOpenedAt>300&&!e.target.closest('.flyprompt-pop'))closeFlyPrompt();
 });
 function setBadge(t){const b=document.getElementById('mode-badge');if(b){b.textContent=t||'';b.style.opacity=t?'1':'0';}}
 function startAddLZ(){addingLZ=true;addingLaunch=false;setBadge('📍 Click the map to drop a new LZ');}
