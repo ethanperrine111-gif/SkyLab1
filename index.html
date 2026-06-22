@@ -294,6 +294,8 @@ body.dark .ppwind-note{color:#94a3b8;}
 /* Weather-model switcher inside the launch detail panel */
 .pp-model-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;color:#475569;margin:9px 0 3px;}
 .pp-model-row select.nb-model{align-self:auto;background:#fff;color:#2563eb;border:1px solid rgba(37,99,235,.4);padding:6px 9px;font-size:13px;}
+.pp-now-btn{flex-shrink:0;background:#2563eb;color:#fff;border:none;border-radius:9px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;line-height:1;white-space:nowrap;}
+.pp-now-btn:hover{background:#1d4ed8;}
 body.dark .pp-model-row{color:#94a3b8;}
 body.dark .pp-model-row select.nb-model{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25);}
 textarea.edi{resize:vertical;line-height:1.4;min-height:54px;}
@@ -817,7 +819,7 @@ function launchPop(site,w){
   const bio=site.desc?`<div class="ppbio"><div class="ppbio-h">📋 About this launch</div><p>${site.desc}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}<div class="pp-model-row">🌦 Weather model ${modelSelectHTML()}</div>${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${windSpecHTML(site)}${bio}${flyBtn}${dir}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}<div class="pp-model-row">🌦 Weather model ${modelSelectHTML()}<button class="pp-now-btn" onclick="forecastNow()" title="Jump to now" aria-label="Jump to current time">⦿ Now</button></div>${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${windSpecHTML(site)}${bio}${flyBtn}${dir}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
@@ -1133,6 +1135,7 @@ function buildForecast(container,series,labels){
     scroll.addEventListener('scroll',upd,{passive:true});
     scroll._nowLeft=nowIdx>0?Math.max(0,(nowIdx-1)*colW):0;   // remembered target for the "Now" button
     scroll.scrollLeft=scroll._nowLeft;
+    scroll.addEventListener('dblclick',forecastNow);   // double-click the forecast → jump to current time
     upd();
   }
 }
