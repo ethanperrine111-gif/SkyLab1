@@ -95,6 +95,7 @@ body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b
 /* flyability bar */
 .fc-r-fly{height:14px;}.fc-r-fly .fc-cell{padding:0;border-right:none;background:transparent;}
 .fc-r-fly .fc-lbl{background:#f8fafc;}
+.fc-help{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;margin-left:3px;border-radius:50%;background:#cbd5e1;color:#fff;font-size:9px;font-weight:800;cursor:help;flex-shrink:0;}
 #map-wrap{position:relative;flex:1;min-height:0;}
 /* Keep the library zoom/nav controls clear of the iOS home indicator & right notch */
 .maplibregl-ctrl-bottom-right{margin-bottom:env(safe-area-inset-bottom,0px);margin-right:env(safe-area-inset-right,0px);}
@@ -1133,7 +1134,7 @@ function buildForecast(container,series,labels){
     ['fc-r-wind','Wind',windRow,rowGrad(windVals)],
     ['fc-r-gust','Gusts',gustRow,rowGrad(gustVals)],
     ['fc-r-dir',labels.dir,dirRow],
-    ['fc-r-fly','Fly',flyRow,colGrad(flyCols)]
+    ['fc-r-fly','Fly <span class="fc-help" title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature.">?</span>',flyRow,colGrad(flyCols)]
   ];
   let labelsHTML='',dataHTML='';
   rows.forEach(([cls,lbl,cells,rowStyle])=>{
