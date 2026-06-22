@@ -795,7 +795,7 @@ function launchPop(site,w){
   const bio=site.desc?`<div class="ppbio"><div class="ppbio-h">📋 About this launch</div><p>${site.desc}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}<div class="pp-model-row">🌦 Weather model ${modelSelectHTML()}</div>${wxG(w)}${windSpecHTML(site)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div id="pp-fc-track" class="fc-track"><div class="nb-load">Loading…</div></div></div>${dir}${bio}${flyBtn}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}<div class="pp-model-row">🌦 Weather model ${modelSelectHTML()}</div>${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div id="pp-fc-track" class="fc-track"><div class="nb-load">Loading…</div></div></div>${windSpecHTML(site)}${bio}${flyBtn}${dir}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
@@ -1274,7 +1274,7 @@ function windDirText(site){const w=windowFor(site);return`${d2c(w[0])}–${d2c(w
 function windSpecHTML(site){
   const L=windStrengthFor(site);
   const disc=(((site.rating||'P').toUpperCase().charAt(0))==='H')?'Hang glider':'Paraglider';
-  return`<div class="ppwind"><div class="ppwind-h">🪂 Allowable to fly</div>`+
+  return`<div class="ppwind"><div class="ppwind-h">🪂 Ideal conditions</div>`+
     `<div class="ppwind-row"><span class="ppwind-k">Wind direction</span><span class="ppwind-v">${windDirText(site)}</span></div>`+
     `<div class="ppwind-row"><span class="ppwind-k">Ideal speed</span><span class="ppwind-v">${L.idealLo}–${L.idealHi} mph</span></div>`+
     `<div class="ppwind-row"><span class="ppwind-k">Max speed</span><span class="ppwind-v">${L.max} mph</span></div>`+
