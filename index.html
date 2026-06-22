@@ -63,6 +63,8 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 /* Frozen "which model am I looking at" indicator in the static label column */
 .fc-r-model .fc-lbl{background:#dbeafe;}
 .fc-model-name{color:#1e40af;font-weight:800;font-size:10px;letter-spacing:.3px;}
+.fc-day-name{color:#1e293b;font-weight:800;font-size:11px;letter-spacing:0;text-transform:none;}
+body.dark .fc-day-name{color:#e2e8f0;}
 body.dark .fc-r-model .fc-lbl{background:#172554;}
 body.dark .fc-model-name{color:#bfdbfe;}
 /* Linked-LZ highlight: pulse + gold glow on the landing zone connected to a clicked launch.
@@ -1061,9 +1063,10 @@ function buildForecast(container,series,labels){
   const groups=[];
   series.forEach(e=>{const d=new Date(e.t),key=d.toDateString();const last=groups[groups.length-1];
     if(last&&last.key===key)last.count++;else groups.push({key,count:1,label:`${FC_DAYS[d.getDay()]} ${d.getDate()}`});});
-  // day header cells
+  // day header cells + a per-column day lookup for the frozen day indicator
   let dayRow='',alt=false;
   groups.forEach(g=>{dayRow+=`<div class="fc-day${alt?' alt':''}" style="width:calc(var(--fcw) * ${g.count})">${g.label}</div>`;alt=!alt;});
+  const dayCols=series.map(e=>{const d=new Date(e.t);return`${FC_DAYS[d.getDay()].slice(0,3)} ${d.getDate()}`;});
   // model band: group consecutive hours by model, plus a per-column model lookup for the
   // live indicator in the (frozen) Model label cell.
   const mgroups=[],models=[];
@@ -1089,7 +1092,7 @@ function buildForecast(container,series,labels){
   });
   // row order: [rowClass, frozen label, data cells]
   const rows=[
-    ['fc-r-day','',dayRow],
+    ['fc-r-day',`<span class="fc-day-name">${dayCols[nowIdx>0?nowIdx:0]||''}</span>`,dayRow],
     ['fc-r-model',`<span class="fc-model-name">${models[nowIdx>0?nowIdx:0]||'Model'}</span>`,modelRow],
     ['fc-r-hr','Hour',hrRow],
     ['fc-r-sky','Sky',skyRow],
@@ -1109,9 +1112,10 @@ function buildForecast(container,series,labels){
   // wire scroll: keep the now-column near the left, and update the frozen Model name.
   const scroll=container.querySelector('.fc-scroll');
   const nameEl=container.querySelector('.fc-model-name');
+  const dayEl=container.querySelector('.fc-day-name');
   const colW=parseFloat(getComputedStyle(container).getPropertyValue('--fcw'))||46;
   if(scroll){
-    const upd=()=>{if(!nameEl)return;const idx=Math.min(models.length-1,Math.max(0,Math.round(scroll.scrollLeft/colW)));nameEl.textContent=models[idx]||'';};
+    const upd=()=>{const idx=Math.min(models.length-1,Math.max(0,Math.round(scroll.scrollLeft/colW)));if(nameEl)nameEl.textContent=models[idx]||'';if(dayEl)dayEl.textContent=dayCols[idx]||'';};
     scroll.addEventListener('scroll',upd,{passive:true});
     if(nowIdx>0)scroll.scrollLeft=Math.max(0,(nowIdx-1)*colW);
     upd();
@@ -1370,13 +1374,40 @@ function clearAdhoc(){
   const i=LAUNCHES.findIndex(s=>s.id===adhocId);if(i>=0)LAUNCHES.splice(i,1);
   adhocId=null;
 }
+// Estimate the downhill direction at a point by sampling the terrain DEM in a ring around it,
+// vector-summing each bearing weighted by how far the ground drops. The result is the way the
+// slope falls = the way you'd run off, and (since you launch INTO the wind) the wind direction
+// you'd need to blow up the slope. Returns a compass bearing, or null if terrain isn't available.
+function slopeDownhill(lat,lon){
+  if(!(useMapLibre&&mlMap&&mlMap.queryTerrainElevation))return null;
+  const center=mlMap.queryTerrainElevation([lon,lat]);
+  if(center==null)return null;
+  const Rm=180,mPerDegLat=111320,mPerDegLon=111320*Math.cos(lat*Math.PI/180);
+  let vx=0,vy=0,any=false;
+  for(let b=0;b<360;b+=30){
+    const rad=b*Math.PI/180;
+    const dLat=(Rm*Math.cos(rad))/mPerDegLat,dLon=(Rm*Math.sin(rad))/mPerDegLon;
+    const el=mlMap.queryTerrainElevation([lon+dLon,lat+dLat]);
+    if(el==null)continue;
+    const drop=center-el;                                // positive ⇒ downhill that way
+    if(drop>0){vx+=Math.sin(rad)*drop;vy+=Math.cos(rad)*drop;any=true;}
+  }
+  if(!any||(!vx&&!vy))return null;
+  return((Math.atan2(vx,vy)*180/Math.PI)+360)%360;
+}
 // Treat the tapped point as a takeoff: drop a pin, fetch elevation+weather, open the takeoff menu.
 async function flyFromHere(lat,lon){
   closeFlyPrompt();
   clearZones&&clearZones();clearAdhoc();
   let alt=6000;
   try{const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(5)}&longitude=${lon.toFixed(5)}`);const j=await r.json();if(j&&j.elevation&&j.elevation[0]!=null)alt=Math.round(j.elevation[0]*3.28084);}catch(e){}
-  const site={id:'flyhere_'+Date.now(),name:'Fly from here',sub:'Tapped point',lat,lon,alt,lzAlt:4500,rating:'Ad-hoc',facing:180,lzLat:null,lzLon:null,desc:'Ad-hoc takeoff from a tapped point.',adhoc:true};
+  // Estimate the slope's downhill direction → that's the way you launch and the wind you'd need.
+  const downhill=slopeDownhill(lat,lon);
+  const facing=downhill!=null?Math.round(downhill):180;
+  const desc=downhill!=null
+    ?`Ad-hoc takeoff. Slope faces ${d2c(facing)} — you'd launch toward ${d2c(facing)}, needing wind from the ${d2c(facing)} (up the slope).`
+    :'Ad-hoc takeoff from a tapped point.';
+  const site={id:'flyhere_'+Date.now(),name:'Fly from here',sub:'Tapped point',lat,lon,alt,lzAlt:4500,rating:'Ad-hoc',facing,lzLat:null,lzLon:null,desc,adhoc:true};
   adhocId=site.id;
   LAUNCHES.push(site);
   createLaunchMarker(site);
