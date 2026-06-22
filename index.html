@@ -102,7 +102,7 @@ body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b
 #map{width:100%;height:100%;}
 #wind-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;display:none;}
 #mode-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(17,24,39,.85);color:rgba(255,255,255,.7);font-size:10px;padding:3px 10px;border-radius:12px;}
-#ctrl-panel{position:absolute;top:196px;left:8px;z-index:500;display:flex;flex-direction:column;gap:5px;width:116px;}
+#ctrl-panel{position:absolute;top:196px;left:8px;z-index:700;display:flex;flex-direction:column;gap:5px;width:116px;}
 body.probe-off #wind-vane{display:none;}
 /* Centre crosshair for the cursor-wind probe — hidden unless the probe is sampling screen centre */
 #wind-xhair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:480;pointer-events:none;display:none;filter:drop-shadow(0 0 2px rgba(0,0,0,.55));}
@@ -112,6 +112,9 @@ body.probe-off #ctrl-panel{top:8px;}
 .cbtn.active{background:rgba(56,189,248,.28);border-color:#38bdf8;color:#7dd3fc;}
 #trow{display:flex;gap:6px;}
 #trow .cbtn{flex:1;height:34px;padding:0;display:flex;align-items:center;justify-content:center;}
+/* Compact map-layers button (doesn't stretch the full row) */
+#trow #layers-btn{flex:0 0 auto;width:42px;height:30px;padding:0;}
+#layers-btn svg{width:15px;height:15px;}
 #wind-vane{position:absolute;top:8px;left:8px;z-index:500;background:rgba(17,24,39,.92);border-radius:12px;padding:9px 11px;color:white;min-width:116px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.4);border-top:3px solid #38bdf8;}
 .wvt{font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
 .wvs{font-size:18px;font-weight:700;color:#38bdf8;}
@@ -200,7 +203,7 @@ body.dark .ppwind-note{color:#94a3b8;}
   #legend{font-size:10px;padding:6px 8px;}
 }
 /* layer panel */
-#layer-panel{width:100%;background:rgba(17,24,39,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 9px;color:#fff;font-size:11px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.45);max-height:calc(100dvh - 310px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none;}
+#layer-panel{width:100%;background:rgba(17,24,39,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 9px;color:#fff;font-size:11px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.45);max-height:calc(100dvh - 230px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none;}
 #layer-panel::-webkit-scrollbar{display:none;}
 #layer-panel.open{display:block;}
 .lp-sec{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.45);margin:8px 0 3px;}
@@ -213,7 +216,7 @@ body.dark .ppwind-note{color:#94a3b8;}
 .pp-sat .maplibregl-canvas{border-radius:8px;}
 .pp-sat-tag{position:absolute;left:6px;bottom:5px;z-index:2;font-size:9px;color:#fff;background:rgba(0,0,0,.42);padding:1px 6px;border-radius:7px;pointer-events:none;}
 .thumb-compass{position:absolute;right:6px;bottom:5px;z-index:3;pointer-events:auto;touch-action:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
-.thumb-takeoff-dot{width:14px;height:14px;border-radius:50%;background:rgba(56,189,248,.45);border:2.5px solid rgba(255,255,255,.9);box-shadow:0 0 0 1px rgba(0,0,0,.4),0 1px 4px rgba(0,0,0,.6);}
+.thumb-takeoff-dot{width:14px;height:14px;border-radius:50%;background:rgba(56,189,248,.28);border:2.5px solid rgba(56,189,248,.55);box-shadow:0 1px 3px rgba(0,0,0,.4);}
 .oa-pop{font-size:12px;color:#0f172a;line-height:1.45;min-width:120px;}
 #mobile-logo{display:none;}
 @media(max-width:768px){#mobile-logo{display:block;position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:1100;font-size:12px;font-weight:800;letter-spacing:.3px;color:#fff;background:rgba(17,24,39,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:3px 11px;border-radius:11px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.4);}}
@@ -348,8 +351,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   /* Bigger layers tap target on phones (width is synced to the wind box in JS) */
   #trow .cbtn{height:40px;font-size:14px;}
   #trow #b2d{display:none;}              /* hide the 2D toggle on phones */
-  #trow #layers-btn{font-size:20px;}
-  #layers-btn svg{width:22px;height:22px;}
+  #trow #layers-btn{width:46px;height:34px;}
+  #layers-btn svg{width:18px;height:18px;}
   /* Bigger, easier-to-grab direction compass on the launch thumbnail */
   .thumb-compass svg{width:58px;height:58px;}
   #model-select{padding:7px 9px;font-size:13px;border-radius:12px;}
@@ -367,7 +370,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #mode-badge{display:none;}
   /* Use the real SkyLab paraglider logo at the bottom (instead of the plain text chip) */
   #mobile-logo{display:none;}
-  #logo-overlay{display:flex;bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:4px 12px 4px 6px;}
+  #logo-overlay{display:flex;bottom:calc(66px + env(safe-area-inset-bottom,0px));padding:4px 12px 4px 6px;}  /* lift above the browser's bottom search bar */
   /* Bigger tap targets for thumbs */
   .cbtn{padding:9px 13px;font-size:13px;border-radius:11px;}
   .icon-btn{padding:9px;}
@@ -1880,7 +1883,7 @@ let lpTimer=null, lpStart=null, suppressMapClick=false;
 function setupLongPress(){
   const el=document.getElementById('map');
   if(!el||el._lpBound)return; el._lpBound=true;
-  const CANCEL=14, HOLD=1000;                                     // press-and-hold 1s to summon "Fly from here?"
+  const CANCEL=14, HOLD=650;                                      // mobile: press-and-hold to summon "Fly from here?" (desktop uses a single click instead)
   const clear=()=>{if(lpTimer){clearTimeout(lpTimer);lpTimer=null;}};
   const start=(x,y,target)=>{
     clear();
@@ -1905,11 +1908,8 @@ function setupLongPress(){
   el.addEventListener('touchmove',e=>{const t=e.touches[0];if(t)move(t.clientX,t.clientY);},{passive:true});
   el.addEventListener('touchend',clear,{passive:true});
   el.addEventListener('touchcancel',clear,{passive:true});
-  // Mouse (desktop) — same press-and-hold instead of an instant click
-  el.addEventListener('mousedown',e=>{if(e.button!==0)return;start(e.clientX,e.clientY,e.target);});
-  el.addEventListener('mousemove',e=>move(e.clientX,e.clientY));
-  el.addEventListener('mouseup',clear);
-  el.addEventListener('mouseleave',clear);
+  // Desktop uses a single map click (wired on the map's own 'click' event) to drop the
+  // "Fly from here?" pin — no press-and-hold here, so the mouse handlers are intentionally omitted.
 }
 
 // ── Click handler ─────────────────────────────────────────────────────────────
@@ -2032,7 +2032,7 @@ function initMapLibre(timeoutMs){
         m.on('rotate',()=>{updateCompass();rotatePins();});m.on('pitchend',updateCompass);
         m.on('move',cullGhostMarkers);m.on('idle',cullGhostMarkers);m.on('idle',reprojectFlight);
         m.on('moveend',()=>{if(centerProbeActive())probeCenter();});   // touch: re-sample wind at screen centre
-        m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}handleEditClick(e.lngLat.lng,e.lngLat.lat);});  // "Fly from here?" now needs a 1.5s press-and-hold
+        m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}if(handleEditClick(e.lngLat.lng,e.lngLat.lat))return;if(!isMobileView())showFlyPrompt(e.lngLat.lat,e.lngLat.lng);});  // desktop: a single click instantly drops the "Fly from here?" pin (mobile still uses press-and-hold)
         m.on('dblclick',e=>{if(drawingFor){e.preventDefault();finishDraw();}});
         m.on('mousemove',e=>probeWind(e.lngLat.lat,e.lngLat.lng));
         mlMap=m;window.mlMap=m;updateCompass();
@@ -2064,7 +2064,7 @@ function initLeaflet(){
   const oa=openAipTiles();
   if(oa)lfOverlays.airspace=L.tileLayer(oa,{attribution:'Airspace © OpenAIP',maxZoom:14,opacity:0.85});
   lfBaseLayers.streets.addTo(m);
-  m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}handleEditClick(e.latlng.lng,e.latlng.lat);});  // "Fly from here?" now needs a 1.5s press-and-hold
+  m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}if(handleEditClick(e.latlng.lng,e.latlng.lat))return;if(!isMobileView())showFlyPrompt(e.latlng.lat,e.latlng.lng);});  // desktop: a single click instantly drops the "Fly from here?" pin (mobile still uses press-and-hold)
   m.on('dblclick',()=>{if(drawingFor)finishDraw();});
   m.on('mousemove',e=>probeWind(e.latlng.lat,e.latlng.lng));
   m.on('moveend',()=>{if(centerProbeActive())probeCenter();});   // touch: re-sample wind at screen centre
@@ -2322,7 +2322,8 @@ function loadWxCache(){try{return JSON.parse(localStorage.getItem(WX_CACHE_KEY)|
 function saveFcCache(series){try{localStorage.setItem(FC_CACHE_KEY,JSON.stringify({ts:Date.now(),lat:fcTarget.lat,lon:fcTarget.lon,series}));}catch(e){}}
 function loadFcCache(){try{return JSON.parse(localStorage.getItem(FC_CACHE_KEY)||'null');}catch(e){return null;}}
 function ageStr(ts){const m=Math.round((Date.now()-ts)/60000);if(m<60)return m+' min';const h=Math.round(m/60);return h<48?h+' hr':Math.round(h/24)+' days';}
-function showWxBanner(msg){let b=document.getElementById('wx-banner');if(!b){b=document.createElement('div');b.id='wx-banner';b.title='Dismiss';b.onclick=()=>{b.style.display='none';};document.body.appendChild(b);}b.innerHTML=msg+'  ✕';b.style.display='block';}
+let wxBannerShown=false;
+function showWxBanner(msg){if(wxBannerShown)return;wxBannerShown=true;let b=document.getElementById('wx-banner');if(!b){b=document.createElement('div');b.id='wx-banner';b.title='Dismiss';b.onclick=()=>{b.style.display='none';};document.body.appendChild(b);}b.innerHTML=msg+'  ✕';b.style.display='block';}
 function hideWxBanner(){const b=document.getElementById('wx-banner');if(b)b.style.display='none';}
 
 async function loadWeather(){
