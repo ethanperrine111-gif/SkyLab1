@@ -208,6 +208,8 @@ body.dark .ppwind-note{color:#94a3b8;}
 .pp-sat{position:relative;overflow:hidden;}
 .pp-sat .maplibregl-canvas{border-radius:8px;}
 .pp-sat-tag{position:absolute;left:6px;bottom:5px;z-index:2;font-size:9px;color:#fff;background:rgba(0,0,0,.42);padding:1px 6px;border-radius:7px;pointer-events:none;}
+.thumb-compass{position:absolute;right:6px;bottom:5px;z-index:3;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
+.oa-pop{font-size:12px;color:#0f172a;line-height:1.45;min-width:120px;}
 /* topbar model selector */
 #topbar-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
 #model-select{background:white;border:none;border-radius:14px;padding:5px 8px;font-size:12px;font-weight:700;color:#2563eb;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.22);}
@@ -650,14 +652,37 @@ async function fetchWxStations(){
     const r=await fetch('https://api.weather.gov/stations?state=UT&limit=500',{headers:{'Accept':'application/geo+json'}});
     if(!r.ok)return null;
     const j=await r.json();
-    return((j&&j.features)||[]).map(f=>{const c=(f.geometry&&f.geometry.coordinates)||[],p=f.properties||{};return{lon:c[0],lat:c[1],name:(p.stationIdentifier||'')+(p.name?' · '+p.name:'')};}).filter(p=>typeof p.lon==='number');
+    return((j&&j.features)||[]).map(f=>{const c=(f.geometry&&f.geometry.coordinates)||[],p=f.properties||{};return{lon:c[0],lat:c[1],id:p.stationIdentifier||'',name:(p.stationIdentifier||'')+(p.name?' · '+p.name:'')};}).filter(p=>typeof p.lon==='number');
   }catch(e){return null;}
+}
+// Latest observation for an NWS station → readable HTML (wind / temp / conditions).
+function fetchStationObs(id){
+  return fetch(`https://api.weather.gov/stations/${id}/observations/latest`,{headers:{'Accept':'application/geo+json'}})
+    .then(r=>r.ok?r.json():null).then(j=>j&&j.properties).catch(()=>null);
+}
+function obsHTML(name,o){
+  if(!o)return`<b>🌡 ${name}</b><br><span style="color:#64748b;">No current observation.</span>`;
+  const cT=o.temperature&&o.temperature.value,tF=cT!=null?Math.round(cT*9/5+32)+'°F':'—';
+  const wd=o.windDirection&&o.windDirection.value,ws=o.windSpeed&&o.windSpeed.value,wg=o.windGust&&o.windGust.value;
+  const mph=v=>v!=null?Math.round(v*0.621):null;   // NWS windSpeed is km/h
+  const wind=ws!=null?`${wd!=null?d2c(wd)+' '+Math.round(wd)+'° · ':''}${mph(ws)} mph${wg!=null?' (gust '+mph(wg)+')':''}`:'calm / —';
+  return`<b>🌡 ${name}</b><br>Wind: ${wind}<br>Temp: ${tF}${o.textDescription?`<br><span style="color:#64748b;font-size:11px;">${o.textDescription}</span>`:''}`;
 }
 const FEATURE_LAYERS={
   obstacles:{color:'#ef4444',marker:'circle',fetch:fetchObstacles},
   airports:{color:'#2563eb',marker:'runway',fetch:fetchAirports},
-  wx:{color:'#0891b2',marker:'circle',fetch:fetchWxStations}
+  wx:{color:'#0891b2',marker:'vane',fetch:fetchWxStations}
 };
+const VANE_SVG='<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#0891b2" stroke="#fff" stroke-width="2"/><path d="M12 3 L16 13 L12 11 L8 13 Z" fill="#fff"/><circle cx="12" cy="12" r="1.8" fill="#fff"/></svg>';
+function ensureVaneIcon(){
+  if(!mlMap||(mlMap.hasImage&&mlMap.hasImage('vane')))return;
+  const s=24,cv=document.createElement('canvas');cv.width=cv.height=s;const x=cv.getContext('2d');
+  x.fillStyle='#0891b2';x.strokeStyle='#fff';x.lineWidth=2;
+  x.beginPath();x.arc(12,12,10,0,2*Math.PI);x.fill();x.stroke();
+  x.fillStyle='#fff';x.beginPath();x.moveTo(12,3);x.lineTo(16,13);x.lineTo(12,11);x.lineTo(8,13);x.closePath();x.fill();
+  x.beginPath();x.arc(12,12,1.8,0,2*Math.PI);x.fill();
+  try{mlMap.addImage('vane',{width:s,height:s,data:x.getImageData(0,0,s,s).data});}catch(e){}
+}
 const RUNWAY_SVG='<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(45 11 11)"><rect x="8" y="2" width="6" height="18" rx="2" fill="#334155" stroke="#fff" stroke-width="1.5"/><line x1="11" y1="4" x2="11" y2="18" stroke="#fff" stroke-width="1" stroke-dasharray="2 2"/></g></svg>';
 // Build a runway icon for MapLibre symbol layers (drawn synchronously on a canvas).
 function ensureRunwayIcon(){
@@ -673,23 +698,41 @@ const oaData={};   // name -> fetched points (cache)
 const lfFeatureGroups={};
 function renderFeatures(name,pts){
   const cfg=FEATURE_LAYERS[name];
+  const emoji=name==='obstacles'?'🗼 ':name==='airports'?'🛩 ':'🌡 ';
   if(useMapLibre&&mlMap){
-    const fc={type:'FeatureCollection',features:pts.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{label:p.name||''}}))};
+    const fc={type:'FeatureCollection',features:pts.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{label:p.name||'',sid:p.id||''}}))};
     const src='oa-'+name;
     if(mlMap.getSource(src)){mlMap.getSource(src).setData(fc);return;}
     mlMap.addSource(src,{type:'geojson',data:fc});
-    if(cfg.marker==='runway'){
-      ensureRunwayIcon();
-      mlMap.addLayer({id:src+'-c',type:'symbol',source:src,layout:{'icon-image':'runway','icon-size':1,'icon-allow-overlap':true}});
+    if(cfg.marker==='runway'||cfg.marker==='vane'){
+      cfg.marker==='runway'?ensureRunwayIcon():ensureVaneIcon();
+      mlMap.addLayer({id:src+'-c',type:'symbol',source:src,layout:{'icon-image':cfg.marker,'icon-size':1,'icon-allow-overlap':true}});
     }else{
       mlMap.addLayer({id:src+'-c',type:'circle',source:src,paint:{'circle-radius':5,'circle-color':cfg.color,'circle-stroke-color':'#fff','circle-stroke-width':1.5,'circle-opacity':0.9}});
     }
     try{mlMap.addLayer({id:src+'-t',type:'symbol',source:src,minzoom:9,layout:{'text-field':['get','label'],'text-size':10,'text-offset':[0,1.1],'text-anchor':'top','text-optional':true},paint:{'text-color':'#0f172a','text-halo-color':'#fff','text-halo-width':1.5}});}catch(e){}
+    // Click a feature → popup. Weather stations fetch their live observation on demand.
+    const cid=src+'-c';
+    mlMap.on('click',cid,e=>{
+      const f=e.features&&e.features[0];if(!f)return;
+      const pr=f.properties||{},ll=f.geometry.coordinates.slice();
+      const pop=new maplibregl.Popup({offset:12,closeButton:true}).setLngLat(ll);
+      if(name==='wx'){pop.setHTML('<div class="oa-pop"><b>🌡 '+(pr.label||'Station')+'</b><br>Loading…</div>').addTo(mlMap);fetchStationObs(pr.sid).then(o=>pop.setHTML('<div class="oa-pop">'+obsHTML(pr.label||'Station',o)+'</div>'));}
+      else pop.setHTML('<div class="oa-pop">'+emoji+(pr.label||'')+'</div>').addTo(mlMap);
+    });
+    mlMap.on('mouseenter',cid,()=>mlMap.getCanvas().style.cursor='pointer');
+    mlMap.on('mouseleave',cid,()=>mlMap.getCanvas().style.cursor='');
   }else if(lfMap){
     if(lfFeatureGroups[name]){try{lfMap.removeLayer(lfFeatureGroups[name]);}catch(e){}}
-    lfFeatureGroups[name]=L.layerGroup(pts.map(p=>cfg.marker==='runway'
-      ? L.marker([p.lat,p.lon],{icon:L.divIcon({html:RUNWAY_SVG,className:'',iconSize:[22,22],iconAnchor:[11,11]})}).bindTooltip(p.name||name)
-      : L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:1.5,fillColor:cfg.color,fillOpacity:0.9}).bindTooltip(p.name||name)));
+    lfFeatureGroups[name]=L.layerGroup(pts.map(p=>{
+      let mk;
+      if(cfg.marker==='runway')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:RUNWAY_SVG,className:'',iconSize:[22,22],iconAnchor:[11,11]})});
+      else if(cfg.marker==='vane')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[24,24],iconAnchor:[12,12]})});
+      else mk=L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:1.5,fillColor:cfg.color,fillOpacity:0.9});
+      if(name==='wx'){mk.bindPopup('<b>🌡 '+(p.name||'Station')+'</b><br>Loading…');mk.on('click',()=>fetchStationObs(p.id).then(o=>mk.setPopupContent(obsHTML(p.name||'Station',o))));}
+      else mk.bindPopup(emoji+(p.name||''));
+      return mk;
+    }));
   }
 }
 function setFeatureVisible(name,on){
@@ -768,9 +811,12 @@ function windStep(){
   if(!windState.on)return;
   const ctx=windState.ctx,c=windState.cv,g=windState.grid;
   if(!ctx||!g){windState.raf=requestAnimationFrame(windStep);return;}
-  ctx.globalCompositeOperation='destination-out';ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,0,c.width,c.height);
-  ctx.globalCompositeOperation='source-over';ctx.lineWidth=1.4;ctx.strokeStyle='rgba(255,255,255,0.9)';
-  const F=0.0011;
+  // Keep the canvas bitmap matched to its displayed size — otherwise it defaults to 300×150
+  // and the particles only render in one corner ("one tile").
+  if(c.width!==c.clientWidth||c.height!==c.clientHeight){c.width=c.clientWidth;c.height=c.clientHeight;}
+  ctx.globalCompositeOperation='destination-out';ctx.fillStyle='rgba(0,0,0,0.08)';ctx.fillRect(0,0,c.width,c.height);
+  ctx.globalCompositeOperation='source-over';ctx.lineWidth=1.3;ctx.strokeStyle='rgba(255,255,255,0.85)';
+  const F=0.00038;
   while(windState.particles.length<650)windState.particles.push(spawnP(g));
   for(const p of windState.particles){
     const wv=windAt(g,p.lat,p.lon);
@@ -1090,6 +1136,11 @@ function mountThumb(site,facing){
       mini.on('load',()=>{try{mini.setTerrain({source:'dem',exaggeration:1.5});}catch(e){}});
       mini.on('error',()=>{});
       miniMap=mini;
+      // Small compass (bottom-right) showing which way this 3D view is looking. The rose is
+      // counter-rotated by the camera bearing so N points true north; the fixed up-arrow is the look direction.
+      const comp=document.createElement('div');comp.className='thumb-compass';
+      comp.innerHTML=`<svg viewBox="0 0 40 40" width="38" height="38"><circle cx="20" cy="20" r="18" fill="rgba(0,0,0,.5)" stroke="rgba(255,255,255,.55)" stroke-width="1.2"/><path d="M20 2 L24 9 L20 7 L16 9 Z" fill="#38bdf8"/><g transform="rotate(${-brg} 20 20)"><path d="M20 6 L23 20 L20 17 L17 20 Z" fill="#ef4444"/><path d="M20 34 L17 20 L20 23 L23 20 Z" fill="#e5e7eb"/><text x="20" y="14" text-anchor="middle" font-size="7" font-weight="800" fill="#fff" font-family="Arial">N</text></g></svg>`;
+      c.appendChild(comp);
     }catch(e){c.innerHTML=`<img src="${satUrl(site.lat,site.lon)}" style="width:100%;height:148px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'"/>`;}
   }else{
     c.innerHTML=`<img src="${satUrl(site.lat,site.lon)}" style="width:100%;height:148px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'"/>`;
