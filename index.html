@@ -40,7 +40,7 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 #menu-btn{flex-shrink:0;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:6px 9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:0;}
 #menu-btn:hover{background:rgba(255,255,255,.2);}
 /* ── Windy-style row/column FORECAST table ───────────────────────────────── */
-#forecast{flex-shrink:0;background:#fff;border-bottom:1px solid #d8dee9;overflow-x:auto;overflow-y:hidden;z-index:10;-webkit-overflow-scrolling:touch;--fcw:46px;--fcl:62px;}
+#forecast{flex-shrink:0;background:#fff;border-bottom:1px solid #d8dee9;overflow-x:auto;overflow-y:hidden;z-index:10;--fcw:46px;--fcl:62px;}
 #forecast::-webkit-scrollbar{height:8px;}
 #forecast::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);border-radius:4px;}
 #fc-track{display:flex;flex-direction:column;width:max-content;font-family:system-ui,sans-serif;}
@@ -56,7 +56,7 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 .fc-day.alt{background:#e2e8f0;}
 /* Model provenance band — shows where HRRR ends and GFS begins */
 .fc-r-model{height:16px;}
-.fc-mseg{flex-shrink:0;display:flex;align-items:center;padding-left:8px;font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#1e40af;background:#dbeafe;border-right:1px solid #bfdbfe;white-space:nowrap;overflow:hidden;}
+.fc-mseg{flex-shrink:0;display:flex;align-items:center;padding-left:8px;font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#1e40af;background:#dbeafe;border-right:1px solid #bfdbfe;white-space:nowrap;}
 /* Keep the model name visible while scrolling: the label sticks just right of the pinned label column, clipped to its own segment. */
 .fc-mseg-lbl{position:sticky;left:var(--fcl);z-index:5;background:inherit;padding-right:6px;}
 .fc-mseg.switch{border-left:2px solid #2563eb;color:#0f172a;background:#bfdbfe;}
@@ -339,7 +339,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   .flybtn,.dirbtn{padding:12px;font-size:14px;}
   /* Floating panels: never overflow the viewport, scroll if tall */
   #menu-panel{left:12px;right:12px;max-width:none;max-height:58vh;overflow-y:auto;}
-  #layer-panel{width:210px;max-height:70vh;overflow-y:auto;}  /* wider than the buttons so rows don't wrap/scroll */
+  #layer-panel{width:210px;max-height:calc(100dvh - 270px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}  /* fit within the viewport from its anchor so all rows are reachable by scrolling */
   /* Detail sidebar takes the full screen on a phone */
   #sidebar{width:100%;max-width:100%;}
   #sb-body{padding:calc(15px + env(safe-area-inset-top,0px)) 15px calc(96px + env(safe-area-inset-bottom,0px));}  /* extra bottom space so content clears the phone browser's bottom bar */
