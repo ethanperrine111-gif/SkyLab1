@@ -416,8 +416,11 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <div class="lp-sec">Overlay</div>
         <label class="lp-row"><input type="checkbox" id="ov-radar" onchange="toggleOverlay('radar',this.checked)"/> 🌧 Radar (precip)</label>
         <label class="lp-row"><input type="checkbox" id="ov-satellite" onchange="toggleOverlay('satellite',this.checked)"/> ☁ Satellite (clouds)</label>
-        <label class="lp-row"><input type="checkbox" id="ov-sectional" onchange="toggleOverlay('sectional',this.checked)"/> ✈ VFR Sectional</label>
         <label class="lp-row"><input type="checkbox" id="ov-airspace" onchange="toggleOverlay('airspace',this.checked)"/> 🚫 Airspace (OpenAIP)</label>
+        <label class="lp-row"><input type="checkbox" id="ov-obstacles" onchange="toggleFeatureLayer('obstacles',this.checked)"/> 🗼 Obstacles</label>
+        <label class="lp-row"><input type="checkbox" id="ov-hotspots" onchange="toggleFeatureLayer('hotspots',this.checked)"/> 🔥 Thermal hotspots</label>
+        <label class="lp-row"><input type="checkbox" id="ov-airports" onchange="toggleFeatureLayer('airports',this.checked)"/> 🛩 Airports</label>
+        <label class="lp-row"><input type="checkbox" id="ov-wx" onchange="toggleFeatureLayer('wx',this.checked)"/> 🌡 Weather stations</label>
         <label class="lp-row"><input type="checkbox" id="ov-relief" onchange="toggleOverlay('relief',this.checked)"/> ⛰ Hillshade (terrain)</label>
         <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/> 🥾 Hiking trails</label>
         <label class="lp-row"><input type="checkbox" id="ov-power" onchange="toggleOverlay('power',this.checked)"/> ⚡ Power lines</label>
@@ -593,6 +596,105 @@ function rvUrl(kind){
   const arr=kind==='radar'?RV.radar:RV.satellite,f=arr[arr.length-1];
   if(!f)return null;
   return kind==='radar'?`${RV.host}${f.path}/256/{z}/{x}/{y}/4/1_1.png`:`${RV.host}${f.path}/256/{z}/{x}/{y}/0/0_0.png`;
+}
+// Radar visibility: only show RainViewer up to its native zoom (~10); hide past that
+// so we never request the "zoom level not supported" placeholder tiles.
+let radarOn=false;
+function updateRadarVis(){
+  if(!useMapLibre||!mlMap||!mlMap.getLayer('radar'))return;
+  const vis=(radarOn&&mlMap.getZoom()<=10.5)?'visible':'none';
+  try{mlMap.setLayoutProperty('radar','visibility',vis);}catch(e){}
+}
+// NASA GIBS true-colour satellite (clouds) — daily, key-less. Use yesterday (UTC) so the
+// imagery is guaranteed processed.
+function gibsDate(){return new Date(Date.now()-24*36e5).toISOString().slice(0,10);}
+function gibsSatUrl(){return`https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${gibsDate()}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;}
+
+// ── OpenAIP / external data feature overlays (Utah) ───────────────────────────
+const UT_BBOX=[-114.06,36.99,-109.04,42.01];   // minLon,minLat,maxLon,maxLat
+function kmBetween(la1,lo1,la2,lo2){const R=6371,dLa=(la2-la1)*Math.PI/180,dLo=(lo2-lo1)*Math.PI/180,a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(a));}
+// Fetch one OpenAIP dataset for the Utah bounding box → [{lon,lat,name}].
+async function oaFetch(ep){
+  if(!OPENAIP_KEY)return null;
+  try{
+    const r=await fetch(`https://api.core.openaip.net/api/${ep}?bbox=${UT_BBOX.join(',')}&limit=1000`,{headers:{'x-openaip-api-key':OPENAIP_KEY}});
+    if(!r.ok)return null;
+    const j=await r.json();
+    return((j&&j.items)||[]).map(it=>{const c=(it.geometry&&it.geometry.coordinates)||[];return{lon:c[0],lat:c[1],name:it.name||it.icaoCode||''};}).filter(p=>typeof p.lon==='number'&&typeof p.lat==='number');
+  }catch(e){return null;}
+}
+// Aviation weather stations with current wind (FAA / aviationweather.gov METARs).
+async function fetchMetarStations(){
+  try{
+    const r=await fetch(`https://aviationweather.gov/api/data/metar?bbox=${UT_BBOX[1]},${UT_BBOX[0]},${UT_BBOX[3]},${UT_BBOX[2]}&format=json`);
+    if(!r.ok)return null;
+    const j=await r.json();
+    return((j)||[]).map(m=>({lon:m.lon,lat:m.lat,name:`${m.icaoId||''}${m.wdir!=null&&m.wspd!=null?' · '+m.wdir+'° @ '+m.wspd+'kt':''}`.trim()})).filter(p=>typeof p.lon==='number');
+  }catch(e){return null;}
+}
+const FEATURE_LAYERS={
+  obstacles:{color:'#ef4444',fetch:()=>oaFetch('obstacles')},
+  hotspots:{color:'#f97316',fetch:()=>oaFetch('hotspots')},
+  airports:{color:'#2563eb',fetch:()=>oaFetch('airports')},
+  wx:{color:'#0891b2',fetch:fetchMetarStations}
+};
+const oaData={};   // name -> fetched points (cache)
+const lfFeatureGroups={};
+function renderFeatures(name,pts){
+  const cfg=FEATURE_LAYERS[name];
+  if(useMapLibre&&mlMap){
+    const fc={type:'FeatureCollection',features:pts.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{label:p.name||''}}))};
+    const src='oa-'+name;
+    if(mlMap.getSource(src)){mlMap.getSource(src).setData(fc);return;}
+    mlMap.addSource(src,{type:'geojson',data:fc});
+    mlMap.addLayer({id:src+'-c',type:'circle',source:src,paint:{'circle-radius':5,'circle-color':cfg.color,'circle-stroke-color':'#fff','circle-stroke-width':1.5,'circle-opacity':0.9}});
+    try{mlMap.addLayer({id:src+'-t',type:'symbol',source:src,minzoom:9,layout:{'text-field':['get','label'],'text-size':10,'text-offset':[0,1.1],'text-anchor':'top','text-optional':true},paint:{'text-color':'#0f172a','text-halo-color':'#fff','text-halo-width':1.5}});}catch(e){}
+  }else if(lfMap){
+    if(lfFeatureGroups[name]){try{lfMap.removeLayer(lfFeatureGroups[name]);}catch(e){}}
+    lfFeatureGroups[name]=L.layerGroup(pts.map(p=>L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:1.5,fillColor:cfg.color,fillOpacity:0.9}).bindTooltip(p.name||name)));
+  }
+}
+function setFeatureVisible(name,on){
+  if(useMapLibre&&mlMap){
+    ['-c','-t'].forEach(s=>{const id='oa-'+name+s;if(mlMap.getLayer(id)){try{mlMap.setLayoutProperty(id,'visibility',on?'visible':'none');}catch(e){}}});
+  }else if(lfMap){
+    const g=lfFeatureGroups[name];if(g){if(on){g.addTo(lfMap);}else{try{lfMap.removeLayer(g);}catch(e){}}}
+  }
+}
+async function toggleFeatureLayer(name,on){
+  if(!on){setFeatureVisible(name,false);return;}
+  if(!oaData[name]){
+    setBadge('Loading '+name+'…');
+    const pts=await FEATURE_LAYERS[name].fetch();
+    setBadge('');
+    if(!pts){uncheck(name);setBadge('⚠ '+name+' data unavailable (network/API). Try again shortly.');return;}
+    if(!pts.length){uncheck(name);setBadge('No '+name+' found in this area.');return;}
+    oaData[name]=pts;
+  }
+  const needRender=(useMapLibre&&mlMap&&!mlMap.getSource('oa-'+name))||(!useMapLibre&&lfMap&&!lfFeatureGroups[name]);
+  if(needRender)renderFeatures(name,oaData[name]);
+  setFeatureVisible(name,true);
+}
+// Import Utah paragliding / hang-gliding sites from ParaglidingEarth (OpenAIP has no
+// PG-site dataset). De-duped against existing launches by name and ~1.5 km proximity.
+async function importUtahPGSites(){
+  try{
+    const r=await fetch(`https://www.paraglidingearth.com/api/geojson/getBoundingBoxSites.php?north=${UT_BBOX[3]}&south=${UT_BBOX[1]}&east=${UT_BBOX[2]}&west=${UT_BBOX[0]}&style=detailled`);
+    if(!r.ok)return;
+    const j=await r.json();let added=0;
+    ((j&&j.features)||[]).forEach(f=>{
+      const c=f.geometry&&f.geometry.coordinates;if(!c)return;
+      const lon=c[0],lat=c[1],p=f.properties||{},name=(p.name||'PG site').trim();
+      if(LAUNCHES.some(s=>kmBetween(lat,lon,s.lat,s.lon)<1.5))return;            // proximity dup
+      if(LAUNCHES.some(s=>s.name.toLowerCase()===name.toLowerCase()))return;     // name dup
+      const altM=parseFloat(p.takeoff_altitude);
+      const site={id:'pge_'+(p.pge_site_id||p.id||(Date.now()+'_'+added)),name,sub:'Utah · ParaglidingEarth',
+        lat,lon,alt:Math.round((isFinite(altM)?altM:1800)*3.281),lzAlt:4500,rating:'PGE',facing:parseInt(p.takeoff_winds_main||p.orientation)||270,
+        lzLat:null,lzLon:null,desc:String(p.takeoff_description||'Imported paragliding / hang-gliding site (ParaglidingEarth).').replace(/<[^>]+>/g,'').slice(0,400),imported:true};
+      LAUNCHES.push(site);createLaunchMarker(site);added++;
+    });
+    if(added)loadWeather();   // colour the new pins once weather lands
+  }catch(e){}
 }
 
 // ── Satellite tile ────────────────────────────────────────────────────────────
@@ -902,28 +1004,52 @@ function setBaseLayer(name){
 }
 function uncheck(name){const cb=document.getElementById('ov-'+name);if(cb)cb.checked=false;}
 function toggleOverlay(name,on){
-  // RainViewer radar / satellite: tile URL is fetched live, so add the source lazily on first use.
-  if(name==='radar'||name==='satellite'){
+  // RainViewer radar (precip): live tile URL, added lazily. RainViewer only renders to
+  // ~zoom 10 (beyond that it serves a "zoom level not supported" placeholder), so we cap
+  // it, auto-zoom out when enabled, and hide the layer entirely once you zoom in past 10.
+  if(name==='radar'){
+    radarOn=on;
     if(!on){
-      if(useMapLibre&&mlMap){try{mlMap.setLayoutProperty(name,'visibility','none');}catch(e){}}
-      else if(lfMap&&lfOverlays[name]){try{lfMap.removeLayer(lfOverlays[name]);}catch(e){}}
+      if(useMapLibre&&mlMap){try{mlMap.setLayoutProperty('radar','visibility','none');}catch(e){}}
+      else if(lfMap&&lfOverlays.radar){try{lfMap.removeLayer(lfOverlays.radar);}catch(e){}}
       return;
     }
+    if(useMapLibre&&mlMap){if(mlMap.getZoom()>8)mlMap.easeTo({zoom:8});}     // zoom out so radar is visible
+    else if(lfMap){if(lfMap.getZoom()>8)lfMap.setZoom(8);}
     loadRainviewer().then(()=>{
-      const u=rvUrl(name);
-      if(!u){uncheck(name);setBadge('⚠ Live '+(name==='radar'?'radar':'satellite')+' unavailable right now. Try again shortly.');return;}
-      // RainViewer only renders to ~zoom 10; beyond that it returns a "zoom level not
-      // supported" placeholder tile. Cap native zoom so the map upscales instead.
+      const u=rvUrl('radar');
+      if(!u){uncheck('radar');setBadge('⚠ Live radar unavailable right now. Try again shortly.');return;}
       if(useMapLibre&&mlMap){
-        if(mlMap.getLayer(name)){try{mlMap.removeLayer(name);}catch(e){}try{mlMap.removeSource(name);}catch(e){}}
-        mlMap.addSource(name,{type:'raster',tiles:[u],tileSize:256,maxzoom:10,attribution:'© RainViewer'});
-        mlMap.addLayer({id:name,type:'raster',source:name,paint:{'raster-opacity':name==='radar'?0.7:0.55}});
+        if(mlMap.getLayer('radar')){try{mlMap.removeLayer('radar');}catch(e){}try{mlMap.removeSource('radar');}catch(e){}}
+        mlMap.addSource('radar',{type:'raster',tiles:[u],tileSize:256,maxzoom:10,attribution:'© RainViewer'});
+        mlMap.addLayer({id:'radar',type:'raster',source:'radar',paint:{'raster-opacity':0.7}});
+        if(!mlMap.__radarBound){mlMap.on('zoom',updateRadarVis);mlMap.__radarBound=true;}
+        updateRadarVis();
       }else if(lfMap){
-        if(lfOverlays[name]){try{lfMap.removeLayer(lfOverlays[name]);}catch(e){}}
-        lfOverlays[name]=L.tileLayer(u,{attribution:'© RainViewer',opacity:name==='radar'?0.7:0.55,maxNativeZoom:10,maxZoom:18});
-        lfOverlays[name].addTo(lfMap);try{lfOverlays[name].bringToFront();}catch(e){}
+        if(lfOverlays.radar){try{lfMap.removeLayer(lfOverlays.radar);}catch(e){}}
+        lfOverlays.radar=L.tileLayer(u,{attribution:'© RainViewer',opacity:0.7,maxZoom:10});  // maxZoom 10 → nothing shown past native zoom
+        lfOverlays.radar.addTo(lfMap);try{lfOverlays.radar.bringToFront();}catch(e){}
       }
     });
+    return;
+  }
+  // Satellite (clouds): NASA GIBS true-colour imagery — free, key-less, reliable (daily).
+  if(name==='satellite'){
+    if(!on){
+      if(useMapLibre&&mlMap){try{mlMap.setLayoutProperty('satellite','visibility','none');}catch(e){}}
+      else if(lfMap&&lfOverlays.satellite){try{lfMap.removeLayer(lfOverlays.satellite);}catch(e){}}
+      return;
+    }
+    const u=gibsSatUrl();
+    if(useMapLibre&&mlMap){
+      if(!mlMap.getLayer('satellite')){
+        mlMap.addSource('satellite',{type:'raster',tiles:[u],tileSize:256,maxzoom:9,attribution:'Imagery © NASA GIBS'});
+        mlMap.addLayer({id:'satellite',type:'raster',source:'satellite',paint:{'raster-opacity':0.6}});
+      }else{try{mlMap.setLayoutProperty('satellite','visibility','visible');}catch(e){}}
+    }else if(lfMap){
+      if(!lfOverlays.satellite)lfOverlays.satellite=L.tileLayer(u,{attribution:'Imagery © NASA GIBS',opacity:0.6,maxNativeZoom:9,maxZoom:18});
+      lfOverlays.satellite.addTo(lfMap);try{lfOverlays.satellite.bringToFront();}catch(e){}
+    }
     return;
   }
   // OpenAIP airspace needs a free API key (see OPENAIP_KEY at the top of the script).
@@ -2070,6 +2196,7 @@ function cullGhostMarkers(){
   setupLongPress();    // touch press-and-hold → drop an ad-hoc takeoff at that point
   addMarkers();        // draw pins immediately (coloured 'caution' until weather lands)
   loadWeather();       // background: fills the strip + recolours pins when done
+  importUtahPGSites(); // background: pull Utah PG/HG sites (ParaglidingEarth) into our launches
   prefetchParks();     // background: cache OSM park outlines so they show instantly on click
   goToMyLocation(true);// ask for location ONCE on open, then zoom straight in
   syncCtrlPanel();setTimeout(syncCtrlPanel,400);window.addEventListener('load',syncCtrlPanel);
