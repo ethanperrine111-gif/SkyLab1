@@ -87,7 +87,7 @@ body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b
 /* rain */
 .fc-r-rain{height:16px;}.fc-r-rain .fc-cell{font-size:9px;font-weight:700;color:#0284c7;}
 /* wind + gusts (coloured cells) */
-.fc-r-wind .fc-cell,.fc-r-gust .fc-cell{font-size:11px;font-weight:700;color:#0f172a;border-right:1px solid rgba(255,255,255,.5);}
+.fc-r-wind .fc-cell,.fc-r-gust .fc-cell{font-size:11px;font-weight:700;color:#0f172a;border-right:none;background:transparent;}
 .fc-r-wind{height:20px;}.fc-r-gust{height:20px;}
 .fc-r-gust .fc-cell{font-weight:600;color:#334155;}
 /* wind direction arrows */
@@ -1048,8 +1048,18 @@ async function loadForecast(){
   fcSeries=series;renderForecast(series);
 }
 // Windy-like colour ramps
-function windColor(v){              // mph → cool→hot
-  return v<5?'#eef6ff':v<9?'#cfe8ff':v<13?'#bdf0d0':v<17?'#fef08a':v<22?'#fdba74':v<28?'#f87171':'#ef4444';
+function windColor(v){              // mph → cool→hot, smoothly interpolated between stops
+  const stops=[[0,'#eef6ff'],[5,'#cfe8ff'],[9,'#bdf0d0'],[13,'#fef08a'],[17,'#fdba74'],[22,'#f87171'],[28,'#ef4444']];
+  const hex=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+  if(v<=stops[0][0])return stops[0][1];
+  if(v>=stops[stops.length-1][0])return stops[stops.length-1][1];
+  for(let i=1;i<stops.length;i++){
+    if(v<=stops[i][0]){
+      const[a,ca]=stops[i-1],[b,cb]=stops[i],t=(v-a)/(b-a),A=hex(ca),B=hex(cb);
+      return`rgb(${Math.round(A[0]+(B[0]-A[0])*t)},${Math.round(A[1]+(B[1]-A[1])*t)},${Math.round(A[2]+(B[2]-A[2])*t)})`;
+    }
+  }
+  return stops[stops.length-1][1];
 }
 function tempColor(t){              // °F text colour
   return t>=85?'#b91c1c':t>=72?'#ea580c':t>=58?'#16a34a':t>=44?'#0891b2':t>=30?'#2563eb':'#4338ca';
@@ -1092,6 +1102,7 @@ function buildForecast(container,series,labels){
   // data cells (no labels — those live in the static column)
   const cell=(i,inner,style)=>`<div class="fc-cell${i===nowIdx?' now':''}${series[i].model!==(series[i-1]||{}).model&&i>0?' mswitch':''}"${style?` style="${style}"`:''}>${inner}</div>`;
   let hrRow='',skyRow='',tempRow='',rainRow='',windRow='',gustRow='',dirRow='',flyRow='';
+  const windVals=[],gustVals=[];
   series.forEach((e,i)=>{
     const d=new Date(e.t),hr=d.getHours();
     const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
@@ -1101,12 +1112,16 @@ function buildForecast(container,series,labels){
     skyRow+=cell(i,skyIcon(e.cloud,e.pop));
     tempRow+=cell(i,`${e.temp}°`,`color:${tempColor(e.temp)}`);
     rainRow+=cell(i,e.pop>=10?e.pop:'');
-    windRow+=cell(i,e.wind,`background:${windColor(e.wind)}`);
-    gustRow+=cell(i,e.gust,`background:${windColor(e.gust)}`);
+    windRow+=cell(i,e.wind);
+    gustRow+=cell(i,e.gust);
+    windVals.push(e.wind);gustVals.push(e.gust);
     dirRow+=cell(i,(fcTarget.site&&fcTarget.site.facing!=null)?windDirCellSVG(e.dir,fcTarget.site,dc):dirArrowCell(e.dir));
     flyRow+=cell(i,'',`background:${dc}`);
   });
-  // row order: [rowClass, frozen label, data cells]
+  // Continuous horizontal gradient across a whole row: each cell's centre is a
+  // colour stop, so neighbouring values fade smoothly into each other (no seams).
+  const rowGrad=vals=>{const n=vals.length;if(!n)return'';return`background:linear-gradient(to right,${vals.map((v,i)=>`${windColor(v)} ${(((i+0.5)/n)*100).toFixed(2)}%`).join(',')});`;};
+  // row order: [rowClass, frozen label, data cells, optional data-row style]
   const rows=[
     ['fc-r-day',`<span class="fc-day-name">${dayCols[nowIdx>0?nowIdx:0]||''}</span>`,dayRow],
     ['fc-r-model',`<span class="fc-model-name">${models[nowIdx>0?nowIdx:0]||'Model'}</span>`,modelRow],
@@ -1114,15 +1129,15 @@ function buildForecast(container,series,labels){
     ['fc-r-sky','Sky',skyRow],
     ['fc-r-temp',labels.temp,tempRow],
     ['fc-r-rain',labels.rain,rainRow],
-    ['fc-r-wind','Wind',windRow],
-    ['fc-r-gust','Gusts',gustRow],
+    ['fc-r-wind','Wind',windRow,rowGrad(windVals)],
+    ['fc-r-gust','Gusts',gustRow,rowGrad(gustVals)],
     ['fc-r-dir',labels.dir,dirRow],
     ['fc-r-fly','Fly',flyRow]
   ];
   let labelsHTML='',dataHTML='';
-  rows.forEach(([cls,lbl,cells])=>{
+  rows.forEach(([cls,lbl,cells,rowStyle])=>{
     labelsHTML+=`<div class="fc-row ${cls}"><div class="fc-lbl">${lbl}</div></div>`;
-    dataHTML+=`<div class="fc-row ${cls}">${cells}</div>`;
+    dataHTML+=`<div class="fc-row ${cls}"${rowStyle?` style="${rowStyle}"`:''}>${cells}</div>`;
   });
   container.innerHTML=`<div class="fc-labels">${labelsHTML}</div><div class="fc-scroll"><div class="fc-data">${dataHTML}</div></div>`;
   // wire scroll: keep the now-column near the left, and update the frozen Model name.
