@@ -91,7 +91,7 @@ body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b
 .fc-r-wind{height:20px;}.fc-r-gust{height:20px;}
 .fc-r-gust .fc-cell{font-weight:600;color:#334155;}
 /* wind direction arrows */
-.fc-r-dir{height:22px;}
+.fc-r-dir{height:28px;}
 /* flyability bar */
 .fc-r-fly{height:14px;}.fc-r-fly .fc-cell{padding:0;border-right:1px solid rgba(255,255,255,.4);}
 .fc-r-fly .fc-lbl{background:#f8fafc;}
@@ -1343,7 +1343,7 @@ function windCompassSVG(site,col,size,w){
 // Tiny per-hour wind dial for the forecast: same north-up compass as the pin, showing the
 // site's allowable-wind wedge (coloured by that hour's fly status) plus the hour's wind arrow.
 function windDirCellSVG(dir,site,col){
-  const size=18,c=size/2,r=c-1.5;
+  const size=26,c=size/2,r=c-1.5;
   return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:block">`+
     compassInner(c,c,r,col,site,typeof dir==='number'?dir:null)+`</svg>`;
 }
