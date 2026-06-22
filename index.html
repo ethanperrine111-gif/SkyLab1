@@ -57,6 +57,8 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 /* Model provenance band — shows where HRRR ends and GFS begins */
 .fc-r-model{height:16px;}
 .fc-mseg{flex-shrink:0;display:flex;align-items:center;padding-left:8px;font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#1e40af;background:#dbeafe;border-right:1px solid #bfdbfe;white-space:nowrap;overflow:hidden;}
+/* Keep the model name visible while scrolling: the label sticks just right of the pinned label column, clipped to its own segment. */
+.fc-mseg-lbl{position:sticky;left:var(--fcl);z-index:5;background:inherit;padding-right:6px;}
 .fc-mseg.switch{border-left:2px solid #2563eb;color:#0f172a;background:#bfdbfe;}
 body.dark .fc-mseg{background:#172554;color:#bfdbfe;border-color:#1e3a8a;}
 body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b82f6;}
@@ -1061,7 +1063,7 @@ function renderForecast(series){
   const mgroups=[];
   series.forEach(e=>{const last=mgroups[mgroups.length-1];if(last&&last.label===e.model)last.count++;else mgroups.push({label:e.model||'',count:1});});
   let modelRow='<div class="fc-lbl">Model</div>';
-  mgroups.forEach((g,gi)=>{modelRow+=`<div class="fc-mseg${gi>0?' switch':''}" style="width:calc(var(--fcw) * ${g.count})">${gi>0?'→ ':''}${g.label}</div>`;});
+  mgroups.forEach((g,gi)=>{modelRow+=`<div class="fc-mseg${gi>0?' switch':''}" style="width:calc(var(--fcw) * ${g.count})"><span class="fc-mseg-lbl">${gi>0?'→ ':''}${g.label}</span></div>`;});
   let hrRow='<div class="fc-lbl">Hour</div>',skyRow='<div class="fc-lbl">Sky</div>',tempRow='<div class="fc-lbl">Temp °F</div>',
       rainRow='<div class="fc-lbl">Rain %</div>',windRow='<div class="fc-lbl">Wind</div>',gustRow='<div class="fc-lbl">Gusts</div>',
       dirRow='<div class="fc-lbl">Wind dir</div>',flyRow='<div class="fc-lbl">Fly</div>';
@@ -1116,7 +1118,7 @@ function renderForecast(series){
     const ppMgroups=[];
     ppS.forEach(e=>{const last=ppMgroups[ppMgroups.length-1];if(last&&last.label===e.model)last.count++;else ppMgroups.push({label:e.model||'',count:1});});
     let ppModel='<div class="fc-lbl">Model</div>';
-    ppMgroups.forEach((g,gi)=>{ppModel+=`<div class="fc-mseg${gi>0?' switch':''}" style="width:calc(var(--fcw) * ${g.count})">${gi>0?'→ ':''}${g.label}</div>`;});
+    ppMgroups.forEach((g,gi)=>{ppModel+=`<div class="fc-mseg${gi>0?' switch':''}" style="width:calc(var(--fcw) * ${g.count})"><span class="fc-mseg-lbl">${gi>0?'→ ':''}${g.label}</span></div>`;});
     let ppHr='<div class="fc-lbl">Hour</div>',ppSky='<div class="fc-lbl">Sky</div>',
         ppTemp='<div class="fc-lbl">Temp</div>',ppRain='<div class="fc-lbl">Rain%</div>',
         ppWind='<div class="fc-lbl">Wind</div>',ppGust='<div class="fc-lbl">Gusts</div>',
@@ -1278,8 +1280,7 @@ function windSpecHTML(site){
     `<div class="ppwind-row"><span class="ppwind-k">Wind direction</span><span class="ppwind-v">${windDirText(site)}</span></div>`+
     `<div class="ppwind-row"><span class="ppwind-k">Ideal speed</span><span class="ppwind-v">${L.idealLo}–${L.idealHi} mph</span></div>`+
     `<div class="ppwind-row"><span class="ppwind-k">Max speed</span><span class="ppwind-v">${L.max} mph</span></div>`+
-    `<div class="ppwind-row"><span class="ppwind-k">Max gust spread</span><span class="ppwind-v">${L.gust} mph</span></div>`+
-    `<div class="ppwind-note">${disc} limits for a ${site.rating} site. Wind direction is where the wind blows FROM; speeds are rating-based defaults — fly only within both.</div></div>`;
+    `<div class="ppwind-row"><span class="ppwind-k">Max gust spread</span><span class="ppwind-v">${L.gust} mph</span></div></div>`;
 }
 function compassPt(cx,cy,r,deg){const a=deg*Math.PI/180;return[cx+r*Math.sin(a),cy-r*Math.cos(a)];}  // bearing → screen xy (N up)
 // Inner compass graphic: a north-up dial with the allowable-wind wedge (coloured by fly-status)
@@ -1305,7 +1306,6 @@ function compassInner(cx,cy,r,col,site,windDir){
   return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#f8fafc"/>`+
     wedge+
     `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(15,23,42,.35)" stroke-width="${(0.8*sw).toFixed(2)}"/>`+
-    `<line x1="${cx}" y1="${(cy-r).toFixed(1)}" x2="${cx}" y2="${(cy-r+2.2*sw).toFixed(1)}" stroke="rgba(15,23,42,.55)" stroke-width="${(1.1*sw).toFixed(2)}"/>`+
     `<line x1="${tail[0].toFixed(1)}" y1="${tail[1].toFixed(1)}" x2="${back[0].toFixed(1)}" y2="${back[1].toFixed(1)}" stroke="${arrowCol}" stroke-width="${(2*sw).toFixed(2)}" stroke-linecap="round"/>`+
     `<polygon points="${cx.toFixed(1)},${cy.toFixed(1)} ${f2(wL)} ${f2(wR)}" fill="${arrowCol}"/>`;
 }
