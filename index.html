@@ -1542,7 +1542,7 @@ function closeSidebar(){
 }
 
 // ── MapLibre 3D map ───────────────────────────────────────────────────────────
-function initMapLibre(){
+function initMapLibre(timeoutMs){
   return new Promise((resolve,reject)=>{
     try{
       const m=new maplibregl.Map({
@@ -1553,7 +1553,7 @@ function initMapLibre(){
       let settled=false;
       // Resolve on 'style.load' (style ready ≈300ms) — NOT 'load', which also waits for every
       // viewport tile to go idle and can hang on flaky vector tiles, wrongly forcing the 2D fallback.
-      const timeout=setTimeout(()=>{if(settled)return;settled=true;try{m.remove();}catch(e){}reject(new Error('timeout'));},15000);
+      const timeout=setTimeout(()=>{if(settled)return;settled=true;try{m.remove();}catch(e){}reject(new Error('timeout'));},timeoutMs||12000);
       m.on('style.load',()=>{
         if(settled)return;settled=true;
         clearTimeout(timeout);
@@ -1936,13 +1936,26 @@ function cullGhostMarkers(){
   loadLaunchPos();     // apply any persisted launch-pin moves/edits before drawing markers
   initLZStore();       // editable LZ store (localStorage), feeds markers + connections
   document.getElementById('mode-badge').textContent='Loading 3D map...';
-  try{
-    await initMapLibre();
-    useMapLibre=true;
-    document.getElementById('mode-badge').textContent='🏔 3D terrain active · right-drag to tilt';
-    setTimeout(()=>document.getElementById('mode-badge').style.opacity='0',4000);
-  }catch(e){
-    console.warn('MapLibre failed, using Leaflet:',e);
+  // Hard reloads often leave the GPU/WebGL context not-yet-ready, so the first MapLibre init
+  // can throw or hang and (pre-fix) silently dropped us to the Leaflet 2D fallback — which hides
+  // the 2D/Layers buttons and 3D terrain. Retry a few times before giving up so a transient
+  // failure on reload doesn't strand the user in 2D.
+  let mapOk=false;
+  for(let attempt=1;attempt<=3&&!mapOk;attempt++){
+    try{
+      if(typeof maplibregl==='undefined')throw new Error('maplibre script not ready');
+      await initMapLibre(attempt<3?7000:11000);
+      useMapLibre=true;mapOk=true;
+      document.getElementById('mode-badge').textContent='🏔 3D terrain active · right-drag to tilt';
+      setTimeout(()=>document.getElementById('mode-badge').style.opacity='0',4000);
+    }catch(e){
+      console.warn('MapLibre attempt '+attempt+' failed:',(e&&e.message)||e);
+      const mc=document.getElementById('map');if(mc)mc.innerHTML='';   // clear any half-built canvas before retrying
+      if(attempt<3){document.getElementById('mode-badge').textContent='Loading 3D map… (retry '+attempt+')';await new Promise(r=>setTimeout(r,500));}
+    }
+  }
+  if(!mapOk){
+    console.warn('MapLibre failed after retries, using Leaflet 2D fallback');
     initLeaflet();   // no auto-geolocate on load — use 📍 My location
   }
   setupLongPress();    // touch press-and-hold → drop an ad-hoc takeoff at that point
