@@ -207,7 +207,7 @@ body.dark .ppwind-note{color:#94a3b8;}
 .pp-sat{position:relative;overflow:hidden;}
 .pp-sat .maplibregl-canvas{border-radius:8px;}
 .pp-sat-tag{position:absolute;left:6px;bottom:5px;z-index:2;font-size:9px;color:#fff;background:rgba(0,0,0,.42);padding:1px 6px;border-radius:7px;pointer-events:none;}
-.thumb-compass{position:absolute;right:6px;bottom:5px;z-index:3;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
+.thumb-compass{position:absolute;right:6px;bottom:5px;z-index:3;pointer-events:auto;touch-action:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
 .oa-pop{font-size:12px;color:#0f172a;line-height:1.45;min-width:120px;}
 /* topbar model selector */
 #topbar-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
@@ -660,13 +660,14 @@ function fetchStationObs(id){
   return fetch(`https://api.weather.gov/stations/${id}/observations/latest`,{headers:{'Accept':'application/geo+json'}})
     .then(r=>r.ok?r.json():null).then(j=>j&&j.properties).catch(()=>null);
 }
-function obsHTML(name,o){
-  if(!o)return`<b>🌡 ${name}</b><br><span style="color:#64748b;">No current observation.</span>`;
+function stationLink(id){return id?`<br><a href="https://forecast.weather.gov/data/obhistory/${id}.html" target="_blank" rel="noopener" style="color:#2563eb;font-weight:700;">Open full station data →</a>`:'';}
+function obsHTML(name,o,id){
+  if(!o)return`<b>🌡 ${name}</b><br><span style="color:#64748b;">No current observation.</span>${stationLink(id)}`;
   const cT=o.temperature&&o.temperature.value,tF=cT!=null?Math.round(cT*9/5+32)+'°F':'—';
   const wd=o.windDirection&&o.windDirection.value,ws=o.windSpeed&&o.windSpeed.value,wg=o.windGust&&o.windGust.value;
   const mph=v=>v!=null?Math.round(v*0.621):null;   // NWS windSpeed is km/h
   const wind=ws!=null?`${wd!=null?d2c(wd)+' '+Math.round(wd)+'° · ':''}${mph(ws)} mph${wg!=null?' (gust '+mph(wg)+')':''}`:'calm / —';
-  return`<b>🌡 ${name}</b><br>Wind: ${wind}<br>Temp: ${tF}${o.textDescription?`<br><span style="color:#64748b;font-size:11px;">${o.textDescription}</span>`:''}`;
+  return`<b>🌡 ${name}</b><br>Wind: ${wind}<br>Temp: ${tF}${o.textDescription?`<br><span style="color:#64748b;font-size:11px;">${o.textDescription}</span>`:''}${stationLink(id)}`;
 }
 const FEATURE_LAYERS={
   obstacles:{color:'#ef4444',marker:'circle',fetch:fetchObstacles},
@@ -720,7 +721,7 @@ function renderFeatures(name,pts){
       const f=e.features&&e.features[0];if(!f)return;
       const pr=f.properties||{},ll=f.geometry.coordinates.slice();
       const pop=new maplibregl.Popup({offset:12,closeButton:true}).setLngLat(ll);
-      if(name==='wx'){pop.setHTML('<div class="oa-pop"><b>🌡 '+(pr.label||'Station')+'</b><br>Loading…</div>').addTo(mlMap);fetchStationObs(pr.sid).then(o=>pop.setHTML('<div class="oa-pop">'+obsHTML(pr.label||'Station',o)+'</div>'));}
+      if(name==='wx'){pop.setHTML('<div class="oa-pop"><b>🌡 '+(pr.label||'Station')+'</b><br>Loading…</div>').addTo(mlMap);fetchStationObs(pr.sid).then(o=>pop.setHTML('<div class="oa-pop">'+obsHTML(pr.label||'Station',o,pr.sid)+'</div>'));}
       else pop.setHTML('<div class="oa-pop">'+emoji+(pr.label||'')+'</div>').addTo(mlMap);
     });
     mlMap.on('mouseenter',cid,()=>mlMap.getCanvas().style.cursor='pointer');
@@ -732,7 +733,7 @@ function renderFeatures(name,pts){
       if(cfg.marker==='runway')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:RUNWAY_SVG,className:'',iconSize:[22,22],iconAnchor:[11,11]})});
       else if(cfg.marker==='vane')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[26,26],iconAnchor:[5,23]})});
       else mk=L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:1.5,fillColor:cfg.color,fillOpacity:0.9});
-      if(name==='wx'){mk.bindPopup('<b>🌡 '+(p.name||'Station')+'</b><br>Loading…');mk.on('click',()=>fetchStationObs(p.id).then(o=>mk.setPopupContent(obsHTML(p.name||'Station',o))));}
+      if(name==='wx'){mk.bindPopup('<b>🌡 '+(p.name||'Station')+'</b><br>Loading…');mk.on('click',()=>fetchStationObs(p.id).then(o=>mk.setPopupContent(obsHTML(p.name||'Station',o,p.id))));}
       else mk.bindPopup(emoji+(p.name||''));
       return mk;
     }));
@@ -1141,15 +1142,36 @@ function mountThumb(site,facing){
       mini.on('load',()=>{try{mini.setTerrain({source:'dem',exaggeration:1.5});}catch(e){}});
       mini.on('error',()=>{});
       miniMap=mini;
-      // Small compass (bottom-right) showing which way this 3D view is looking. The rose is
-      // counter-rotated by the camera bearing so N points true north; the fixed up-arrow is the look direction.
-      const comp=document.createElement('div');comp.className='thumb-compass';
-      comp.innerHTML=`<svg viewBox="0 0 40 40" width="38" height="38"><circle cx="20" cy="20" r="18" fill="rgba(0,0,0,.5)" stroke="rgba(255,255,255,.55)" stroke-width="1.2"/><path d="M20 2 L24 9 L20 7 L16 9 Z" fill="#38bdf8"/><g transform="rotate(${-brg} 20 20)"><path d="M20 6 L23 20 L20 17 L17 20 Z" fill="#ef4444"/><path d="M20 34 L17 20 L20 23 L23 20 Z" fill="#e5e7eb"/><text x="20" y="14" text-anchor="middle" font-size="7" font-weight="800" fill="#fff" font-family="Arial">N</text></g></svg>`;
-      c.appendChild(comp);
+      // Interactive compass (bottom-right): N fixed up; the blue dot/needle is the view
+      // direction. Grab the dot and scrub it around to rotate the 3D camera in real time.
+      buildThumbCompass(c,brg);
     }catch(e){c.innerHTML=`<img src="${satUrl(site.lat,site.lon)}" style="width:100%;height:148px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'"/>`;}
   }else{
     c.innerHTML=`<img src="${satUrl(site.lat,site.lon)}" style="width:100%;height:148px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'"/>`;
   }
+}
+// Draggable thumbnail compass. N stays up (true north); the blue needle/dot is the camera
+// look-direction. Scrubbing the dot rotates the live 3D mini-map's bearing.
+function buildThumbCompass(container,brg){
+  const wrap=document.createElement('div');wrap.className='thumb-compass';
+  wrap.innerHTML=`<svg viewBox="0 0 40 40" width="40" height="40">
+    <circle cx="20" cy="20" r="17" fill="rgba(0,0,0,.5)" stroke="rgba(255,255,255,.55)" stroke-width="1.2"/>
+    <line x1="20" y1="20" x2="20" y2="6" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
+    <text x="20" y="10" text-anchor="middle" font-size="7" font-weight="800" fill="#ef4444" font-family="Arial">N</text>
+    <line class="tc-look" x1="20" y1="20" x2="20" y2="20" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+    <circle class="tc-dot" r="3.6" fill="#38bdf8" stroke="#fff" stroke-width="1.4" style="cursor:grab"/>
+  </svg>`;
+  container.appendChild(wrap);
+  const svg=wrap.querySelector('svg'),dot=wrap.querySelector('.tc-dot'),look=wrap.querySelector('.tc-look');
+  const R=14,CX=20,CY=20;
+  const setBrg=b=>{b=((b%360)+360)%360;const a=b*Math.PI/180,x=CX+R*Math.sin(a),y=CY-R*Math.cos(a);dot.setAttribute('cx',x);dot.setAttribute('cy',y);look.setAttribute('x2',x);look.setAttribute('y2',y);wrap.__brg=b;};
+  setBrg(brg);
+  const angleAt=ev=>{const r=svg.getBoundingClientRect();const dx=ev.clientX-r.left-r.width/2,dy=ev.clientY-r.top-r.height/2;return((Math.atan2(dx,-dy)*180/Math.PI)%360+360)%360;};
+  let dragging=false;
+  dot.addEventListener('pointerdown',ev=>{ev.preventDefault();dragging=true;dot.style.cursor='grabbing';try{dot.setPointerCapture(ev.pointerId);}catch(e){}});
+  dot.addEventListener('pointermove',ev=>{if(!dragging)return;const b=angleAt(ev);setBrg(b);if(miniMap){try{miniMap.setBearing(b);}catch(e){}}});
+  const end=ev=>{dragging=false;dot.style.cursor='grab';try{dot.releasePointerCapture(ev.pointerId);}catch(e){}};
+  dot.addEventListener('pointerup',end);dot.addEventListener('pointercancel',end);
 }
 
 // ── Layer panel (base maps + VFR sectional overlay) ───────────────────────────
