@@ -1808,8 +1808,9 @@ function setForecastSite(lat,lon,label,site){
     setTimeout(resizeActiveMap,260);
   }
   loadForecast();
-  // If the comparison is open, refresh it for the newly selected site.
-  try{const p=document.getElementById('model-compare');if(p&&p.classList.contains('open'))openModelCompare();}catch(e){}
+  // Desktop: if the top comparison panel is open, refresh it for the newly selected site.
+  // (On mobile the comparison transfers into the site menu instead — handled in showPopup.)
+  try{const p=document.getElementById('model-compare');if(p&&p.classList.contains('open')&&!isMobileView())openModelCompare();}catch(e){}
 }
 async function fetchSeries(model,days){
   const hPa=windAltHPa();
@@ -2446,6 +2447,13 @@ function showPopup(lat,lon,html){
   document.body.classList.add('popup-open');
   const r=document.getElementById('sb-reopen');if(r)r.style.display='none';   // panel is open now
   openPopup=true;
+  // Mobile: if the top comparison panel was open, transfer it straight into this site's menu
+  // forecast slot (so there's only one comparison, now scoped to the clicked site).
+  if(isMobileView()&&document.getElementById('model-compare').classList.contains('open')){
+    closeModelCompare();
+    const sel=document.querySelector('.pp-fc-model');if(sel)sel.value='__compare__';
+    openSiteCompare(document.querySelector('.pp-fc-wrap'));
+  }
   // shift the map left so the clicked point isn't hidden behind the sidebar
   if(useMapLibre&&mlMap&&lat&&lon){const rp=window.innerWidth<=768?0:330;mlMap.easeTo({center:[lon,lat],padding:{right:rp,left:0,top:0,bottom:0},duration:600});}
   else if(lfMap&&lat&&lon){lfMap.panTo([lat,lon]);}
