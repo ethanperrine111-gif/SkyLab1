@@ -194,6 +194,9 @@ body.probe-off #ctrl-panel{top:8px;}
 .pp-fc-model{font-size:11px;font-weight:700;color:#1e293b;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:3px 6px;cursor:pointer;text-transform:none;letter-spacing:0;}
 body.dark .pp-fc-model{background:#1e293b;color:#e2e8f0;border-color:#334155;}
 .pp-fc-wrap{display:flex;overflow:hidden;border-radius:8px;border:1px solid #e2e8f0;background:#fff;--fcw:38px;--fcl:64px;margin-bottom:7px;}
+/* When the site menu's forecast slot is showing the model comparison instead of the 2-week strip. */
+.pp-fc-wrap.pp-cmp{display:block;overflow-x:auto;}
+.pp-fc-wrap.pp-cmp .cmp-foot{padding:6px 8px;}
 .pp-fc-wrap .fc-scroll{scrollbar-width:thin;}
 .pp-fc-wrap .fc-scroll::-webkit-scrollbar{height:5px;}
 .pp-fc-wrap .fc-scroll::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:3px;}
@@ -1353,7 +1356,7 @@ function siteBioHTML(site){
 }
 // Weather-model selector that sits next to the in-sidebar "2-Week Forecast" heading.
 // The whole 2-week section is mobile-only (hidden ≥769px), so this dropdown only appears on mobile.
-function fcModelSelectHTML(){return`<select class="pp-fc-model" title="Weather model" onchange="setModel(this.value)">${WX_MODELS.map(([v,l])=>`<option value="${v}"${v===currentModel?' selected':''}>${l}</option>`).join('')}</select>`;}
+function fcModelSelectHTML(){return`<select class="pp-fc-model" title="Weather model" onchange="siteMenuModel(this.value,this)">${WX_MODELS.map(([v,l])=>`<option value="${v}"${v===currentModel?' selected':''}>${l}</option>`).join('')}<option value="__compare__">⚖ Compare models</option></select>`;}
 function launchPop(site,w){
   const s=w?flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir):'caution';
   const dir=`<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to trailhead</a>`;
@@ -1651,6 +1654,18 @@ function toggleModelCompare(){
   const p=document.getElementById('model-compare');
   if(p&&p.classList.contains('open'))closeModelCompare();else openModelCompare();
 }
+// Fetch all comparison models for the current forecast site (falls back to cache when rate-limited).
+// Returns 'live', 'cached', or false. Populates cmpData/cmpAxis.
+async function loadCompareData(){
+  const results=await Promise.all(COMPARE_MODELS.map(([m,l])=>fetchCompareModel(m,l)));
+  if(results.some(r=>Object.keys(r.byTime).length>0)){
+    cmpData=results;cmpAxis=computeCmpAxis(results);saveCmpCache();return 'live';
+  }
+  // Out of pulls / rate-limited — fall back to the last cached comparison.
+  const c=loadCmpCache();
+  if(c&&c.data){cmpData=c.data;cmpAxis=computeCmpAxis(c.data);cmpData._cachedTs=c.ts;return 'cached';}
+  cmpData=results;cmpAxis=[];return false;
+}
 async function openModelCompare(){
   const panel=document.getElementById('model-compare');if(!panel)return;
   // Replace the forecast + menu popup with the comparison.
@@ -1661,24 +1676,17 @@ async function openModelCompare(){
   document.getElementById('cmp-body').innerHTML='<div class="cmp-load">Loading models…</div>';
   // Auto-show the Windy-style pin on the map as soon as the comparison opens.
   rocketOn=true;const rb=document.getElementById('rocket-btn');if(rb){rb.classList.add('active');rb.textContent='📍 Hide map pin';}
-  const results=await Promise.all(COMPARE_MODELS.map(([m,l])=>fetchCompareModel(m,l)));
-  const got=results.some(r=>Object.keys(r.byTime).length>0);
-  if(got){
-    cmpData=results;cmpAxis=computeCmpAxis(results);saveCmpCache();
-  }else{
-    // Out of pulls / rate-limited — fall back to the last cached comparison.
-    const c=loadCmpCache();
-    if(c&&c.data){
-      cmpData=c.data;cmpAxis=computeCmpAxis(c.data);
-      document.getElementById('cmp-title').textContent='Models · '+(c.label||fcTarget.label||'')+' · cached '+ageStr(c.ts)+' ago';
-    }else{cmpData=results;cmpAxis=[];}
-  }
+  const state=await loadCompareData();
+  if(state==='cached')document.getElementById('cmp-title').textContent='Models · '+(fcTarget.label||'')+' · cached '+ageStr(loadCmpCache().ts)+' ago';
   renderModelCompare();
   if(rocketOn)drawRocket();
 }
 function renderModelCompare(){
-  const body=document.getElementById('cmp-body');if(!body)return;
-  if(!cmpAxis.length||!cmpData){body.innerHTML='<div class="cmp-load">No model data right now (rate-limited?). Try again shortly.</div>';return;}
+  const body=document.getElementById('cmp-body');if(body)body.innerHTML=compareGridHTML();
+}
+// Build the comparison grid markup from cmpData/cmpAxis (shared by the top panel and the site menu).
+function compareGridHTML(){
+  if(!cmpAxis.length||!cmpData)return '<div class="cmp-load">No model data right now (rate-limited?). Try again shortly.</div>';
   let hdr='<div class="cmp-row cmp-head"><div class="cmp-lbl"></div>';
   let lastDay='';
   cmpAxis.forEach(t=>{const d=new Date(t),hr=d.getHours();const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
@@ -1700,8 +1708,25 @@ function renderModelCompare(){
       rows+=`<div class="cmp-c">${dirArrowCell(e.dir)}<span class="cmp-w">${cvWind(e.wind)}</span><span class="cmp-g">${cvWind(e.gust)}</span></div>`;});
     rows+='</div>';
   });
-  body.innerHTML='<div class="cmp-scroll"><div class="cmp-grid">'+hdr+rows+'</div></div>'+
+  return '<div class="cmp-scroll"><div class="cmp-grid">'+hdr+rows+'</div></div>'+
     `<div class="cmp-foot">Top number = wind, bottom = gust (${windU()}) · colour = speed · arrow points the way the wind blows</div>`;
+}
+// Render the comparison inline inside a site menu's 2-Week-Forecast slot (mobile).
+async function openSiteCompare(wrap){
+  if(!wrap)return;
+  wrap.classList.add('pp-cmp');
+  wrap.innerHTML='<div class="cmp-load">Loading models…</div>';
+  await loadCompareData();
+  // The menu may have been closed/replaced while fetching — re-check it's still in the DOM.
+  if(!wrap.isConnected)return;
+  wrap.innerHTML=compareGridHTML();
+}
+// Model dropdown inside a site menu: real models reload the 2-week forecast; "Compare" renders inline.
+function siteMenuModel(m,sel){
+  const wrap=sel.closest('.pp')&&sel.closest('.pp').querySelector('.pp-fc-wrap');
+  if(m==='__compare__'){openSiteCompare(wrap);return;}
+  if(wrap)wrap.classList.remove('pp-cmp');
+  setModel(m);
 }
 function closeModelCompare(){
   const p=document.getElementById('model-compare');if(p)p.classList.remove('open');
@@ -2014,7 +2039,7 @@ function renderForecast(series){
   buildForecast(fcEl,series,{temp:'°F',rain:'Rain %',dir:'Wind dir'});
   // Also render the mini forecast inside an open launch/LZ popup, if present.
   const ppWrap=document.querySelector('.pp-fc-wrap');
-  if(ppWrap)buildForecast(ppWrap,series.slice(0,336),{temp:'°F',rain:'Rain%',dir:'Direction'});
+  if(ppWrap&&!ppWrap.classList.contains('pp-cmp'))buildForecast(ppWrap,series.slice(0,336),{temp:'°F',rain:'Rain%',dir:'Direction'});
 }
 // "Now" button: smooth-scroll every visible forecast back to the current-hour column.
 function forecastNow(){
