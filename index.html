@@ -122,7 +122,9 @@ body.dark #model-compare{background:#0f172a;color:#e2e8f0;border-color:#1e293b;}
 .cmp-actions{display:flex;gap:8px;}
 #rocket-btn{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer;}
 #rocket-btn.active{background:#2563eb;border-color:#2563eb;}
-#cmp-close{background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer;}
+#cmp-back{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer;white-space:nowrap;}
+#cmp-back:hover{background:rgba(255,255,255,.26);}
+body.compare-open #fc-compare{background:rgba(255,255,255,.32);border-color:rgba(255,255,255,.5);}
 #cmp-body{flex:1;overflow:auto;padding:8px;}
 .cmp-load{padding:30px;text-align:center;color:#64748b;font-size:14px;}
 .cmp-scroll{overflow-x:auto;}
@@ -188,7 +190,9 @@ body.probe-off #ctrl-panel{top:8px;}
 .pplz{background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:7px 9px;margin-top:5px;font-size:11px;color:#1e40af;}
 .ppreach{background:#fefce8;border:1px solid #fde047;border-radius:7px;padding:5px 9px;font-size:11px;color:#713f12;margin-bottom:6px;font-weight:600;}
 .ppnote{font-size:10px;color:#aaa;margin-top:5px;line-height:1.4;}
-.pp-fc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin:8px 0 2px;}
+.pp-fc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin:8px 0 2px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.pp-fc-model{font-size:11px;font-weight:700;color:#1e293b;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:3px 6px;cursor:pointer;text-transform:none;letter-spacing:0;}
+body.dark .pp-fc-model{background:#1e293b;color:#e2e8f0;border-color:#334155;}
 .pp-fc-wrap{display:flex;overflow:hidden;border-radius:8px;border:1px solid #e2e8f0;background:#fff;--fcw:38px;--fcl:64px;margin-bottom:7px;}
 .pp-fc-wrap .fc-scroll{scrollbar-width:thin;}
 .pp-fc-wrap .fc-scroll::-webkit-scrollbar{height:5px;}
@@ -456,6 +460,9 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   .flybtn,.dirbtn{padding:12px;font-size:14px;}
   /* Floating panels: never overflow the viewport, scroll if tall */
   #menu-panel{left:12px;right:12px;max-width:none;max-height:58vh;overflow-y:auto;}
+  /* On mobile the Compare button is folded into the model dropdown, so hide the standalone button. */
+  #fc-compare{display:none;}
+  #model-compare{max-height:50vh;}
   #layer-panel{width:210px;max-height:calc(100dvh - 72px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:16px;}  /* fit within the viewport from its anchor so all rows are reachable by scrolling */
   /* Detail sidebar takes the full screen on a phone */
   #sidebar{width:100%;max-width:100%;}
@@ -487,14 +494,15 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <option value="icon_seamless">ICON</option>
         <option value="gem_seamless">GEM</option>
         <option value="best_match">Best match</option>
+        <option value="__compare__">⚖ Compare models</option>
       </select>
-      <button id="fc-compare" onclick="openModelCompare()" title="Compare weather models side by side">⚖ Compare</button>
+      <button id="fc-compare" onclick="toggleModelCompare()" title="Compare weather models side by side">⚖ Compare</button>
       <button id="fc-toggle" onclick="toggleForecast()" title="Show/hide forecast" aria-label="Toggle forecast">▴</button>
     </div>
   </div>
   <div id="forecast"><div class="nb-load">Loading forecast…</div></div>
   <div id="model-compare">
-    <div id="cmp-bar"><span id="cmp-title">Model comparison</span><div class="cmp-actions"><button id="rocket-btn" onclick="toggleRocket()">📍 Show on map</button><button id="cmp-close" onclick="closeModelCompare()" title="Close">✕</button></div></div>
+    <div id="cmp-bar"><span id="cmp-title">Model comparison</span><div class="cmp-actions"><button id="rocket-btn" onclick="toggleRocket()">📍 Show on map</button><button id="cmp-back" onclick="closeModelCompare()" title="Back to forecast">⚖ Compare</button></div></div>
     <div id="cmp-body"><div class="cmp-load">Loading models…</div></div>
   </div>
   <div id="map-wrap">
@@ -1343,18 +1351,21 @@ function siteBioHTML(site){
   const notes=site.desc?`<details class="ppnotes"><summary>📋 Notes</summary><p>${site.desc}</p></details>`:'';
   return`<div class="ppbio"><div class="ppbio-h">▲ Launch details</div>${factGrid}${info}${haz}${notes}</div>`;
 }
+// Weather-model selector that sits next to the in-sidebar "2-Week Forecast" heading.
+// The whole 2-week section is mobile-only (hidden ≥769px), so this dropdown only appears on mobile.
+function fcModelSelectHTML(){return`<select class="pp-fc-model" title="Weather model" onchange="setModel(this.value)">${WX_MODELS.map(([v,l])=>`<option value="${v}"${v===currentModel?' selected':''}>${l}</option>`).join('')}</select>`;}
 function launchPop(site,w){
   const s=w?flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir):'caution';
   const dir=`<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to trailhead</a>`;
   const bio=siteBioHTML(site);
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${windSpecHTML(site)}${bio}${flyBtn}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${windSpecHTML(site)}${bio}${flyBtn}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
   const bioHTML=lzBio?`<div class="ppbio"><div class="ppbio-h">📋 About this LZ</div><p>${lzBio}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · Landing Zone</div>${wxG(w)}<div class="pp-fc-title">2-Week Forecast</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · Landing Zone</div>${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
 }
 
 // ── 3D mini-map thumbnail (popup) ─────────────────────────────────────────────
@@ -1564,7 +1575,18 @@ async function fetchHRRRBatch(sites,fallback){
     });
   }
 }
-function setModel(m){currentModel=m;loadWeather();}
+function setModel(m){
+  if(m==='__compare__'){
+    // "Compare models" is an entry in the model dropdown — open the comparison and snap the
+    // dropdown back to the active model so it doesn't stick on the Compare row.
+    document.querySelectorAll('#model-select,.nb-model,.pp-fc-model').forEach(s=>{s.value=currentModel;});
+    openModelCompare();return;
+  }
+  if(document.getElementById('model-compare').classList.contains('open'))closeModelCompare();
+  currentModel=m;
+  document.querySelectorAll('#model-select,.nb-model,.pp-fc-model').forEach(s=>{s.value=m;});
+  loadWeather();
+}
 function updateVane(w,label){if(!w)return;_lastVane={w,label};if(label)document.getElementById('wvt').textContent=label;document.getElementById('varrow').setAttribute('transform',`rotate(${w.dir},34,34)`);document.getElementById('vspeed').textContent=cvWind(w.wind)+' '+windU();document.getElementById('vdir').textContent=d2c(w.dir)+' wind';document.getElementById('vgust').textContent='Gust '+(w.gusts!=null?cvWind(w.gusts):'—')+' '+windU();const sc=flyS(w.wind,w.gusts??w.wind,w.cloud??0,w.temp??60);document.getElementById('wind-vane').style.borderTopColor=sc==='flyable'?'#22c55e':sc==='caution'?'#facc15':'#ef4444';syncCtrlPanel();}  // re-match the 2D/Layers row after the wind box resizes with live data
 // Cursor wind probe — debounced + grid-cached current wind wherever the mouse rests.
 let probeTimer=null, probeCache={}, lastProbeKey=null, probeOn=false;
@@ -1604,7 +1626,7 @@ function updateXhair(){document.body.classList.toggle('show-xhair',centerProbeAc
 // ── NOW bar: detailed current-conditions strip ────────────────────────────────
 function cloudWord(c){return c<25?'Clear':c<55?'Partly cloudy':c<85?'Mostly cloudy':'Overcast';}
 const WX_MODELS=[['gfs_hrrr','HRRR 3km'],['gfs_seamless','GFS'],['ecmwf_ifs025','ECMWF'],['icon_seamless','ICON'],['gem_seamless','GEM'],['best_match','Best match']];
-function modelSelectHTML(){return`<select class="nb-model" title="Weather model" onchange="setModel(this.value)">${WX_MODELS.map(([v,l])=>`<option value="${v}"${v===currentModel?' selected':''}>${l}</option>`).join('')}</select>`;}
+function modelSelectHTML(){return`<select class="nb-model" title="Weather model" onchange="setModel(this.value)">${WX_MODELS.map(([v,l])=>`<option value="${v}"${v===currentModel?' selected':''}>${l}</option>`).join('')}<option value="__compare__">⚖ Compare models</option></select>`;}
 // ── Multi-model comparison (Windy-style) ──────────────────────────────────────
 // On-demand: fetches several models only when the user opens the panel.
 const COMPARE_MODELS=[['gfs_hrrr','HRRR'],['gfs_seamless','GFS'],['ecmwf_ifs025','ECMWF'],['icon_seamless','ICON'],['meteofrance_seamless','MeteoFr'],['gem_seamless','GEM']];
@@ -1620,8 +1642,19 @@ async function fetchCompareModel(model,label){
     return{label,byTime};
   }catch(e){return{label,byTime:{}};}
 }
+// Cache the last good comparison so it still works when the API rate-limits us.
+const CMP_CACHE_KEY='skylab_cmpcache_v1';
+function saveCmpCache(){try{localStorage.setItem(CMP_CACHE_KEY,JSON.stringify({ts:Date.now(),lat:fcTarget.lat,lon:fcTarget.lon,label:fcTarget.label,data:cmpData}));}catch(e){}}
+function loadCmpCache(){try{return JSON.parse(localStorage.getItem(CMP_CACHE_KEY)||'null');}catch(e){return null;}}
+function computeCmpAxis(data){const set=new Set();data.forEach(r=>Object.keys(r.byTime).forEach(t=>set.add(t)));const now=Date.now();return[...set].sort().filter(t=>new Date(t).getTime()>=now-60*60*1000).slice(0,36);}
+function toggleModelCompare(){
+  const p=document.getElementById('model-compare');
+  if(p&&p.classList.contains('open'))closeModelCompare();else openModelCompare();
+}
 async function openModelCompare(){
   const panel=document.getElementById('model-compare');if(!panel)return;
+  // Replace the forecast + menu popup with the comparison.
+  try{const mp=document.getElementById('menu-panel');if(mp)mp.classList.remove('open');}catch(e){}
   panel.classList.add('open');document.body.classList.add('compare-open');
   setTimeout(resizeActiveMap,260);   // map area shrank — refit
   document.getElementById('cmp-title').textContent='Models · '+(fcTarget.label||'');
@@ -1629,10 +1662,17 @@ async function openModelCompare(){
   // Auto-show the Windy-style pin on the map as soon as the comparison opens.
   rocketOn=true;const rb=document.getElementById('rocket-btn');if(rb){rb.classList.add('active');rb.textContent='📍 Hide map pin';}
   const results=await Promise.all(COMPARE_MODELS.map(([m,l])=>fetchCompareModel(m,l)));
-  const set=new Set();results.forEach(r=>Object.keys(r.byTime).forEach(t=>set.add(t)));
-  const now=Date.now();
-  cmpAxis=[...set].sort().filter(t=>new Date(t).getTime()>=now-60*60*1000).slice(0,36);
-  cmpData=results;
+  const got=results.some(r=>Object.keys(r.byTime).length>0);
+  if(got){
+    cmpData=results;cmpAxis=computeCmpAxis(results);saveCmpCache();
+  }else{
+    // Out of pulls / rate-limited — fall back to the last cached comparison.
+    const c=loadCmpCache();
+    if(c&&c.data){
+      cmpData=c.data;cmpAxis=computeCmpAxis(c.data);
+      document.getElementById('cmp-title').textContent='Models · '+(c.label||fcTarget.label||'')+' · cached '+ageStr(c.ts)+' ago';
+    }else{cmpData=results;cmpAxis=[];}
+  }
   renderModelCompare();
   if(rocketOn)drawRocket();
 }
@@ -1719,7 +1759,7 @@ function renderNow(w,label){
   const m=(l,v,sub)=>`<div class="nb-m"><div class="nb-ml">${l}</div><div class="nb-mv">${v}</div><div class="nb-ms">${sub||''}</div></div>`;
   const loc=(label||'Salt Lake City').replace(/</g,'&lt;');
   document.getElementById('now-bar').innerHTML=
-    `<div class="nb-status">${modelSelectHTML()}<button class="nb-compare" onclick="openModelCompare()" title="Compare weather models side by side">⚖ Compare models</button><span class="nb-loc">📍 ${loc}</span></div>`+
+    `<div class="nb-status">${modelSelectHTML()}<button class="nb-compare" onclick="toggleModelCompare()" title="Compare weather models side by side">⚖ Compare models</button><span class="nb-loc">📍 ${loc}</span></div>`+
     `<div class="nb-metrics">`+
       m('Wind',`${arrow}${cvWind(w.wind)}`,`${d2c(w.dir)} ${w.dir}° · ${windU()}`)+
       m('Gusts',`${cvWind(w.gusts)}`,`${windU()} peak`)+
@@ -1743,6 +1783,8 @@ function setForecastSite(lat,lon,label,site){
     setTimeout(resizeActiveMap,260);
   }
   loadForecast();
+  // If the comparison is open, refresh it for the newly selected site.
+  try{const p=document.getElementById('model-compare');if(p&&p.classList.contains('open'))openModelCompare();}catch(e){}
 }
 async function fetchSeries(model,days){
   const hPa=windAltHPa();
