@@ -1646,12 +1646,18 @@ function renderModelCompare(){
     hdr+=`<div class="cmp-c cmp-h${nd?' cmp-newday':''}">${nd?`<b>${dk}</b><br>`:''}${ap}</div>`;});
   hdr+='</div>';
   let rows='';
+  const n=cmpAxis.length;
   cmpData.forEach(r=>{
     const has=Object.keys(r.byTime).length>0;
-    rows+=`<div class="cmp-row"><div class="cmp-lbl">${r.label}${has?'':' <span style="opacity:.5">—</span>'}</div>`;
+    // Smooth horizontal fade: each present hour is a colour stop at its cell centre, so
+    // neighbouring cells blend instead of hard edges (matches the forecast wind row).
+    let last='#eef6ff';
+    const grad=cmpAxis.map((t,i)=>{const e=r.byTime[t];const c=e?windColor(e.wind):last;last=c;return`${c} ${(((i+0.5)/n)*100).toFixed(2)}%`;}).join(',');
+    const rowStyle=has?` style="background:linear-gradient(to right,${grad})"`:'';
+    rows+=`<div class="cmp-row cmp-grad"${rowStyle}><div class="cmp-lbl">${r.label}${has?'':' <span style="opacity:.5">—</span>'}</div>`;
     cmpAxis.forEach(t=>{const e=r.byTime[t];
       if(!e){rows+='<div class="cmp-c cmp-empty"></div>';return;}
-      rows+=`<div class="cmp-c" style="background:${windColor(e.wind)}">${dirArrowCell(e.dir)}<span class="cmp-w">${cvWind(e.wind)}</span><span class="cmp-g">${cvWind(e.gust)}</span></div>`;});
+      rows+=`<div class="cmp-c">${dirArrowCell(e.dir)}<span class="cmp-w">${cvWind(e.wind)}</span><span class="cmp-g">${cvWind(e.gust)}</span></div>`;});
     rows+='</div>';
   });
   body.innerHTML='<div class="cmp-scroll"><div class="cmp-grid">'+hdr+rows+'</div></div>'+
@@ -1811,14 +1817,16 @@ function tempColor(t){              // °F text colour
   return t>=85?'#b91c1c':t>=72?'#ea580c':t>=58?'#16a34a':t>=44?'#0891b2':t>=30?'#2563eb':'#4338ca';
 }
 // Clean inline-SVG sky icons (consistent across platforms; the ☀️ emoji renders oddly on Windows).
-function skyIcon(cloud,pop){
+function skyIcon(cloud,pop,night){
   const S='<svg viewBox="0 0 24 24" width="18" height="18" style="display:block">';
   const sun=(cx,cy,r)=>`<g stroke="#f59e0b" stroke-width="1.7" stroke-linecap="round"><line x1="${cx}" y1="${cy-r-3.4}" x2="${cx}" y2="${cy-r-1.2}"/><line x1="${cx}" y1="${cy+r+1.2}" x2="${cx}" y2="${cy+r+3.4}"/><line x1="${cx-r-3.4}" y1="${cy}" x2="${cx-r-1.2}" y2="${cy}"/><line x1="${cx+r+1.2}" y1="${cy}" x2="${cx+r+3.4}" y2="${cy}"/><line x1="${cx-r-2.4}" y1="${cy-r-2.4}" x2="${cx-r-0.9}" y2="${cy-r-0.9}"/><line x1="${cx+r+0.9}" y1="${cy+r+0.9}" x2="${cx+r+2.4}" y2="${cy+r+2.4}"/><line x1="${cx-r-2.4}" y1="${cy+r+2.4}" x2="${cx-r-0.9}" y2="${cy+r+0.9}"/><line x1="${cx+r+0.9}" y1="${cy-r-0.9}" x2="${cx+r+2.4}" y2="${cy-r-2.4}"/></g><circle cx="${cx}" cy="${cy}" r="${r}" fill="#fcd34d" stroke="#f59e0b" stroke-width="1"/>`;
+  const moon=(cx,cy,r)=>`<path d="M${cx},${cy-r} A${r},${r} 0 1,0 ${cx},${cy+r} A${(r*0.62).toFixed(2)},${r} 0 1,1 ${cx},${cy-r} Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="0.9"/>`;
+  const lum=night?moon:sun;   // moon after dark, sun by day
   const cld=(fill,stroke)=>`<path d="M8 18.5h8.6a3.2 3.2 0 0 0 .35-6.38 4.7 4.7 0 0 0-8.95-1.34A3.45 3.45 0 0 0 8 18.5z" fill="${fill}" stroke="${stroke}" stroke-width="1.1"/>`;
   if(pop>=45)return S+cld('#cbd5e1','#94a3b8')+'<g stroke="#3b82f6" stroke-width="1.7" stroke-linecap="round"><line x1="9" y1="20" x2="8" y2="22.5"/><line x1="13" y1="20" x2="12" y2="22.5"/><line x1="17" y1="20" x2="16" y2="22.5"/></g></svg>';
-  if(cloud<25)return S+sun(12,12,4.4)+'</svg>';
-  if(cloud<55)return S+sun(8.5,8.5,3.4)+cld('#f8fafc','#cbd5e1')+'</svg>';
-  if(cloud<85)return S+sun(8,8,3)+cld('#e2e8f0','#94a3b8')+'</svg>';
+  if(cloud<25)return S+lum(12,12,4.4)+'</svg>';
+  if(cloud<55)return S+lum(8.5,8.5,3.4)+cld('#f8fafc','#cbd5e1')+'</svg>';
+  if(cloud<85)return S+lum(8,8,3)+cld('#e2e8f0','#94a3b8')+'</svg>';
   return S+cld('#cbd5e1','#94a3b8')+'</svg>';
 }
 // Live thermal estimate from boundary-layer (mixing) height — the usable thermal ceiling —
@@ -1884,7 +1892,7 @@ function buildForecast(container,series,labels){
     const wv=(windAlt>0&&e.windAlt!=null)?e.windAlt:e.wind;
     const dv=(windAlt>0&&e.dirAlt!=null)?e.dirAlt:e.dir;
     hrRow+=cell(i,i===nowIdx?'Now':ap);
-    skyRow+=cell(i,skyIcon(e.cloud,e.pop));
+    skyRow+=cell(i,skyIcon(e.cloud,e.pop,isNight(d.getHours()+d.getMinutes()/60)));
     tempRow+=cell(i,`${cvTemp(e.temp)}°`,`color:${tempColor(e.temp)}`);
     rainRow+=cell(i,e.pop>=10?e.pop:'');
     windRow+=cell(i,cvWind(wv));
