@@ -43,8 +43,8 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 /* ── Forecast header (selected-site name + weather model) ─────────────────── */
 #fc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0f172a;flex-shrink:0;padding:calc(6px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 6px calc(12px + env(safe-area-inset-left,0px));z-index:10;border-bottom:1px solid rgba(255,255,255,.06);}
 #fc-loc{font-size:14px;font-weight:800;color:#fff;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.fc-model-sel{background:#2563eb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23fff' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:9px;padding:5px 26px 5px 9px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;-webkit-appearance:none;appearance:none;}
-.fc-model-sel:hover{background-color:#1d4ed8;}
+.fc-model-sel{font-size:12px;font-weight:800;color:#1d4ed8;background:#eff6ff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232563eb' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;border:1.5px solid #2563eb;border-radius:8px;padding:5px 26px 5px 9px;cursor:pointer;flex-shrink:0;-webkit-appearance:none;appearance:none;box-shadow:0 1px 2px rgba(37,99,235,.15);}
+.fc-model-sel:hover{background-color:#dbeafe;}
 .fc-model-sel option{color:#111;}
 #fc-head-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
 #fc-toggle{display:block;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;line-height:1;}
@@ -358,13 +358,33 @@ body.dark .ppcalc .ppcv{color:#e2e8f0;}
 #fav-btn{flex-shrink:0;background:rgba(255,255,255,.12);color:#fcd34d;border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:5px 9px;cursor:pointer;font-size:14px;font-weight:800;line-height:1;}
 #fav-btn:hover{background:rgba(255,255,255,.2);}
 /* Full-screen Favorites overlay */
-#fav-overlay{position:fixed;inset:0;z-index:1200;background:#f1f5f9;display:none;flex-direction:column;}
-#fav-overlay.open{display:flex;}
-body.dark #fav-overlay{background:#0b1220;}
-#fav-bar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#0f172a;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.25);}
-#fav-title{font-size:17px;font-weight:800;letter-spacing:.01em;}
-#fav-close{background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:8px;width:34px;height:34px;font-size:16px;cursor:pointer;}
-#fav-close:hover{background:rgba(255,255,255,.26);}
+#fav-overlay,#models-overlay{position:fixed;inset:0;z-index:1200;background:#f1f5f9;display:none;flex-direction:column;}
+#fav-overlay.open,#models-overlay.open{display:flex;}
+body.dark #fav-overlay,body.dark #models-overlay{background:#0b1220;}
+#fav-bar,#mi-bar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#0f172a;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.25);}
+#fav-title,#mi-title{font-size:17px;font-weight:800;letter-spacing:.01em;}
+#fav-close,#mi-close{background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:8px;width:34px;height:34px;font-size:16px;cursor:pointer;}
+#fav-close:hover,#mi-close:hover{background:rgba(255,255,255,.26);}
+/* About weather models content */
+#models-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;max-width:720px;width:100%;margin:0 auto;}
+.mi-lead{font-size:13.5px;line-height:1.55;color:#334155;margin:0 0 14px;}
+body.dark .mi-lead{color:#cbd5e1;}
+.mi-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(15,23,42,.05);}
+.mi-card.mi-best{border-color:#22c55e;background:#f0fdf4;}
+.mi-card.mi-blend{background:#f8fafc;}
+body.dark .mi-card{background:#111c30;border-color:#1e293b;}
+body.dark .mi-card.mi-best{background:#0f2a1c;border-color:#16a34a;}
+.mi-h{display:flex;align-items:center;gap:9px;margin-bottom:5px;flex-wrap:wrap;}
+.mi-rank{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:#0f172a;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.mi-card.mi-best .mi-rank{background:#16a34a;}
+.mi-n{font-size:15px;font-weight:800;color:#0f172a;}
+body.dark .mi-n{color:#e2e8f0;}
+.mi-g{font-size:11px;font-weight:700;color:#64748b;background:#f1f5f9;border-radius:6px;padding:2px 7px;}
+body.dark .mi-g{background:#1e293b;color:#94a3b8;}
+.mi-card p{margin:0;font-size:12.5px;line-height:1.5;color:#475569;}
+body.dark .mi-card p{color:#cbd5e1;}
+.mi-tip{background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.55;color:#1e40af;margin-top:4px;}
+body.dark .mi-tip{background:#13243f;border-color:#1e3a8a;color:#bfdbfe;}
 #fav-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;max-width:760px;width:100%;margin:0 auto;}
 .fav-empty{text-align:center;color:#475569;padding:60px 24px;font-size:18px;font-weight:700;}
 .fav-empty-sub{margin-top:10px;font-size:13px;font-weight:500;color:#64748b;line-height:1.5;}
@@ -545,11 +565,11 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
     </div>
     <div id="fc-head-actions">
       <select id="model-select" class="fc-model-sel" title="Weather model" onchange="setModel(this.value)">
-        <option value="gfs_hrrr">HRRR 1.9 mi</option>
-        <option value="gfs_seamless">GFS 16 mi</option>
-        <option value="ecmwf_ifs025">ECMWF 16 mi</option>
-        <option value="icon_seamless">ICON 7 mi</option>
-        <option value="gem_seamless">GEM 9 mi</option>
+        <option value="gfs_hrrr">HRRR</option>
+        <option value="ecmwf_ifs025">ECMWF</option>
+        <option value="icon_seamless">ICON</option>
+        <option value="gem_seamless">GEM</option>
+        <option value="gfs_seamless">GFS</option>
         <option value="best_match">Best match</option>
         <option value="__compare__">⚖ Compare models</option>
       </select>
@@ -674,6 +694,9 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
       <div class="lr"><div class="ls" style="background:#d97706;border:2px solid #fde047;"></div>Reachable LZ</div>
       <div class="lr"><div class="ls" style="background:rgba(34,197,94,.25);border:1.5px dashed #16a34a;"></div>LZ field boundary</div>
       <div class="lp-div"></div>
+      <div class="lp-sec">Weather</div>
+      <button class="edbtn" onclick="openModelsInfo();toggleMenu();">🌦 About weather models</button>
+      <div class="lp-div"></div>
       <div class="lp-sec">Add to map</div>
       <button class="edbtn" onclick="startAddLaunch();toggleMenu();">＋ Add takeoff</button>
       <button class="edbtn" onclick="startAddLZ();toggleMenu();">＋ Add LZ</button>
@@ -696,6 +719,20 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
 <div id="fav-overlay">
   <div id="fav-bar"><span id="fav-title">★ Favorites</span><button id="fav-close" onclick="closeFavorites()" title="Close">✕</button></div>
   <div id="fav-body"></div>
+</div>
+<!-- About weather models: which to trust for mountain-west flying -->
+<div id="models-overlay">
+  <div id="mi-bar"><span id="mi-title">🌦 About weather models</span><button id="mi-close" onclick="closeModelsInfo()" title="Close">✕</button></div>
+  <div id="models-body">
+    <p class="mi-lead">Models differ in two ways that matter for flying: <b>grid resolution</b> (how finely they see Utah's ridges and canyons) and <b>forecast skill</b> (how well they nail the incoming weather). No single model wins both, so the order below is the accuracy ranking for the <b>mountain west</b>, best first.</p>
+    <div class="mi-card mi-best"><div class="mi-h"><span class="mi-rank">1</span><span class="mi-n">HRRR</span><span class="mi-g">~1.9 mi grid · updates hourly</span></div><p>Sharpest terrain detail and refreshed every hour, so it best captures Utah's valley/ridge winds and thermal timing. <b>Use it for today &amp; tomorrow.</b> Short-range only — it runs out at ~48 hours, after which the app extends the strip with GFS.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-rank">2</span><span class="mi-n">ECMWF</span><span class="mi-g">~16 mi grid</span></div><p>The most skillful global model in the world. Coarser grid smooths the mountains, but it's the best at <b>front timing and the multi-day trend</b>. The go-to for days 2–7. Pair it with HRRR: HRRR near-term, ECMWF for the outlook.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-rank">3</span><span class="mi-n">ICON</span><span class="mi-g">~7 mi grid</span></div><p>Germany's DWD model — rated just behind ECMWF for global accuracy, and its finer grid <b>resolves terrain better</b> than ECMWF/GFS. A strong middle ground: more terrain awareness than ECMWF, longer range than HRRR.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-rank">4</span><span class="mi-n">GEM</span><span class="mi-g">~9 mi grid</span></div><p>Canada's global model. Respectably high-resolution and reliable, but less often the standout in the western US. Useful as a <b>tiebreaker vote</b> when the others disagree.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-rank">5</span><span class="mi-n">GFS</span><span class="mi-g">~16 mi grid</span></div><p>The American global model — free, dependable, and what extends this app's 2-week forecast. Verifies a notch below ECMWF, especially for the <b>timing and strength</b> of systems. Fine for the broad picture.</p></div>
+    <div class="mi-card mi-blend"><div class="mi-h"><span class="mi-n">Best match</span><span class="mi-g">blend</span></div><p>Open-Meteo automatically stitches the best-available model for each location and range. Convenient, but it hides <b>which</b> model is talking — so you lose the ability to judge agreement.</p></div>
+    <div class="mi-tip"><b>💡 The pro habit:</b> open <b>⚖ Compare</b> and watch for agreement. When HRRR, ECMWF and ICON line up, confidence is high; when they diverge, treat the day as uncertain. And remember — <i>every</i> model smooths the terrain, so none truly capture a specific launch's rotor, venturi, or thermal trigger. That gap is what local knowledge and an on-site wind check fill.</div>
+  </div>
 </div>
 <script>
 // ── DATA ─────────────────────────────────────────────────────────────────────
@@ -874,6 +911,8 @@ function openFavorites(){
   document.getElementById('fav-overlay').classList.add('open');
 }
 function closeFavorites(){document.getElementById('fav-overlay').classList.remove('open');}
+function openModelsInfo(){document.getElementById('models-overlay').classList.add('open');}
+function closeModelsInfo(){document.getElementById('models-overlay').classList.remove('open');}
 function removeFav(id){
   const i=FAVS.indexOf(id);if(i>=0)FAVS.splice(i,1);
   saveFavs();updateFavBtnCount();
@@ -1836,7 +1875,7 @@ function probeCenter(){if(!centerProbeActive())return;const ll=mapCenterLL();if(
 function updateXhair(){document.body.classList.toggle('show-xhair',centerProbeActive());}
 // ── NOW bar: detailed current-conditions strip ────────────────────────────────
 function cloudWord(c){return c<25?'Clear':c<55?'Partly cloudy':c<85?'Mostly cloudy':'Overcast';}
-const WX_MODELS=[['gfs_hrrr','HRRR 1.9 mi'],['gfs_seamless','GFS 16 mi'],['ecmwf_ifs025','ECMWF 16 mi'],['icon_seamless','ICON 7 mi'],['gem_seamless','GEM 9 mi'],['best_match','Best match']];
+const WX_MODELS=[['gfs_hrrr','HRRR'],['ecmwf_ifs025','ECMWF'],['icon_seamless','ICON'],['gem_seamless','GEM'],['gfs_seamless','GFS'],['best_match','Best match']];
 function modelSelectHTML(){return`<select class="nb-model" title="Weather model" onchange="setModel(this.value)">${WX_MODELS.map(([v,l])=>`<option value="${v}"${v===currentModel?' selected':''}>${l}</option>`).join('')}<option value="__compare__">⚖ Compare models</option></select>`;}
 // ── Multi-model comparison (Windy-style) ──────────────────────────────────────
 // On-demand: fetches several models only when the user opens the panel.
