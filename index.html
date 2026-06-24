@@ -315,7 +315,8 @@ body.dark .ppwind-note{color:#94a3b8;}
 @media(max-width:768px){#mobile-logo{display:block;position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:1100;font-size:12px;font-weight:800;letter-spacing:.3px;color:#fff;background:rgba(17,24,39,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:3px 11px;border-radius:11px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.4);}}
 /* topbar model selector */
 #topbar-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
-#model-select{background:white;border:none;border-radius:14px;padding:5px 8px;font-size:12px;font-weight:700;color:#2563eb;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.22);}
+/* styling lives in .fc-model-sel (matches the in-popup dropdown); keep this ID rule minimal so it doesn't override the border/chevron */
+#model-select{cursor:pointer;}
 /* detail sidebar */
 #sidebar{position:absolute;top:0;right:0;width:316px;max-width:86%;height:100%;z-index:700;background:rgba(255,255,255,.98);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:-5px 0 24px rgba(0,0,0,.3);transform:translateX(100%);transition:transform .28s ease;overflow:hidden;}
 #sidebar.open{transform:translateX(0);}
@@ -524,7 +525,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #layers-btn svg{width:18px;height:18px;}
   /* Bigger, easier-to-grab direction compass on the launch thumbnail */
   .thumb-compass svg{width:58px;height:58px;}
-  #model-select{padding:7px 9px;font-size:13px;border-radius:12px;}
+  #model-select{padding:6px 26px 6px 10px;font-size:13px;}
   /* Compact forecast columns so more hours fit without wide scrolling */
   #forecast{--fcw:42px;--fcl:70px;}
   .fc-cell{font-size:10px;}
