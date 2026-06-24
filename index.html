@@ -352,6 +352,34 @@ body.dark .ppwind-note{color:#94a3b8;}
 .ppcalc .ppch{font-size:9px;color:#94a3b8;margin-top:1px;}
 body.dark .ppcalc .ppc{background:#1e293b;border-color:#334155;}
 body.dark .ppcalc .ppcv{color:#e2e8f0;}
+/* Top-bar Favorites button */
+#fav-btn{flex-shrink:0;background:rgba(255,255,255,.12);color:#fcd34d;border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:5px 9px;cursor:pointer;font-size:14px;font-weight:800;line-height:1;}
+#fav-btn:hover{background:rgba(255,255,255,.2);}
+/* Full-screen Favorites overlay */
+#fav-overlay{position:fixed;inset:0;z-index:1200;background:#f1f5f9;display:none;flex-direction:column;}
+#fav-overlay.open{display:flex;}
+body.dark #fav-overlay{background:#0b1220;}
+#fav-bar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#0f172a;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.25);}
+#fav-title{font-size:17px;font-weight:800;letter-spacing:.01em;}
+#fav-close{background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:8px;width:34px;height:34px;font-size:16px;cursor:pointer;}
+#fav-close:hover{background:rgba(255,255,255,.26);}
+#fav-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;max-width:760px;width:100%;margin:0 auto;}
+.fav-empty{text-align:center;color:#475569;padding:60px 24px;font-size:18px;font-weight:700;}
+.fav-empty-sub{margin-top:10px;font-size:13px;font-weight:500;color:#64748b;line-height:1.5;}
+body.dark .fav-empty,body.dark .fav-empty-sub{color:#94a3b8;}
+.fav-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(15,23,42,.06);}
+body.dark .fav-card{background:#111c30;border-color:#1e293b;}
+.fav-card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.fav-card-n{font-size:16px;font-weight:800;color:#0f172a;}
+.fav-card-s{font-size:12px;color:#64748b;margin-top:2px;}
+body.dark .fav-card-n{color:#e2e8f0;}
+.fav-card-act{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.fav-open-btn{background:#fff;border:1.5px solid #2563eb;color:#1d4ed8;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.fav-open-btn:hover{background:#eff6ff;}
+.fav-rm{background:#fffbeb;border:1.5px solid #f59e0b;color:#d97706;border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer;flex-shrink:0;}
+.fav-rm:hover{background:#fef3c7;}
+.fav-fc{display:flex;overflow:hidden;border-radius:8px;border:1px solid #e2e8f0;background:#fff;--fcw:38px;--fcl:64px;margin-top:9px;}
+body.dark .fav-fc{background:#0f172a;border-color:#1e293b;}
 /* Menu panel (map key + LZ tools) */
 #menu-panel{position:absolute;top:8px;left:8px;bottom:auto;z-index:800;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:10px;padding:9px 11px;font-size:11px;box-shadow:0 2px 12px rgba(0,0,0,.28);line-height:1.7;display:none;min-width:158px;max-width:230px;}
 #menu-panel.open{display:block;}
@@ -507,6 +535,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   <div id="fc-head">
     <div id="fc-left">
       <button id="menu-btn" onclick="toggleMenu()" title="Menu" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g stroke="#fff" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></g></svg></button>
+      <button id="fav-btn" onclick="openFavorites()" title="Favorite sites">★</button>
       <span id="fc-loc">Salt Lake City</span>
     </div>
     <div id="fc-head-actions">
@@ -658,6 +687,11 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
     </div>
   </div>
 </div>
+<!-- Full-screen Favorites overlay: each starred site with its own scrollable forecast -->
+<div id="fav-overlay">
+  <div id="fav-bar"><span id="fav-title">★ Favorites</span><button id="fav-close" onclick="closeFavorites()" title="Close">✕</button></div>
+  <div id="fav-body"></div>
+</div>
 <script>
 // ── DATA ─────────────────────────────────────────────────────────────────────
 const LAUNCHES=[
@@ -770,10 +804,84 @@ function toggleFav(id,btn){
   saveFavs();
   const on=isFav(id);
   if(btn){btn.classList.toggle('on',on);btn.textContent=on?'★ Favorited':'☆ Favorite';}
-  const ref=launchElMap[id];                       // re-draw the pin so the star badge appears/disappears
-  if(ref){const site=LAUNCHES.find(s=>s.id===id);if(site){const w=siteWx[id];const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[(w&&w.status)||'caution'];const svg=mkLaunchSVG(col,site,w);if(useMapLibre)ref.innerHTML=svg;else if(ref.setIcon)ref.setIcon(L.divIcon({html:svg,iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:''}));}}
+  updateFavBtnCount();
 }
 function favBtnHTML(id){const on=isFav(id);return`<button class="favbtn${on?' on':''}" onclick="toggleFav('${id}',this)">${on?'★ Favorited':'☆ Favorite'}</button>`;}
+// Top-bar Favorites button label reflects how many sites are starred.
+function updateFavBtnCount(){const b=document.getElementById('fav-btn');if(b)b.textContent=FAVS.length?('★ '+FAVS.length):'★';}
+
+// ── Favorites overlay: full-screen list, each favorite with its own forecast bar ──
+async function fetchSeriesAt(lat,lon,model,days){
+  const hPa=windAltHPa();
+  const u=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
+    `&hourly=temperature_2m,precipitation_probability,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+
+    (hPa?`,wind_speed_${hPa}hPa,wind_direction_${hPa}hPa`:'')+
+    `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}&past_days=1`;
+  const r=await fetch(u);return r.json();
+}
+function favSiteCardHTML(site){
+  const w=siteWx[site.id];
+  const s=w?flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir):'caution';
+  return`<div class="fav-card" data-id="${site.id}">`+
+    `<div class="fav-card-h"><div class="fav-card-tt"><div class="fav-card-n">▲ ${site.name}</div><div class="fav-card-s">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div></div>`+
+    `<div class="fav-card-act"><button class="fav-open-btn" onclick="goToFavSite('${site.id}')">📍 Open on map</button><button class="fav-rm" title="Remove from favorites" onclick="removeFav('${site.id}')">★</button></div></div>`+
+    `${bdg(s)}${wxG(w)}${flightCalcsHTML(site,w)}`+
+    `<div class="fav-fc"><div class="nb-load" style="padding:10px;">Loading forecast…</div></div>`+
+    `</div>`;
+}
+async function loadFavForecast(site){
+  const card=document.querySelector('.fav-card[data-id="'+site.id+'"]');if(!card)return;
+  const wrap=card.querySelector('.fav-fc');if(!wrap)return;
+  let series=[];
+  try{
+    const j=await fetchSeriesAt(site.lat,site.lon,currentModel,16);
+    series=entriesFrom(j,MODEL_LABELS[currentModel]||currentModel);
+    const lastT=series.length?new Date(series[series.length-1].t):null;
+    const reachH=lastT?(lastT-Date.now())/36e5:0;
+    if(currentModel!=='best_match'&&reachH<FC_TARGET_H-12){
+      const extModel=currentModel==='gfs_hrrr'?'gfs_seamless':'best_match';
+      const jx=await fetchSeriesAt(site.lat,site.lon,extModel,16);
+      const ext=entriesFrom(jx,MODEL_LABELS[extModel]||'GFS').filter(e=>!lastT||new Date(e.t)>lastT);
+      series=series.concat(ext);
+    }
+  }catch(e){}
+  if(!document.querySelector('.fav-card[data-id="'+site.id+'"]'))return;   // overlay closed while fetching
+  if(!series.length){wrap.innerHTML='<div class="nb-load" style="padding:10px;color:#64748b;">Forecast unavailable (rate-limited — try again shortly)</div>';return;}
+  const backStart=new Date();backStart.setHours(0,0,0,0);backStart.setDate(backStart.getDate()-1);
+  series=series.filter(e=>new Date(e.t).getTime()>=backStart.getTime());
+  // buildForecast reads fcTarget.site for per-site flyability/wind-direction; swap it in just for this build.
+  const prev=fcTarget;fcTarget={lat:site.lat,lon:site.lon,label:site.name,site};
+  try{buildForecast(wrap,series.slice(0,336),{temp:'°F',rain:'Rain%',dir:'Direction'});}finally{fcTarget=prev;}
+}
+async function loadAllFavForecasts(favs){for(const s of favs){await loadFavForecast(s);}}   // sequential — avoids Open-Meteo rate limits
+function openFavorites(){
+  const menu=document.getElementById('menu-panel');if(menu)menu.classList.remove('open');
+  const favs=LAUNCHES.filter(s=>isFav(s.id));
+  const body=document.getElementById('fav-body');
+  if(!favs.length){
+    body.innerHTML='<div class="fav-empty">⭐ No favorites yet<div class="fav-empty-sub">Open any launch on the map and tap <b>☆ Favorite</b> to pin it here with its own forecast.</div></div>';
+  }else{
+    body.innerHTML=favs.map(favSiteCardHTML).join('');
+    loadAllFavForecasts(favs);
+  }
+  document.getElementById('fav-overlay').classList.add('open');
+}
+function closeFavorites(){document.getElementById('fav-overlay').classList.remove('open');}
+function removeFav(id){
+  const i=FAVS.indexOf(id);if(i>=0)FAVS.splice(i,1);
+  saveFavs();updateFavBtnCount();
+  const card=document.querySelector('.fav-card[data-id="'+id+'"]');if(card)card.remove();
+  if(!FAVS.length)openFavorites();   // re-render to show the empty state
+  // keep an open popup's Favorite button in sync, if it's the same site
+  document.querySelectorAll('.favbtn.on').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').indexOf("'"+id+"'")>=0){b.classList.remove('on');b.textContent='☆ Favorite';}});
+}
+function goToFavSite(id){
+  const site=LAUNCHES.find(s=>s.id===id);if(!site)return;
+  closeFavorites();
+  if(useMapLibre&&mlMap)mlMap.flyTo({center:[site.lon,site.lat],zoom:13.5,pitch:45,essential:true});
+  else if(lfMap)lfMap.setView([site.lat,site.lon],13);
+  setTimeout(()=>onLaunchClick(site,null),useMapLibre?700:200);
+}
 
 // ── Share a site (deep link) ──────────────────────────────────────────────────
 // Builds a #site=<id> link; the boot sequence opens that site on load.
@@ -2315,7 +2423,6 @@ function mkLaunchSVG(col,site,w){
     `<g class="pin-dial" transform="rotate(${brg} ${cx} ${cy})">`+
     compassInner(cx,cy,r,col,site,w&&typeof w.dir==='number'?w.dir:null)+
     `</g>`+
-    (isFav(site.id)?`<text x="29" y="11" font-size="13" text-anchor="middle" stroke="white" stroke-width="2.5" paint-order="stroke" fill="#f59e0b">★</text>`:'')+
     `</svg>`;
 }
 // Spin every pin's compass dial to keep north-up as the map rotates.
@@ -3030,6 +3137,7 @@ function cullGhostMarkers(){
   await hydrateFromCloud(); // pull any cloud-saved edits into localStorage before the loaders read it
   loadCustomLaunches();// user-added takeoffs (localStorage) appended to LAUNCHES
   loadFavs();          // starred sites (localStorage / cloud)
+  updateFavBtnCount(); // show the count on the top-bar ★ button
   loadLaunchPos();     // apply any persisted launch-pin moves/edits before drawing markers
   initLZStore();       // editable LZ store (localStorage), feeds markers + connections
   document.getElementById('mode-badge').textContent='Loading 3D map...';
