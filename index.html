@@ -23,9 +23,8 @@
 <link rel="dns-prefetch" href="https://api.open-meteo.com"/>
 <link rel="dns-prefetch" href="https://server.arcgisonline.com"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<!-- Leaflet is the 2D fallback for devices without WebGL; it's loaded on demand (see loadLeafletAssets) so it doesn't slow the normal 3D path. -->
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <!-- Supabase client (cloud sync for launch / LZ edits) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -2572,6 +2571,14 @@ function initMapLibre(timeoutMs){
 }
 
 // ── Leaflet 2D fallback ───────────────────────────────────────────────────────
+// Load Leaflet's CSS + JS on demand (only when MapLibre/WebGL is unavailable).
+function loadLeafletAssets(){
+  if(window.L)return Promise.resolve();
+  return new Promise((resolve,reject)=>{
+    const css=document.createElement('link');css.rel='stylesheet';css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(css);
+    const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onload=()=>resolve();s.onerror=()=>reject(new Error('leaflet load failed'));document.head.appendChild(s);
+  });
+}
 function initLeaflet(){
   const m=L.map('map',{center:[39.8,-111.5],zoom:7,zoomControl:false});
   L.control.zoom({position:'bottomright'}).addTo(m);
@@ -2960,6 +2967,7 @@ function cullGhostMarkers(){
   }
   if(!mapOk){
     console.warn('MapLibre failed after retries, using Leaflet 2D fallback');
+    try{await loadLeafletAssets();}catch(e){console.warn('Leaflet failed to load',e);}
     initLeaflet();   // no auto-geolocate on load — use 📍 My location
   }
   setupLongPress();    // touch press-and-hold → drop an ad-hoc takeoff at that point
