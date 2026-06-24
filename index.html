@@ -66,9 +66,10 @@ body.fc-collapsed #forecast{display:none;}
 /* Frozen left labels column (Hour/Temp/…): a static sibling of the scroller, so it never moves. */
 .fc-labels{flex-shrink:0;width:var(--fcl);position:relative;z-index:6;background:#f8fafc;font-family:system-ui,sans-serif;}
 /* The horizontally-scrolling data grid, sitting to the right of (and sliding behind) the labels. */
-.fc-scroll{flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;}
-.fc-scroll::-webkit-scrollbar{height:8px;}
-.fc-scroll::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);border-radius:4px;}
+.fc-scroll{flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;}
+/* Hide all scrollbars app-wide (scrolling still works). */
+*{scrollbar-width:none;-ms-overflow-style:none;}
+*::-webkit-scrollbar{width:0;height:0;display:none;}
 .fc-data{display:flex;flex-direction:column;width:max-content;font-family:system-ui,sans-serif;}
 .fc-row{display:flex;align-items:stretch;}
 .fc-cell{width:var(--fcw);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-right:1px solid #eef1f5;}
@@ -213,9 +214,8 @@ body.dark .pp-fc-model{background-color:#1e3a8a;color:#dbeafe;border-color:#3b82
 /* When the site menu's forecast slot is showing the model comparison instead of the 2-week strip. */
 .pp-fc-wrap.pp-cmp{display:block;overflow-x:auto;}
 .pp-fc-wrap.pp-cmp .cmp-foot{padding:6px 8px;}
-.pp-fc-wrap .fc-scroll{scrollbar-width:thin;}
-.pp-fc-wrap .fc-scroll::-webkit-scrollbar{height:5px;}
-.pp-fc-wrap .fc-scroll::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:3px;}
+.pp-fc-wrap .fc-scroll{scrollbar-width:none;}
+.pp-fc-wrap .fc-scroll::-webkit-scrollbar{height:0;display:none;}
 .ppg{display:none;}
 @media(min-width:769px){.pp-fc-title{display:none;}.pp-fc-wrap{display:none;}}
 @media(max-width:768px){body.popup-open #forecast{display:none;}body.popup-open #fc-head{display:none;}}
@@ -394,13 +394,8 @@ body.dark .mi-g{background:#1e293b;color:#94a3b8;}
 body.dark .mi-card p{color:#cbd5e1;}
 .mi-tip{background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.55;color:#1e40af;margin-top:4px;}
 body.dark .mi-tip{background:#13243f;border-color:#1e3a8a;color:#bfdbfe;}
+/* One full-width card per row so each forecast bar stretches the whole screen. */
 #fav-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;width:100%;}
-/* Wide screens: fill the whole screen with a multi-column card grid instead of a centred column. */
-@media(min-width:780px){
-  #fav-body{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px;align-content:start;}
-  #fav-body .fav-card{margin-bottom:0;}
-  #fav-body .fav-empty{grid-column:1/-1;}
-}
 .fav-empty{text-align:center;color:#475569;padding:60px 24px;font-size:18px;font-weight:700;}
 .fav-empty-sub{margin-top:10px;font-size:13px;font-weight:500;color:#64748b;line-height:1.5;}
 body.dark .fav-empty,body.dark .fav-empty-sub{color:#94a3b8;}
@@ -2195,6 +2190,23 @@ function thermalCell(e){
   const lbl=ft<1000?'<1k':(ft/1000).toFixed(ft<10000?1:0).replace(/\.0$/,'')+'k';
   return`<span style="color:${col};font-weight:700">${lbl}${od}</span>`;
 }
+// Thermal STRENGTH as a colour (like the wind row) instead of a number. Returns the fill
+// colour for the hour, or null when there are no thermals (night / no data).
+function thermalColorVal(e){
+  if(e.pbl==null)return null;
+  const d=new Date(e.t),hr=d.getHours()+d.getMinutes()/60;
+  if(isNight(hr))return null;                          // no daytime heating → no thermals
+  const ft=Math.round(e.pbl*3.28084);
+  let col;
+  if(ft<1200)col='#94a3b8';                           // minimal
+  else if(ft<2500)col='#a3e635';                      // light
+  else if(ft<4500)col='#22c55e';                      // good
+  else if(ft<7000)col='#f59e0b';                      // strong
+  else col='#ef4444';                                 // very strong / OD risk
+  if(e.cloud>=90)col='#94a3b8';                       // overcast shuts thermals down
+  return col;
+}
+function thermalOD(e){return (e.cape!=null&&e.cape>1200)||(e.li!=null&&e.li<-4);}   // overdevelopment / storm risk
 function dirArrowCell(dir){
   // small arrow pointing the way the wind blows TO (met dir + 180)
   return`<svg width="16" height="16" viewBox="0 0 16 16"><g transform="rotate(${(dir+180)%360},8,8)"><line x1="8" y1="3" x2="8" y2="13" stroke="#475569" stroke-width="1.6" stroke-linecap="round"/><polygon points="8,2 5,7 11,7" fill="#475569"/></g></svg>`;
@@ -2226,7 +2238,7 @@ function buildForecast(container,series,labels){
   // data cells (no labels — those live in the static column)
   const cell=(i,inner,style)=>`<div class="fc-cell${i===nowIdx?' now':''}${series[i].t===windState.time?' wt-sel':''}${series[i].model!==(series[i-1]||{}).model&&i>0?' mswitch':''}" data-t="${series[i].t}"${style?` style="${style}"`:''}>${inner}</div>`;
   let hrRow='',skyRow='',tempRow='',rainRow='',windRow='',gustRow='',dirRow='',thermRow='',flyRow='';
-  const windVals=[],gustVals=[],flyCols=[];
+  const windVals=[],gustVals=[],flyCols=[],thermCols=[];
   series.forEach((e,i)=>{
     const d=new Date(e.t),hr=d.getHours();
     const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
@@ -2243,9 +2255,10 @@ function buildForecast(container,series,labels){
     windRow+=cell(i,cvWind(wv));
     gustRow+=cell(i,cvWind(e.gust));
     dirRow+=cell(i,(fcTarget.site&&fcTarget.site.facing!=null)?windDirCellSVG(dv,fcTarget.site,dc):dirArrowCell(dv));
-    thermRow+=cell(i,thermalCell(e));
+    const tcol=thermalColorVal(e);
+    thermRow+=cell(i,(tcol&&thermalOD(e))?'<span style="font-size:10px">⚡</span>':'');   // colour shows strength; ⚡ flags storm risk
     flyRow+=cell(i,'');
-    windVals.push(wv);gustVals.push(e.gust);flyCols.push(dc);
+    windVals.push(wv);gustVals.push(e.gust);flyCols.push(dc);thermCols.push(tcol||'#eef2f7');
   });
   // Continuous horizontal gradient across a whole row: each cell's centre is a
   // colour stop, so neighbouring values fade smoothly into each other (no seams).
@@ -2262,7 +2275,7 @@ function buildForecast(container,series,labels){
     ['fc-r-wind',windAlt>0?`Wind ${windAlt/1000}k`:`Wind ${windU()}`,windRow,rowGrad(windVals)],
     ['fc-r-gust','Gusts',gustRow,rowGrad(gustVals)],
     ['fc-r-dir',labels.dir,dirRow],
-    ['fc-r-therm','Therm <span class="fc-help" title="Estimated thermal ceiling (boundary-layer / mixing height) above ground, in thousands of feet. Grey = minimal, green = good, orange = strong, red = very strong. ⚡ flags overdevelopment / thunderstorm risk (high CAPE or low lifted index). Overcast skies shut thermals down.">?</span>',thermRow],
+    ['fc-r-therm','Therm <span class="fc-help" title="Thermal strength by colour (from boundary-layer / mixing height): grey = minimal, light green = light, green = good, orange = strong, red = very strong. Blank = no thermals (night). ⚡ flags overdevelopment / thunderstorm risk (high CAPE or low lifted index). Overcast skies shut thermals down.">?</span>',thermRow,colGrad(thermCols)],
     ['fc-r-fly','Fly <span class="fc-help" title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature.">?</span>',flyRow,colGrad(flyCols)]
   ];
   let labelsHTML='',dataHTML='';
