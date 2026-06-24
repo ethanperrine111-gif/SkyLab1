@@ -43,7 +43,8 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 /* ── Forecast header (selected-site name + weather model) ─────────────────── */
 #fc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0f172a;flex-shrink:0;padding:calc(6px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 6px calc(12px + env(safe-area-inset-left,0px));z-index:10;border-bottom:1px solid rgba(255,255,255,.06);}
 #fc-loc{font-size:14px;font-weight:800;color:#fff;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.fc-model-sel{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:4px 7px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;}
+.fc-model-sel{background:#2563eb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23fff' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:9px;padding:5px 26px 5px 9px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;-webkit-appearance:none;appearance:none;}
+.fc-model-sel:hover{background-color:#1d4ed8;}
 .fc-model-sel option{color:#111;}
 #fc-head-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
 #fc-toggle{display:block;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;line-height:1;}
@@ -200,8 +201,9 @@ body.probe-off #ctrl-panel{top:8px;}
 .ppreach{background:#fefce8;border:1px solid #fde047;border-radius:7px;padding:5px 9px;font-size:11px;color:#713f12;margin-bottom:6px;font-weight:600;}
 .ppnote{font-size:10px;color:#aaa;margin-top:5px;line-height:1.4;}
 .pp-fc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin:8px 0 2px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.pp-fc-model{font-size:11px;font-weight:700;color:#1e293b;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:3px 6px;cursor:pointer;text-transform:none;letter-spacing:0;}
-body.dark .pp-fc-model{background:#1e293b;color:#e2e8f0;border-color:#334155;}
+.pp-fc-model{font-size:12px;font-weight:800;color:#1d4ed8;background:#eff6ff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232563eb' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;border:1.5px solid #2563eb;border-radius:8px;padding:5px 26px 5px 9px;cursor:pointer;text-transform:none;letter-spacing:0;-webkit-appearance:none;appearance:none;box-shadow:0 1px 2px rgba(37,99,235,.15);}
+.pp-fc-model:hover{background-color:#dbeafe;}
+body.dark .pp-fc-model{background-color:#1e3a8a;color:#dbeafe;border-color:#3b82f6;}
 .pp-fc-wrap{display:flex;overflow:hidden;border-radius:8px;border:1px solid #e2e8f0;background:#fff;--fcw:38px;--fcl:64px;margin-bottom:7px;}
 /* When the site menu's forecast slot is showing the model comparison instead of the 2-week strip. */
 .pp-fc-wrap.pp-cmp{display:block;overflow-x:auto;}
@@ -1569,7 +1571,7 @@ function launchPop(site,w){
   const bio=siteBioHTML(site);
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}${flightCalcsHTML(site,w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${windSpecHTML(site)}${bio}${flyBtn}${favBtnHTML(site.id)}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${flyBtn}${favBtnHTML(site.id)}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
