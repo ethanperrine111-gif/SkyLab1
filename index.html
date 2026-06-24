@@ -385,7 +385,13 @@ body.dark .mi-g{background:#1e293b;color:#94a3b8;}
 body.dark .mi-card p{color:#cbd5e1;}
 .mi-tip{background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.55;color:#1e40af;margin-top:4px;}
 body.dark .mi-tip{background:#13243f;border-color:#1e3a8a;color:#bfdbfe;}
-#fav-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;max-width:760px;width:100%;margin:0 auto;}
+#fav-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;width:100%;}
+/* Wide screens: fill the whole screen with a multi-column card grid instead of a centred column. */
+@media(min-width:780px){
+  #fav-body{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px;align-content:start;}
+  #fav-body .fav-card{margin-bottom:0;}
+  #fav-body .fav-empty{grid-column:1/-1;}
+}
 .fav-empty{text-align:center;color:#475569;padding:60px 24px;font-size:18px;font-weight:700;}
 .fav-empty-sub{margin-top:10px;font-size:13px;font-weight:500;color:#64748b;line-height:1.5;}
 body.dark .fav-empty,body.dark .fav-empty-sub{color:#94a3b8;}
