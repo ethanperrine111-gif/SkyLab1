@@ -924,9 +924,12 @@ function densityAltFt(site,w){
   return Math.round(paFt+120*(tC-isaC));
 }
 function cloudbaseFt(site,w){
-  if(!w||w.temp==null||w.rh==null)return null;
+  if(!w||w.temp==null)return null;
   const tC=(w.temp-32)*5/9;
-  const tdC=tC-(100-w.rh)/5;                 // simple dewpoint approximation from RH
+  let tdC;
+  if(w.dp!=null)tdC=(w.dp-32)*5/9;           // true dewpoint (°F→°C) from the model
+  else if(w.rh!=null)tdC=tC-(100-w.rh)/5;    // fallback: approximate dewpoint from RH
+  else return null;
   const spread=Math.max(0,tC-tdC);
   const aglFt=spread/2.5*1000;               // ~2.5°C convergence per 1000 ft
   return Math.round(site.alt+aglFt);         // MSL
@@ -1754,9 +1757,9 @@ async function getGroundElevs(coords){
 // ── Weather ───────────────────────────────────────────────────────────────────
 async function fetchHRRR(lat,lon){
   const k=`${currentModel}|${lat.toFixed(2)},${lon.toFixed(2)}`;if(wxCache[k])return wxCache[k];
-  try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&daily=sunrise,sunset&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);const d=await r.json();const c=d.current;
+  try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&daily=sunrise,sunset&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);const d=await r.json();const c=d.current;
     if(d.daily&&d.daily.sunrise&&d.daily.sunrise[0]){civilDawnH=hourOf(d.daily.sunrise[0])-0.5;civilDuskH=hourOf(d.daily.sunset[0])+0.5;}  // civil twilight ≈ ±30 min
-    const res={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),pres:Math.round(c.surface_pressure)};wxCache[k]=res;return res;}catch{return null;}
+    const res={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),dp:(c.dew_point_2m!=null?Math.round(c.dew_point_2m):null),pres:Math.round(c.surface_pressure)};wxCache[k]=res;return res;}catch{return null;}
 }
 // Fetch weather for MANY sites in a single Open-Meteo call (comma-separated coords),
 // in chunks. Firing one request per site (60+ at once) trips the API's rate limit
@@ -1768,13 +1771,13 @@ async function fetchHRRRBatch(sites,fallback){
     const lats=grp.map(s=>s.lat).join(','), lons=grp.map(s=>s.lon).join(',');
     let arr=null;
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);
       const j=await r.json();arr=Array.isArray(j)?j:[j];
     }catch(e){arr=null;}
     grp.forEach((s,idx)=>{
       const d=arr&&arr[idx], c=d&&d.current;let eff=fallback;
       if(c){
-        eff={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),pres:Math.round(c.surface_pressure)};
+        eff={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),dp:(c.dew_point_2m!=null?Math.round(c.dew_point_2m):null),pres:Math.round(c.surface_pressure)};
         wxCache[`${currentModel}|${s.lat.toFixed(2)},${s.lon.toFixed(2)}`]=eff;
       }
       if(eff)siteWx[s.id]={...eff,status:flyS(eff.wind,eff.gusts,eff.cloud,eff.temp,null,s,eff.dir)};
