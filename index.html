@@ -2198,12 +2198,12 @@ function thermalColorVal(e){
   if(isNight(hr))return null;                          // no daytime heating → no thermals
   const ft=Math.round(e.pbl*3.28084);
   let col;
-  if(ft<1200)col='#e5e7eb';                           // minimal  (light charcoal)
-  else if(ft<2500)col='#cbd5e1';                      // light
-  else if(ft<4500)col='#94a3b8';                      // good
-  else if(ft<7000)col='#64748b';                      // strong
-  else col='#475569';                                 // very strong (darkest charcoal)
-  if(e.cloud>=90)col='#e5e7eb';                       // overcast shuts thermals down
+  if(ft<1200)col='#94a3b8';                           // minimal
+  else if(ft<2500)col='#a3e635';                      // light
+  else if(ft<4500)col='#22c55e';                      // good
+  else if(ft<7000)col='#f59e0b';                      // strong
+  else col='#ef4444';                                 // very strong
+  if(e.cloud>=90)col='#94a3b8';                       // overcast shuts thermals down
   return col;
 }
 function thermalOD(e){return (e.cape!=null&&e.cape>1200)||(e.li!=null&&e.li<-4);}   // overdevelopment / storm risk
@@ -2275,7 +2275,7 @@ function buildForecast(container,series,labels){
     ['fc-r-wind',windAlt>0?`Wind ${windAlt/1000}k`:`Wind ${windU()}`,windRow,rowGrad(windVals)],
     ['fc-r-gust','Gusts',gustRow,rowGrad(gustVals)],
     ['fc-r-dir',labels.dir,dirRow],
-    ['fc-r-therm','Therm <span class="fc-help" title="Thermal strength by shade (from boundary-layer / mixing height): the darker the charcoal, the stronger the thermals. White = no thermals (night or overcast).">?</span>',thermRow,colGrad(thermCols)],
+    ['fc-r-therm','Therm <span class="fc-help" title="Thermal strength by colour (from boundary-layer / mixing height): grey = minimal, light green = light, green = good, orange = strong, red = very strong. White = no thermals (night or overcast).">?</span>',thermRow,colGrad(thermCols)],
     ['fc-r-fly','Fly <span class="fc-help" title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature.">?</span>',flyRow,colGrad(flyCols)]
   ];
   let labelsHTML='',dataHTML='';
