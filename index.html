@@ -373,9 +373,12 @@ body.dark .fav-card{background:#111c30;border-color:#1e293b;}
 .fav-card-n{font-size:16px;font-weight:800;color:#0f172a;}
 .fav-card-s{font-size:12px;color:#64748b;margin-top:2px;}
 body.dark .fav-card-n{color:#e2e8f0;}
-.fav-card-act{display:flex;align-items:center;gap:6px;flex-shrink:0;}
-.fav-open-btn{background:#fff;border:1.5px solid #2563eb;color:#1d4ed8;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
-.fav-open-btn:hover{background:#eff6ff;}
+.fav-info{cursor:pointer;border-radius:10px;margin:-4px;padding:4px;transition:background .12s;}
+.fav-info:hover{background:#f8fafc;}
+body.dark .fav-info:hover{background:#16233b;}
+.fav-card-act{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.fav-open-hint{font-size:12px;font-weight:700;color:#2563eb;white-space:nowrap;}
+.fav-info:hover .fav-open-hint{text-decoration:underline;}
 .fav-rm{background:#fffbeb;border:1.5px solid #f59e0b;color:#d97706;border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer;flex-shrink:0;}
 .fav-rm:hover{background:#fef3c7;}
 .fav-fc{display:flex;overflow:hidden;border-radius:8px;border:1px solid #e2e8f0;background:#fff;--fcw:38px;--fcl:64px;margin-top:9px;}
@@ -823,9 +826,11 @@ function favSiteCardHTML(site){
   const w=siteWx[site.id];
   const s=w?flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir):'caution';
   return`<div class="fav-card" data-id="${site.id}">`+
+    `<div class="fav-info" onclick="goToFavSite('${site.id}')" title="Open ${site.name.replace(/"/g,'&quot;')}">`+
     `<div class="fav-card-h"><div class="fav-card-tt"><div class="fav-card-n">▲ ${site.name}</div><div class="fav-card-s">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div></div>`+
-    `<div class="fav-card-act"><button class="fav-open-btn" onclick="goToFavSite('${site.id}')">📍 Open on map</button><button class="fav-rm" title="Remove from favorites" onclick="removeFav('${site.id}')">★</button></div></div>`+
+    `<div class="fav-card-act"><span class="fav-open-hint">Open ›</span><button class="fav-rm" title="Remove from favorites" onclick="event.stopPropagation();removeFav('${site.id}')">★</button></div></div>`+
     `${bdg(s)}${wxG(w)}${flightCalcsHTML(site,w)}`+
+    `</div>`+
     `<div class="fav-fc"><div class="nb-load" style="padding:10px;">Loading forecast…</div></div>`+
     `</div>`;
 }
