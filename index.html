@@ -362,6 +362,9 @@ body.dark .ppcalc .ppc{background:#1e293b;border-color:#334155;}
 body.dark .ppcalc .ppcv{color:#e2e8f0;}
 /* Top-bar Favorites button */
 #fav-btn{flex-shrink:0;background:rgba(255,255,255,.12);color:#fcd34d;border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:5px 9px;cursor:pointer;font-size:14px;font-weight:800;line-height:1;}
+/* Keep every top-bar control the same height so the row lines up. */
+#menu-btn,#fav-btn,#fc-toggle,#fc-compare{height:32px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;}
+.fc-model-sel{height:32px;box-sizing:border-box;}
 #fav-btn:hover{background:rgba(255,255,255,.2);}
 /* Full-screen Favorites overlay */
 #fav-overlay,#models-overlay{position:fixed;inset:0;z-index:1200;background:#f1f5f9;display:none;flex-direction:column;}
