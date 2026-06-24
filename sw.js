@@ -4,7 +4,7 @@
 //     when online but the map still opens offline.
 //   • Everything else (map tiles, CDN libs, weather) → cache-first with a capped
 //     runtime cache, so the last-seen terrain/weather is available offline.
-const VERSION = 'skylab-v1';
+const VERSION = 'skylab-v2';
 const SHELL = VERSION + '-shell';
 const RUNTIME = VERSION + '-runtime';
 const SHELL_URLS = ['./', 'index.html', 'manifest.json'];
