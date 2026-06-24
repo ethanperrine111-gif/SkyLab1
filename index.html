@@ -1835,8 +1835,23 @@ function setModel(m){
   if(document.getElementById('model-compare').classList.contains('open'))closeModelCompare();
   currentModel=m;
   document.querySelectorAll('#model-select,.nb-model,.pp-fc-model').forEach(s=>{s.value=m;});
+  fitAllModelSelects();
   loadWeather();
 }
+// Native <select> sizes to its widest option (here "⚖ Compare models"), so the closed control
+// looks too wide. Shrink each model dropdown to just its selected word + the chevron padding.
+function fitModelSelect(sel){
+  if(!sel||!sel.options||sel.selectedIndex<0)return;
+  const cs=getComputedStyle(sel);
+  const span=document.createElement('span');
+  span.style.cssText='position:absolute;visibility:hidden;white-space:pre;font-family:'+cs.fontFamily+';font-size:'+cs.fontSize+';font-weight:'+cs.fontWeight+';letter-spacing:'+cs.letterSpacing;
+  span.textContent=sel.options[sel.selectedIndex].text;
+  document.body.appendChild(span);
+  const tw=span.offsetWidth;span.remove();
+  // left pad (9) + right chevron pad (26) + borders (3)
+  sel.style.width=Math.ceil(tw+9+26+3)+'px';
+}
+function fitAllModelSelects(){document.querySelectorAll('#model-select,.nb-model,.pp-fc-model').forEach(fitModelSelect);}
 function updateVane(w,label){if(!w)return;_lastVane={w,label};if(label)document.getElementById('wvt').textContent=label;document.getElementById('varrow').setAttribute('transform',`rotate(${w.dir},34,34)`);document.getElementById('vspeed').textContent=cvWind(w.wind)+' '+windU();document.getElementById('vdir').textContent=d2c(w.dir)+' wind';document.getElementById('vgust').textContent='Gust '+(w.gusts!=null?cvWind(w.gusts):'—')+' '+windU();const sc=flyS(w.wind,w.gusts??w.wind,w.cloud??0,w.temp??60);document.getElementById('wind-vane').style.borderTopColor=sc==='flyable'?'#22c55e':sc==='caution'?'#facc15':'#ef4444';syncCtrlPanel();}  // re-match the 2D/Layers row after the wind box resizes with live data
 // Cursor wind probe — debounced + grid-cached current wind wherever the mouse rests.
 let probeTimer=null, probeCache={}, lastProbeKey=null, probeOn=false;
@@ -2690,6 +2705,7 @@ function reopenSidebar(){
 function showPopup(lat,lon,html){
   destroyMini();
   document.getElementById('sb-body').innerHTML=html;
+  fitAllModelSelects();          // size the in-popup model dropdown to its word
   document.getElementById('sidebar').classList.add('open');
   document.body.classList.add('popup-open');
   const r=document.getElementById('sb-reopen');if(r)r.style.display='none';   // panel is open now
@@ -3223,6 +3239,7 @@ function cullGhostMarkers(){
   if(!(location.hash||'').match(/site=/))goToMyLocation(true);// otherwise ask for location ONCE on open, then zoom straight in
   syncCtrlPanel();setTimeout(syncCtrlPanel,400);window.addEventListener('load',syncCtrlPanel);
   syncUnitBtns();   // highlight the saved unit choices in the menu
+  fitAllModelSelects();   // size the model dropdown(s) to the selected word
 })();
 </script>
 <div id="mobile-logo">🪂 SkyLab</div>
