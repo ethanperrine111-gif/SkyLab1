@@ -1332,7 +1332,7 @@ function windStep(){
 async function toggleWindAnim(on){
   windState.on=on;
   const c=windCanvas();if(!c)return;
-  if(!on){cancelAnimationFrame(windState.raf);if(windState.ctx)windState.ctx.clearRect(0,0,c.width,c.height);c.style.display='none';return;}
+  if(!on){cancelAnimationFrame(windState.raf);if(windState.ctx)windState.ctx.clearRect(0,0,c.width,c.height);c.style.display='none';windState.time=null;document.querySelectorAll('.fc-cell.wt-sel').forEach(el=>el.classList.remove('wt-sel'));return;}  // clear any picked time slot
   c.style.display='block';resizeWindCanvas();
   setBadge('Loading wind…');
   windState.grid=await fetchWindGrid(windState.time);
@@ -2356,15 +2356,18 @@ function positionNowLine(dataEl){
 }
 function updateNowLines(){document.querySelectorAll('.fc-data').forEach(positionNowLine);}
 // Forecast column → wind overlay time. Re-clicking the active slot returns to live wind.
+// Only responds when the wind layer is already enabled — clicking a time slot should
+// re-time an existing overlay, not pop the wind animation up on its own.
 function pickWindTime(iso){
+  if(!windState.on)return;                                // wind not selected → ignore time clicks
   if(windState.time===iso){resetWindTime();return;}
   windState.time=iso;
   document.querySelectorAll('.fc-cell.wt-sel').forEach(c=>c.classList.remove('wt-sel'));
   document.querySelectorAll('.fc-cell[data-t="'+iso+'"]').forEach(c=>c.classList.add('wt-sel'));
   const d=new Date(iso),hr=d.getHours(),ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
   const lbl=`${FC_DAYS[d.getDay()].slice(0,3)} ${ap}`;
-  if(!windState.on){const cb=document.getElementById('ov-wind');if(cb)cb.checked=true;toggleWindAnim(true).then(()=>{if(windState.on)setBadge('🌬 Wind @ '+lbl+' · click the slot again for live');});}
-  else{setBadge('🌬 Wind @ '+lbl+' · click the slot again for live');fetchWindGrid(iso).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});}
+  setBadge('🌬 Wind @ '+lbl+' · click the slot again for live');
+  fetchWindGrid(iso).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});
 }
 function resetWindTime(){
   windState.time=null;
