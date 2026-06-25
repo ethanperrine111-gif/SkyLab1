@@ -119,7 +119,9 @@ body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b
 /* wind direction arrows */
 .fc-r-dir{height:28px;}
 /* flyability bar */
-.fc-r-therm{height:18px;}.fc-r-therm .fc-cell{font-size:10px;font-weight:700;}
+.fc-r-therm{height:20px;}.fc-r-therm .fc-cell{align-items:flex-end;padding-bottom:2px;}
+.tbar{width:6px;border-radius:1.5px 1.5px 0 0;background:#7c3aed;}
+body.dark .tbar{background:#a78bfa;}
 .fc-r-fly{height:14px;}.fc-r-fly .fc-cell{padding:0;border-right:1px solid rgba(255,255,255,.85);background:transparent;}
 .fc-r-fly .fc-lbl{background:#f8fafc;}
 .fc-help{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;margin-left:3px;border-radius:50%;background:#cbd5e1;color:#fff;font-size:9px;font-weight:800;cursor:help;flex-shrink:0;}
@@ -2193,23 +2195,28 @@ function thermalCell(e){
   const lbl=ft<1000?'<1k':(ft/1000).toFixed(ft<10000?1:0).replace(/\.0$/,'')+'k';
   return`<span style="color:${col};font-weight:700">${lbl}${od}</span>`;
 }
-// Thermal STRENGTH as a colour (like the wind row) instead of a number. Returns the fill
-// colour for the hour, or null when there are no thermals (night / no data).
-function thermalColorVal(e){
-  if(e.pbl==null)return null;
+// Thermal STRENGTH as a 0–5 level (0 = none) from the boundary-layer / mixing height.
+// Shown as a bar-height meter instead of a colour, so it doesn't clash with the
+// colour-coded Wind / Gust / Fly rows.
+function thermalLevel(e){
+  if(e.pbl==null)return 0;
   const d=new Date(e.t),hr=d.getHours()+d.getMinutes()/60;
-  if(isNight(hr))return null;                          // no daytime heating → no thermals
+  if(isNight(hr))return 0;                             // no daytime heating → no thermals
+  if(e.cloud>=90)return 1;                             // overcast shuts thermals down
   const ft=Math.round(e.pbl*3.28084);
-  let col;
-  if(ft<1200)col='#ecfccb';                           // minimal  (pale lime)
-  else if(ft<2500)col='#a3e635';                      // light
-  else if(ft<4500)col='#22c55e';                      // good
-  else if(ft<7000)col='#f59e0b';                      // strong
-  else col='#ef4444';                                 // very strong
-  if(e.cloud>=90)col='#ecfccb';                       // overcast shuts thermals down
-  return col;
+  if(ft<1200)return 1;                                 // minimal
+  if(ft<2500)return 2;                                 // light
+  if(ft<4500)return 3;                                 // good
+  if(ft<7000)return 4;                                 // strong
+  return 5;                                            // very strong
 }
-function thermalOD(e){return (e.cape!=null&&e.cape>1200)||(e.li!=null&&e.li<-4);}   // overdevelopment / storm risk
+// A small vertical bar whose height encodes thermal strength (taller = stronger).
+function thermalBar(e){
+  const lvl=thermalLevel(e);
+  if(!lvl)return'';                                    // none → blank cell
+  const h=[0,22,40,58,78,100][lvl];                    // % of cell height
+  return`<div class="tbar" style="height:${h}%"></div>`;
+}
 function dirArrowCell(dir){
   // small arrow pointing the way the wind blows TO (met dir + 180)
   return`<svg width="16" height="16" viewBox="0 0 16 16"><g transform="rotate(${(dir+180)%360},8,8)"><line x1="8" y1="3" x2="8" y2="13" stroke="#475569" stroke-width="1.6" stroke-linecap="round"/><polygon points="8,2 5,7 11,7" fill="#475569"/></g></svg>`;
@@ -2241,7 +2248,7 @@ function buildForecast(container,series,labels){
   // data cells (no labels — those live in the static column)
   const cell=(i,inner,style)=>`<div class="fc-cell${i===nowIdx?' now':''}${series[i].t===windState.time?' wt-sel':''}${series[i].model!==(series[i-1]||{}).model&&i>0?' mswitch':''}" data-t="${series[i].t}"${style?` style="${style}"`:''}>${inner}</div>`;
   let hrRow='',skyRow='',tempRow='',rainRow='',windRow='',gustRow='',dirRow='',thermRow='',flyRow='';
-  const windVals=[],gustVals=[],flyCols=[],thermCols=[];
+  const windVals=[],gustVals=[],flyCols=[];
   series.forEach((e,i)=>{
     const d=new Date(e.t),hr=d.getHours();
     const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
@@ -2258,10 +2265,9 @@ function buildForecast(container,series,labels){
     windRow+=cell(i,cvWind(wv));
     gustRow+=cell(i,cvWind(e.gust));
     dirRow+=cell(i,(fcTarget.site&&fcTarget.site.facing!=null)?windDirCellSVG(dv,fcTarget.site,dc):dirArrowCell(dv));
-    const tcol=thermalColorVal(e);
-    thermRow+=cell(i,'');                              // colour shows strength; white = no thermals
+    thermRow+=cell(i,thermalBar(e));                   // bar height shows strength
     flyRow+=cell(i,'');
-    windVals.push(wv);gustVals.push(e.gust);flyCols.push(dc);thermCols.push(tcol||'#ffffff');
+    windVals.push(wv);gustVals.push(e.gust);flyCols.push(dc);
   });
   // Continuous horizontal gradient across a whole row: each cell's centre is a
   // colour stop, so neighbouring values fade smoothly into each other (no seams).
@@ -2278,7 +2284,7 @@ function buildForecast(container,series,labels){
     ['fc-r-wind',windAlt>0?`Wind ${windAlt/1000}k`:`Wind ${windU()}`,windRow,rowGrad(windVals)],
     ['fc-r-gust','Gusts',gustRow,rowGrad(gustVals)],
     ['fc-r-dir',labels.dir,dirRow],
-    ['fc-r-therm','Therm <span class="fc-help" title="Thermal strength by colour (from boundary-layer / mixing height): pale = minimal, light green = light, green = good, orange = strong, red = very strong. White = no thermals (night or overcast).">?</span>',thermRow,colGrad(thermCols)],
+    ['fc-r-therm','Therm <span class="fc-help" title="Thermal strength from the boundary-layer / mixing height, shown as a bar: the taller the bar, the stronger the thermals. No bar = no thermals (night or overcast).">?</span>',thermRow],
     ['fc-r-fly','Fly <span class="fc-help" title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature.">?</span>',flyRow,colGrad(flyCols)]
   ];
   let labelsHTML='',dataHTML='';
