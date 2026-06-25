@@ -2195,7 +2195,12 @@ function thermalCell(e){
   const lbl=ft<1000?'<1k':(ft/1000).toFixed(ft<10000?1:0).replace(/\.0$/,'')+'k';
   return`<span style="color:${col};font-weight:700">${lbl}${od}</span>`;
 }
-// Thermal STRENGTH as a 0–5 level (0 = none) from the boundary-layer / mixing height.
+// Thermal STRENGTH as a 0–5 level (0 = none). This is the climb PUNCH, NOT the ceiling —
+// the ceiling is what thermalCell() shows. Strength tracks the convective velocity scale
+// w* ∝ (PBL depth × surface buoyancy)^⅓, so we blend three independent drivers:
+//   1) PBL depth   — how much convective layer there is to work with,
+//   2) instability — lifted index / CAPE (punchy when the airmass is unstable),
+//   3) diurnal     — thermals are soft near sunrise/sunset, strongest mid-afternoon.
 // Shown as a bar-height meter instead of a colour, so it doesn't clash with the
 // colour-coded Wind / Gust / Fly rows.
 function thermalLevel(e){
@@ -2203,11 +2208,27 @@ function thermalLevel(e){
   const d=new Date(e.t),hr=d.getHours()+d.getMinutes()/60;
   if(isNight(hr))return 0;                             // no daytime heating → no thermals
   if(e.cloud>=90)return 1;                             // overcast shuts thermals down
-  const ft=Math.round(e.pbl*3.28084);
-  if(ft<1200)return 1;                                 // minimal
-  if(ft<2500)return 2;                                 // light
-  if(ft<4500)return 3;                                 // good
-  if(ft<7000)return 4;                                 // strong
+  const ft=e.pbl*3.28084;
+  // 1) DEPTH — convective layer available, normalised 0..1 (saturates ~6,000 ft AGL).
+  const depth=Math.min(ft/6000,1);
+  // 2) DIURNAL — position between civil dawn and dusk, peaking at solar noon (midpoint).
+  //    sin gives 0 at the ends and 1 at midday; ^0.6 widens the midday plateau.
+  let diurnal=1;
+  if(civilDawnH!=null&&civilDuskH>civilDawnH){
+    const p=(hr-civilDawnH)/(civilDuskH-civilDawnH);   // 0 at dawn → 1 at dusk
+    diurnal=p<=0||p>=1?0:Math.pow(Math.sin(Math.PI*p),0.6);
+  }
+  // 3) INSTABILITY — negative lifted index = unstable = punchier climbs; positive = soft.
+  //    Scaled 0.6 (stable) … 1.5 (very unstable); strong CAPE guarantees some punch.
+  let instab=1;
+  if(e.li!=null)instab=Math.min(Math.max(1+(-e.li)/6,0.6),1.5);
+  if(e.cape!=null&&e.cape>1500)instab=Math.max(instab,1.3);
+  // Blend to a 0..1 strength, then bucket to a 1–5 bar level.
+  const s=Math.min(depth*diurnal*instab,1);
+  if(s<0.12)return 1;                                  // minimal
+  if(s<0.30)return 2;                                  // light
+  if(s<0.55)return 3;                                  // good
+  if(s<0.80)return 4;                                  // strong
   return 5;                                            // very strong
 }
 // A small vertical bar whose height encodes thermal strength (taller = stronger).
@@ -2284,7 +2305,7 @@ function buildForecast(container,series,labels){
     ['fc-r-wind',windAlt>0?`Wind ${windAlt/1000}k`:`Wind ${windU()}`,windRow,rowGrad(windVals)],
     ['fc-r-gust','Gusts',gustRow,rowGrad(gustVals)],
     ['fc-r-dir',labels.dir,dirRow],
-    ['fc-r-therm','Therm <span class="fc-help" title="Thermal strength from the boundary-layer / mixing height, shown as a bar: the taller the bar, the stronger the thermals. No bar = no thermals (night or overcast).">?</span>',thermRow],
+    ['fc-r-therm','Therm <span class="fc-help" title="Thermal strength (climb punch, not ceiling): blends mixing-layer depth, airmass instability (lifted index / CAPE) and time of day. Taller bar = stronger thermals, peaking mid-afternoon. No bar = no thermals (night or overcast).">?</span>',thermRow],
     ['fc-r-fly','Fly <span class="fc-help" title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature.">?</span>',flyRow,colGrad(flyCols)]
   ];
   let labelsHTML='',dataHTML='';
