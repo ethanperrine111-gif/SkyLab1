@@ -70,7 +70,10 @@ body.fc-collapsed #forecast{display:none;}
 /* Hide all scrollbars app-wide (scrolling still works). */
 *{scrollbar-width:none;-ms-overflow-style:none;}
 *::-webkit-scrollbar{width:0;height:0;display:none;}
-.fc-data{display:flex;flex-direction:column;width:max-content;font-family:system-ui,sans-serif;}
+.fc-data{display:flex;flex-direction:column;width:max-content;font-family:system-ui,sans-serif;position:relative;}
+/* Live "exact time" bar that glides across the forecast at the current minute. */
+.fc-nowline{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;pointer-events:none;z-index:4;box-shadow:0 0 0 1px rgba(255,255,255,.7);}
+.fc-nowline::before{content:'';position:absolute;top:-1px;left:-3px;width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 1.5px #fff;}
 .fc-row{display:flex;align-items:stretch;}
 .fc-cell{width:var(--fcw);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-right:1px solid #eef1f5;}
 .fc-cell.now{background:rgba(37,99,235,.08);box-shadow:inset 2px 0 0 #2563eb,inset -2px 0 0 #2563eb;}
@@ -117,7 +120,7 @@ body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b
 .fc-r-dir{height:28px;}
 /* flyability bar */
 .fc-r-therm{height:18px;}.fc-r-therm .fc-cell{font-size:10px;font-weight:700;}
-.fc-r-fly{height:14px;}.fc-r-fly .fc-cell{padding:0;border-right:none;background:transparent;}
+.fc-r-fly{height:14px;}.fc-r-fly .fc-cell{padding:0;border-right:1px solid rgba(255,255,255,.85);background:transparent;}
 .fc-r-fly .fc-lbl{background:#f8fafc;}
 .fc-help{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;margin-left:3px;border-radius:50%;background:#cbd5e1;color:#fff;font-size:9px;font-weight:800;cursor:help;flex-shrink:0;}
 #map-wrap{position:relative;flex:1;min-height:0;}
@@ -2284,6 +2287,15 @@ function buildForecast(container,series,labels){
     dataHTML+=`<div class="fc-row ${cls}"${rowStyle?` style="${rowStyle}"`:''}>${cells}</div>`;
   });
   container.innerHTML=`<div class="fc-labels">${labelsHTML}</div><div class="fc-scroll"><div class="fc-data">${dataHTML}</div></div>`;
+  // Live "exact time" bar: a vertical line placed at the current minute, glided by a timer.
+  const dataEl0=container.querySelector('.fc-data');
+  if(dataEl0&&series.length){
+    dataEl0._fcT0=new Date(series[0].t).getTime();
+    dataEl0._fcColW=parseFloat(getComputedStyle(container).getPropertyValue('--fcw'))||46;
+    const nl=document.createElement('div');nl.className='fc-nowline';dataEl0.appendChild(nl);
+    positionNowLine(dataEl0);
+    if(!window._nowLineTimer)window._nowLineTimer=setInterval(updateNowLines,30000);
+  }
   // wire scroll: keep the now-column near the left, and update the frozen Model name.
   const scroll=container.querySelector('.fc-scroll');
   const nameEl=container.querySelector('.fc-model-name');
@@ -2305,6 +2317,17 @@ function buildForecast(container,series,labels){
     upd();
   }
 }
+// Position the live "now" bar at the exact current time inside one forecast grid.
+function positionNowLine(dataEl){
+  if(!dataEl||!dataEl._fcT0)return;
+  const nl=dataEl.querySelector('.fc-nowline');if(!nl)return;
+  const idx=(Date.now()-dataEl._fcT0)/3600000;        // fractional hours from the first column
+  const x=(idx+0.5)*dataEl._fcColW;                    // +0.5 → centre of the hour cell
+  const w=dataEl.scrollWidth||dataEl.offsetWidth||0;
+  if(x<0||(w&&x>w)){nl.style.display='none';return;}
+  nl.style.display='';nl.style.left=x+'px';
+}
+function updateNowLines(){document.querySelectorAll('.fc-data').forEach(positionNowLine);}
 // Forecast column → wind overlay time. Re-clicking the active slot returns to live wind.
 function pickWindTime(iso){
   if(windState.time===iso){resetWindTime();return;}
