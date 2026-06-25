@@ -2876,10 +2876,10 @@ function initMapLibre(timeoutMs){
         m.addSource('relief',{type:'raster',tiles:[TILES.relief],tileSize:256,attribution:'Hillshade © Esri'});
         m.addLayer({id:'relief',type:'raster',source:'relief',layout:{visibility:'none'},paint:{'raster-opacity':0.55}});
         // Free kk7 thermal-hotspot heatmap (derived from real XC flight tracks).
-        m.addSource('thermals',{type:'raster',tiles:[TILES.thermals],tileSize:256,maxzoom:12,attribution:'Thermals © thermal.kk7.ch'});
+        m.addSource('thermals',{type:'raster',tiles:[TILES.thermals],tileSize:256,maxzoom:12,scheme:'tms',attribution:'Thermals © thermal.kk7.ch'});  // kk7 serves TMS (flipped y)
         m.addLayer({id:'thermals',type:'raster',source:'thermals',layout:{visibility:'none'},paint:{'raster-opacity':0.6}});
         // kk7 skyways — thermal glide-lines between hotspots (same XC-track dataset).
-        m.addSource('skyways',{type:'raster',tiles:[TILES.skyways],tileSize:256,maxzoom:12,attribution:'Skyways © thermal.kk7.ch'});
+        m.addSource('skyways',{type:'raster',tiles:[TILES.skyways],tileSize:256,maxzoom:12,scheme:'tms',attribution:'Skyways © thermal.kk7.ch'});  // TMS scheme
         m.addLayer({id:'skyways',type:'raster',source:'skyways',layout:{visibility:'none'},paint:{'raster-opacity':0.7}});
         // Power-line hazard overlay (OpenInfraMap vector tiles). power_line = transmission,
         // minor_line = lower-voltage distribution; both are real wire-strike hazards.
@@ -2929,8 +2929,8 @@ function initLeaflet(){
     sectional:L.tileLayer('https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Sectional/MapServer/tile/{z}/{y}/{x}',{attribution:'FAA / Esri',maxZoom:11,opacity:0.85}),
     hiking:L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png',{attribution:'Trails © waymarkedtrails.org, OSM',maxZoom:18,opacity:0.9}),
     relief:L.tileLayer(TILES.relief,{attribution:'Hillshade © Esri',maxZoom:19,opacity:0.55}),
-    thermals:L.tileLayer(TILES.thermals,{attribution:'Thermals © thermal.kk7.ch',maxNativeZoom:12,maxZoom:18,opacity:0.6}),
-    skyways:L.tileLayer(TILES.skyways,{attribution:'Skyways © thermal.kk7.ch',maxNativeZoom:12,maxZoom:18,opacity:0.7})
+    thermals:L.tileLayer(TILES.thermals,{attribution:'Thermals © thermal.kk7.ch',maxNativeZoom:12,maxZoom:18,opacity:0.6,tms:true}),  // kk7 serves TMS (flipped y)
+    skyways:L.tileLayer(TILES.skyways,{attribution:'Skyways © thermal.kk7.ch',maxNativeZoom:12,maxZoom:18,opacity:0.7,tms:true})
   };
   const oa=openAipTiles();
   if(oa)lfOverlays.airspace=L.tileLayer(oa,{attribution:'Airspace © OpenAIP',maxZoom:14,opacity:0.85});
