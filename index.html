@@ -361,6 +361,10 @@ body.dark .ppwind-note{color:#94a3b8;}
 .favbtn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;background:#fff;border:1.5px solid #d97706;color:#b45309;border-radius:8px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
 .favbtn.on{background:#fffbeb;border-color:#f59e0b;color:#b45309;}
 .favbtn:hover{background:#fffbeb;}
+/* Clickable star sitting beside the launch name (replaces the standalone Favorite button). */
+.favstar{background:none;border:none;padding:0;margin:0 0 0 6px;font-size:20px;line-height:1;cursor:pointer;color:#cbd5e1;flex-shrink:0;font-family:inherit;-webkit-tap-highlight-color:transparent;}
+.favstar.on{color:#f59e0b;}
+.favstar:hover{color:#f59e0b;transform:scale(1.12);}
 .ppcalc{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
 .ppcalc .ppc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;}
 .ppcalc .ppcl{font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
@@ -862,10 +866,14 @@ function toggleFav(id,btn){
   const i=FAVS.indexOf(id);if(i>=0)FAVS.splice(i,1);else FAVS.push(id);
   saveFavs();
   const on=isFav(id);
-  if(btn){btn.classList.toggle('on',on);btn.textContent=on?'★ Favorited':'☆ Favorite';}
+  if(btn){btn.classList.toggle('on',on);
+    if(btn.classList.contains('favstar')){btn.textContent=on?'★':'☆';btn.title=on?'Remove from favorites':'Add to favorites';}
+    else btn.textContent=on?'★ Favorited':'☆ Favorite';}
   updateFavBtnCount();
 }
 function favBtnHTML(id){const on=isFav(id);return`<button class="favbtn${on?' on':''}" onclick="toggleFav('${id}',this)">${on?'★ Favorited':'☆ Favorite'}</button>`;}
+// Clickable star shown next to a launch name; toggles the site's favorite state.
+function favStarHTML(id){const on=isFav(id);return`<button class="favstar${on?' on':''}" title="${on?'Remove from favorites':'Add to favorites'}" aria-label="Toggle favorite" onclick="event.stopPropagation();toggleFav('${id}',this)">${on?'★':'☆'}</button>`;}
 // Top-bar Favorites button label reflects how many sites are starred.
 function updateFavBtnCount(){const b=document.getElementById('fav-btn');if(b)b.textContent=FAVS.length?('★ '+FAVS.length):'★';}
 
@@ -943,6 +951,7 @@ function removeFav(id){
   if(!FAVS.length)openFavorites();   // re-render to show the empty state
   // keep an open popup's Favorite button in sync, if it's the same site
   document.querySelectorAll('.favbtn.on').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').indexOf("'"+id+"'")>=0){b.classList.remove('on');b.textContent='☆ Favorite';}});
+  document.querySelectorAll('.favstar.on').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').indexOf("'"+id+"'")>=0){b.classList.remove('on');b.textContent='☆';b.title='Add to favorites';}});
 }
 function goToFavSite(id){
   const site=LAUNCHES.find(s=>s.id===id);if(!site)return;
@@ -1724,7 +1733,7 @@ function launchPop(site,w){
   const bio=siteBioHTML(site);
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${flyBtn}${favBtnHTML(site.id)}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
