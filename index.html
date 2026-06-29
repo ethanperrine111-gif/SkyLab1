@@ -2148,8 +2148,7 @@ function drawRocket(){
     const blowTo=(e.dir+180)%360,w=e.wind;
     const bodyLen=Math.min(40+w*3.2,118);                   // blade length grows with wind
     const yTip=-r0,yBodyIn=-(r0+tipLen),yBodyOut=-(r0+tipLen+bodyLen);
-    const gid='rkg'+i,cOut=vivid(w),cIn=vivid(Math.max(0,w-6));
-    defs+=`<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${cOut}"/><stop offset="1" stop-color="${cIn}"/></linearGradient>`;
+    const col=vivid(w);                                     // one solid colour per blade
     // Lengthwise text: choose the rotation that keeps it the right way up (never upside-down) so
     // it's easiest to read while still running along the blade.
     const flip=(blowTo>180),trot=flip?90:-90;
@@ -2159,9 +2158,9 @@ function drawRocket(){
     const nm=r.label,nmLen=nm.length*6.6+14,yName=yBodyOut-nmLen/2-2;
     // pointer-events:auto + onclick → tapping a blade raises it above any it overlaps.
     return`<g transform="translate(${c},${c}) rotate(${blowTo})" style="pointer-events:auto;cursor:pointer;" onclick="this.parentNode.appendChild(this)">`
-      +`<line x1="0" y1="0" x2="0" y2="${yTip}" stroke="${cOut}" stroke-width="2.4" stroke-linecap="round" opacity=".9"/>`
-      +`<polygon points="${-hw+1.5},${yBodyIn} ${hw-1.5},${yBodyIn} 0,${yTip}" fill="${cIn}" stroke="rgba(255,255,255,.85)" stroke-width="1" stroke-linejoin="round"/>`
-      +`<rect x="${-hw}" y="${yBodyOut}" width="${2*hw}" height="${bodyLen}" rx="${hw}" fill="url(#${gid})" stroke="rgba(255,255,255,.9)" stroke-width="1.2"/>`
+      +`<line x1="0" y1="0" x2="0" y2="${yTip}" stroke="${col}" stroke-width="2.4" stroke-linecap="round" opacity=".9"/>`
+      +`<polygon points="${-hw+1.5},${yBodyIn} ${hw-1.5},${yBodyIn} 0,${yTip}" fill="${col}" stroke="rgba(255,255,255,.85)" stroke-width="1" stroke-linejoin="round"/>`
+      +`<rect x="${-hw}" y="${yBodyOut}" width="${2*hw}" height="${bodyLen}" rx="${hw}" fill="${col}" stroke="rgba(255,255,255,.9)" stroke-width="1.2"/>`
       +`<g transform="translate(0,${midY}) rotate(${trot})"><text text-anchor="middle" dominant-baseline="central" font-size="11.5" font-weight="800" fill="#fff" stroke="rgba(0,0,0,.35)" stroke-width="0.5" paint-order="stroke">${spdTxt}</text></g>`
       +`<g transform="translate(0,${yName})"><rect x="-9" y="${-nmLen/2}" width="18" height="${nmLen}" rx="9" fill="rgba(17,24,39,.95)"/><g transform="rotate(${trot})"><text text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="800" fill="#fff">${nm}</text></g></g>`
       +`</g>`;
