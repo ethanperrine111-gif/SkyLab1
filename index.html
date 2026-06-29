@@ -554,8 +554,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   .flybtn,.dirbtn{padding:12px;font-size:14px;}
   /* Floating panels: never overflow the viewport, scroll if tall */
   #menu-panel{left:12px;right:12px;max-width:none;max-height:58vh;overflow-y:auto;}
-  /* On mobile the Compare button is folded into the model dropdown, so hide the standalone button. */
-  #fc-compare{display:none;}
+  /* Keep the standalone Compare button on mobile (the dropdown no longer carries a Compare option). */
+  #fc-compare{padding:4px 7px;font-size:11px;}
   #model-compare{max-height:50vh;}
   #layer-panel{width:210px;max-height:calc(100dvh - 72px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:16px;}  /* fit within the viewport from its anchor so all rows are reachable by scrolling */
   /* Detail sidebar takes the full screen on a phone */
@@ -582,6 +582,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
       <span id="fc-loc">Salt Lake City</span>
     </div>
     <div id="fc-head-actions">
+      <button id="fc-compare" onclick="toggleModelCompare()" title="Compare weather models side by side">⚖ Compare</button>
       <select id="model-select" class="fc-model-sel" title="Weather model" onchange="setModel(this.value)">
         <option value="gfs_hrrr">HRRR</option>
         <option value="ecmwf_ifs025">ECMWF</option>
@@ -590,7 +591,6 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <option value="gfs_seamless">GFS</option>
         <option value="meteofrance_seamless">MeteoFr</option>
         <option value="best_match">Best match</option>
-        <option value="__compare__">⚖ Compare models</option>
       </select>
       <button id="fc-toggle" onclick="toggleForecast()" title="Show/hide forecast" aria-label="Toggle forecast">▴</button>
     </div>
