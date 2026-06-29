@@ -1098,6 +1098,7 @@ function stationLink(id){return id?`<br><a href="https://www.weather.gov/wrh/tim
 // Button helper + handler: find the nearest NWS station to a site and open its weather.gov page.
 let wxStationsCache=null;
 function stationBtn(lat,lon){return`<button class="dirbtn stbtn" onclick="openNearestStation(${lat},${lon})">🌡 Closest weather station</button>`;}
+function webcamBtnHTML(site){if(!site.cams||!site.cams.length)return'';return site.cams.map(c=>`<a class="dirbtn" href="${c.url}" target="_blank" rel="noopener">📷 ${c.name}</a>`).join('');}
 async function openNearestStation(lat,lon){
   const tab=window.open('','_blank');   // open synchronously so the popup blocker doesn't eat it after the await
   const ptUrl=`https://forecast.weather.gov/MapClick.php?lat=${lat}&lon=${lon}`;
@@ -1612,7 +1613,6 @@ function siteBioHTML(site){
   if(site.bestWindow)info+=`<div class="ppinfo"><span class="ppinfo-k">🕑 Best window:</span> ${site.bestWindow}</div>`;
   if(site.access)info+=`<div class="ppinfo"><span class="ppinfo-k">🚙 Access:</span> ${site.access}</div>`;
   if(site.airspace)info+=`<div class="ppinfo ppinfo-warn"><span class="ppinfo-k">✈ Airspace:</span> ${site.airspace}</div>`;
-  if(site.cams&&site.cams.length)info+=`<div class="ppinfo"><span class="ppinfo-k">📷 Live webcams:</span> ${site.cams.map(c=>`<a href="${c.url}" target="_blank" rel="noopener">${c.name}</a>`).join(' · ')}</div>`;
   const haz=(site.hazards&&site.hazards.length)?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:'';
   const notes=site.desc?`<details class="ppnotes"><summary>📋 Notes</summary><p>${site.desc}</p></details>`:'';
   return`<div class="ppbio"><div class="ppbio-h">▲ Launch details</div>${factGrid}${info}${haz}${notes}</div>`;
@@ -1693,7 +1693,7 @@ function launchPop(site,w){
   const bio=siteBioHTML(site);
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${flyBtn}${favBtnHTML(site.id)}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${flyBtn}${favBtnHTML(site.id)}${shareBtnHTML(site.id)}${webcamBtnHTML(site)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
