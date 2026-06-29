@@ -319,6 +319,17 @@ body.dark .ppwind-note{color:#94a3b8;}
 .thumb-compass{position:absolute;right:6px;bottom:5px;z-index:3;pointer-events:auto;touch-action:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
 .thumb-takeoff-dot{width:14px;height:14px;border-radius:50%;background:rgba(125,211,252,.4);border:2.5px solid rgba(125,211,252,.4);box-shadow:none;}
 .oa-pop{font-size:12px;color:#0f172a;line-height:1.45;min-width:120px;}
+/* Cleaner weather-station popup card */
+.wxpop{font-size:12px;color:#0f172a;min-width:158px;}
+.wxpop-h{font-weight:800;font-size:13px;color:#0f172a;margin-bottom:7px;}
+.wxpop-rows{display:flex;flex-direction:column;gap:4px;}
+.wxpop-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 8px;background:#f1f5f9;border-radius:7px;}
+.wxpop-row span{color:#64748b;font-weight:600;}
+.wxpop-row b{color:#0f172a;font-weight:800;}
+.wxpop-desc{margin-top:7px;color:#64748b;font-size:11px;font-style:italic;line-height:1.35;}
+.wxpop-na{color:#64748b;}
+.wxpop-link{display:inline-block;margin-top:9px;color:#2563eb;font-weight:700;font-size:12px;text-decoration:none;}
+.wxpop-link:hover{text-decoration:underline;}
 #mobile-logo{display:none;}
 @media(max-width:768px){#mobile-logo{display:block;position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:1100;font-size:12px;font-weight:800;letter-spacing:.3px;color:#fff;background:rgba(17,24,39,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:3px 11px;border-radius:11px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.4);}}
 /* topbar model selector */
@@ -556,6 +567,10 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   .icon-btn{padding:9px;}
   .edbtn{padding:9px 11px;font-size:13px;}
   .flybtn,.dirbtn{padding:12px;font-size:14px;}
+  /* Drop the Favorites/Models header below the status bar / notch so it isn't jammed at the top */
+  #fav-bar,#mi-bar{padding-top:calc(14px + env(safe-area-inset-top,0px));}
+  /* Compass respects the notch too, so the Details pill (just below it) clears it cleanly */
+  #compass{top:calc(8px + env(safe-area-inset-top,0px));}
   /* Floating panels: never overflow the viewport, scroll if tall */
   #menu-panel{left:12px;right:12px;max-width:none;max-height:58vh;overflow-y:auto;}
   /* Keep the standalone Compare button on mobile (the dropdown no longer carries a Compare option). */
@@ -933,15 +948,19 @@ function openFavorites(){
     body.innerHTML=favs.map(favSiteCardHTML).join('');
     loadAllFavForecasts(favs);
   }
+  bindFavSwipe();
   document.getElementById('fav-overlay').classList.add('open');
 }
 function closeFavorites(){document.getElementById('fav-overlay').classList.remove('open');}
-// Swipe left anywhere on the favorites overlay to close it (mobile gesture).
-(function(){const ov=document.getElementById('fav-overlay');if(!ov)return;let sx=0,sy=0,tracking=false;
+// Swipe left anywhere on the favorites overlay to close it (mobile gesture). Bound on first open so
+// it's reliably attached (an early parse-time bind could miss if the element wasn't ready).
+function bindFavSwipe(){
+  const ov=document.getElementById('fav-overlay');if(!ov||ov._swipeBound)return;ov._swipeBound=true;
+  let sx=0,sy=0,tracking=false;
   ov.addEventListener('touchstart',e=>{const t=e.changedTouches[0];sx=t.clientX;sy=t.clientY;tracking=true;},{passive:true});
   ov.addEventListener('touchend',e=>{if(!tracking)return;tracking=false;const t=e.changedTouches[0];const dx=t.clientX-sx,dy=t.clientY-sy;
-    if(dx<-60&&Math.abs(dx)>Math.abs(dy)*1.5)closeFavorites();},{passive:true});   // clear left swipe
-})();
+    if(dx<-50&&Math.abs(dx)>Math.abs(dy)*1.3)closeFavorites();},{passive:true});   // clear left swipe
+}
 function openModelsInfo(){document.getElementById('models-overlay').classList.add('open');}
 function closeModelsInfo(){document.getElementById('models-overlay').classList.remove('open');}
 function removeFav(id){
@@ -1148,7 +1167,7 @@ async function openNearestStation(lat,lon){
     const desk=window.innerWidth>768;
     if(useMapLibre&&mlMap){
       const el=document.createElement('div');el.innerHTML=VANE_SVG;el.style.cssText='cursor:pointer;line-height:0;';
-      const pop=new maplibregl.Popup({offset:18,closeButton:true}).setHTML('<div class="oa-pop"><b>🌡 '+(best.name||'Station')+'</b><br>Loading…</div>');
+      const pop=new maplibregl.Popup({offset:32,closeButton:true}).setHTML('<div class="oa-pop wxpop"><div class="wxpop-h">🌡 '+(best.name||'Station')+'</div><div class="wxpop-na">Loading…</div></div>');
       const mk=new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat([best.lon,best.lat]).setPopup(pop).addTo(mlMap);
       window._nearWx={mk};
       const b=new maplibregl.LngLatBounds([lon,lat],[lon,lat]);b.extend([best.lon,best.lat]);
@@ -1157,9 +1176,9 @@ async function openNearestStation(lat,lon){
       pop.on('close',clearNearWx);  // close the popup → the lone pin goes away
       fetchStationObs(best.id).then(o=>pop.setHTML('<div class="oa-pop">'+obsHTML(best.name||'Station',o,best.id)+'</div>'));
     }else if(lfMap){
-      const mk=L.marker([best.lat,best.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[26,26],iconAnchor:[5,23]})}).addTo(lfMap);
+      const mk=L.marker([best.lat,best.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[26,26],iconAnchor:[5,23],popupAnchor:[7,-26]})}).addTo(lfMap);
       window._nearWx={mk};
-      mk.bindPopup('<b>🌡 '+(best.name||'Station')+'</b><br>Loading…').openPopup();
+      mk.bindPopup('<div class="wxpop"><div class="wxpop-h">🌡 '+(best.name||'Station')+'</div><div class="wxpop-na">Loading…</div></div>').openPopup();
       mk.on('popupclose',clearNearWx);
       const b=L.latLngBounds([[lat,lon],[best.lat,best.lon]]);
       lfMap.fitBounds(b,{paddingTopLeft:[80,80],paddingBottomRight:[desk?346:80,80],maxZoom:13});
@@ -1167,14 +1186,18 @@ async function openNearestStation(lat,lon){
     }
   }catch(e){setBadge('⚠ Could not locate the nearest weather station.');}
 }
+function stationLinkClean(id){return id?`<a class="wxpop-link" href="https://www.weather.gov/wrh/timeseries?site=${id}" target="_blank" rel="noopener">Open full station data →</a>`:'';}
 function obsHTML(name,o,id){
-  if(!o)return`<b>🌡 ${name}</b><br><span style="color:#64748b;">No current observation.</span>${stationLink(id)}`;
+  const head=`<div class="wxpop-h">🌡 ${name}</div>`;
+  if(!o)return`<div class="wxpop">${head}<div class="wxpop-na">No current observation.</div>${stationLinkClean(id)}</div>`;
   const cT=o.temperature&&o.temperature.value,tF=cT!=null?Math.round(cT*9/5+32)+'°F':'—';
   const wd=o.windDirection&&o.windDirection.value,ws=o.windSpeed&&o.windSpeed.value,wg=o.windGust&&o.windGust.value;
   const mph=v=>v!=null?Math.round(v*0.621):null;   // NWS windSpeed is km/h
-  const wind=ws!=null?`${wd!=null?d2c(wd)+' '+Math.round(wd)+'° · ':''}${mph(ws)} mph`:'calm / —';
+  const wind=ws!=null?`${wd!=null?d2c(wd)+' '+Math.round(wd)+'°· ':''}${mph(ws)} mph`:'calm';
   const gust=wg!=null?`${mph(wg)} mph`:'—';
-  return`<b>🌡 ${name}</b><br>Wind: ${wind}<br>Gust: ${gust}<br>Temp: ${tF}${o.textDescription?`<br><span style="color:#64748b;font-size:11px;">${o.textDescription}</span>`:''}${stationLink(id)}`;
+  const row=(l,v)=>`<div class="wxpop-row"><span>${l}</span><b>${v}</b></div>`;
+  return`<div class="wxpop">${head}<div class="wxpop-rows">${row('Wind',wind)}${row('Gust',gust)}${row('Temp',tF)}</div>`
+    +`${o.textDescription?`<div class="wxpop-desc">${o.textDescription}</div>`:''}${stationLinkClean(id)}</div>`;
 }
 const FEATURE_LAYERS={
   obstacles:{color:'#ef4444',marker:'circle',fetch:fetchObstacles},
@@ -1227,8 +1250,8 @@ function renderFeatures(name,pts){
     mlMap.on('click',cid,e=>{
       const f=e.features&&e.features[0];if(!f)return;
       const pr=f.properties||{},ll=f.geometry.coordinates.slice();
-      const pop=new maplibregl.Popup({offset:12,closeButton:true}).setLngLat(ll);
-      if(name==='wx'){pop.setHTML('<div class="oa-pop"><b>🌡 '+(pr.label||'Station')+'</b><br>Loading…</div>').addTo(mlMap);fetchStationObs(pr.sid).then(o=>pop.setHTML('<div class="oa-pop">'+obsHTML(pr.label||'Station',o,pr.sid)+'</div>'));}
+      const pop=new maplibregl.Popup({offset:(name==='wx'?32:12),closeButton:true}).setLngLat(ll);
+      if(name==='wx'){pop.setHTML('<div class="oa-pop wxpop"><div class="wxpop-h">🌡 '+(pr.label||'Station')+'</div><div class="wxpop-na">Loading…</div></div>').addTo(mlMap);fetchStationObs(pr.sid).then(o=>pop.setHTML('<div class="oa-pop">'+obsHTML(pr.label||'Station',o,pr.sid)+'</div>'));}
       else pop.setHTML('<div class="oa-pop">'+emoji+(pr.label||'')+'</div>').addTo(mlMap);
     });
     mlMap.on('mouseenter',cid,()=>mlMap.getCanvas().style.cursor='pointer');
@@ -1238,9 +1261,9 @@ function renderFeatures(name,pts){
     lfFeatureGroups[name]=L.layerGroup(pts.map(p=>{
       let mk;
       if(cfg.marker==='runway')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:RUNWAY_SVG,className:'',iconSize:[22,22],iconAnchor:[11,11]})});
-      else if(cfg.marker==='vane')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[26,26],iconAnchor:[5,23]})});
+      else if(cfg.marker==='vane')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[26,26],iconAnchor:[5,23],popupAnchor:[7,-26]})});
       else mk=L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:1.5,fillColor:cfg.color,fillOpacity:0.9});
-      if(name==='wx'){mk.bindPopup('<b>🌡 '+(p.name||'Station')+'</b><br>Loading…');mk.on('click',()=>fetchStationObs(p.id).then(o=>mk.setPopupContent(obsHTML(p.name||'Station',o,p.id))));}
+      if(name==='wx'){mk.bindPopup('<div class="wxpop"><div class="wxpop-h">🌡 '+(p.name||'Station')+'</div><div class="wxpop-na">Loading…</div></div>');mk.on('click',()=>fetchStationObs(p.id).then(o=>mk.setPopupContent(obsHTML(p.name||'Station',o,p.id))));}
       else mk.bindPopup(emoji+(p.name||''));
       return mk;
     }));
@@ -3059,6 +3082,24 @@ function setupSidebarSwipe(){
   };
   sb.addEventListener('touchend',end,{passive:true});
   sb.addEventListener('touchcancel',()=>{active=false;sb.style.transition='';sb.style.transform='';},{passive:true});
+  // When the panel is stashed (the "Details" pill is showing), a right-to-left swipe starting near
+  // the right screen edge slides it back over — the natural inverse of the dismiss gesture.
+  if(!window._reopenSwipeBound){
+    window._reopenSwipeBound=true;
+    let rx=0,ry=0,rtrack=false;const RE=44;   // gesture must begin within 44px of the right edge
+    const stashed=()=>{const p=document.getElementById('sb-reopen');return p&&p.style.display==='flex';};
+    document.addEventListener('touchstart',e=>{
+      if(!isMobileView()||e.touches.length!==1||!stashed()){rtrack=false;return;}
+      const t=e.touches[0];
+      if(t.clientX<window.innerWidth-RE){rtrack=false;return;}
+      rx=t.clientX;ry=t.clientY;rtrack=true;
+    },{passive:true});
+    document.addEventListener('touchend',e=>{
+      if(!rtrack)return;rtrack=false;
+      const t=e.changedTouches[0],dx=t.clientX-rx,dy=t.clientY-ry;
+      if(dx<-55&&Math.abs(dx)>Math.abs(dy)*1.3)reopenSidebar();
+    },{passive:true});
+  }
 }
 
 // ── MapLibre 3D map ───────────────────────────────────────────────────────────
@@ -3430,25 +3471,18 @@ function loadWxCache(){try{return JSON.parse(localStorage.getItem(WX_CACHE_KEY)|
 function saveFcCache(series){try{localStorage.setItem(FC_CACHE_KEY,JSON.stringify({ts:Date.now(),lat:fcTarget.lat,lon:fcTarget.lon,series}));}catch(e){}}
 function loadFcCache(){try{return JSON.parse(localStorage.getItem(FC_CACHE_KEY)||'null');}catch(e){return null;}}
 function ageStr(ts){const m=Math.round((Date.now()-ts)/60000);if(m<60)return m+' min';const h=Math.round(m/60);return h<48?h+' hr':Math.round(h/24)+' days';}
-let wxBannerShown=false, wxRetryAt=0, wxRetryTimer=null, wxCooldownMs=60000, wxRetrying=false;
+let wxBannerShown=false, wxRetryTimer=null, wxCooldownMs=60000, wxRetrying=false;
 function ensureWxBanner(){let b=document.getElementById('wx-banner');if(!b){b=document.createElement('div');b.id='wx-banner';b.title='Dismiss';b.onclick=()=>{hideWxBanner();};document.body.appendChild(b);}return b;}
 function showWxBanner(msg){if(wxBannerShown)return;wxBannerShown=true;const b=ensureWxBanner();b.innerHTML=msg+'  ✕';b.style.display='block';}
-function hideWxBanner(){const b=document.getElementById('wx-banner');if(b)b.style.display='none';if(wxRetryTimer){clearInterval(wxRetryTimer);wxRetryTimer=null;}}
-function fmtMMSS(ms){ms=Math.max(0,ms);const s=Math.round(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
-// Cache-fallback banner with a live "next live attempt in M:SS" countdown. When it hits zero we
-// auto-retry the live fetch; if it's still rate-limited the cooldown backs off (1→2→4… min, cap 15).
-function showWxCachedBanner(baseMsg){
-  wxBannerShown=true;
-  const b=ensureWxBanner();b.style.display='block';
-  if(wxRetryTimer)clearInterval(wxRetryTimer);
-  wxRetryAt=Date.now()+wxCooldownMs;
-  wxCooldownMs=Math.min(wxCooldownMs*2,900000);   // back off for the next failure
-  const tick=()=>{
-    const left=wxRetryAt-Date.now();
-    if(left<=0){clearInterval(wxRetryTimer);wxRetryTimer=null;b.innerHTML=baseMsg+' · <b>checking live weather…</b>';retryLiveWeather();return;}
-    b.innerHTML=baseMsg+` · next live attempt in <b>${fmtMMSS(left)}</b>  ✕`;
-  };
-  wxRetryTimer=setInterval(tick,1000);tick();
+function hideWxBanner(){const b=document.getElementById('wx-banner');if(b)b.style.display='none';if(wxRetryTimer){clearTimeout(wxRetryTimer);wxRetryTimer=null;}}
+// Cache fallback. Open-Meteo never tells us WHEN the quota resets, so there's no honest countdown to
+// show — we just note we're on cached data and silently retry the live fetch in the background with
+// backoff (1→2→4… min, cap 15) so the app heals itself without nagging about timing.
+function showWxCachedBanner(msg){
+  wxBannerShown=true;const b=ensureWxBanner();b.innerHTML=msg+'  ✕';b.style.display='block';
+  if(wxRetryTimer)clearTimeout(wxRetryTimer);
+  wxRetryTimer=setTimeout(retryLiveWeather,wxCooldownMs);
+  wxCooldownMs=Math.min(wxCooldownMs*2,900000);
 }
 async function retryLiveWeather(){
   if(wxRetrying)return;wxRetrying=true;
