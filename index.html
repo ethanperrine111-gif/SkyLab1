@@ -2427,20 +2427,24 @@ function updateNowLines(){document.querySelectorAll('.fc-data').forEach(position
 // Only responds when the wind layer is already enabled — clicking a time slot should
 // re-time an existing overlay, not pop the wind animation up on its own.
 function pickWindTime(iso){
-  if(!windState.on)return;                                // wind not selected → ignore time clicks
-  if(windState.time===iso){resetWindTime();return;}
+  if(windState.time===iso){resetWindTime();return;}       // click the active slot again → clear
   windState.time=iso;
   document.querySelectorAll('.fc-cell.wt-sel').forEach(c=>c.classList.remove('wt-sel'));
   document.querySelectorAll('.fc-cell[data-t="'+iso+'"]').forEach(c=>c.classList.add('wt-sel'));
   const d=new Date(iso),hr=d.getHours(),ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
   const lbl=`${FC_DAYS[d.getDay()].slice(0,3)} ${ap}`;
-  setBadge('🌬 Wind @ '+lbl+' · click the slot again for live');
-  fetchWindGrid(iso).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});
+  if(windState.on){                                       // wind layer on → also re-time the animation
+    setBadge('🌬 Wind @ '+lbl+' · click the slot again for live');
+    fetchWindGrid(iso).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});
+  }else{
+    setBadge('🕑 '+lbl+' selected · turn on 🌬 Wind to animate · click again to clear');
+  }
 }
 function resetWindTime(){
   windState.time=null;
   document.querySelectorAll('.fc-cell.wt-sel').forEach(c=>c.classList.remove('wt-sel'));
   if(windState.on){setBadge('🌬 Wind: live');fetchWindGrid(null).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});}
+  else setBadge('');
 }
 function renderForecast(series){
   const fcEl=document.getElementById('forecast');
