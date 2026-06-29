@@ -3011,7 +3011,7 @@ function closeSidebar(){
   document.getElementById('sidebar').classList.remove('open');
   document.body.classList.remove('popup-open');
   const r=document.getElementById('sb-reopen');if(r)r.style.display='none';
-  destroyMini();openPopup=null;clearFlight();currentEditLZ=null;currentLaunchId=null;clearZones();clearLZHighlight();lockAllPins();hideMobileAction();hideGlideMobile();
+  destroyMini();openPopup=null;clearFlight();currentEditLZ=null;currentLaunchId=null;clearZones();clearLZHighlight();lockAllPins();hideMobileAction();hideGlideMobile();clearNearWx();
   // Leave the top weather panel on the last selected spot (no revert to the regional default).
   if(useMapLibre&&mlMap){try{mlMap.easeTo({padding:{right:0,left:0,top:0,bottom:0},duration:400});}catch(e){}}
 }
