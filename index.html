@@ -963,7 +963,10 @@ function goToFavSite(id){
 
 // ── Share a site (deep link) ──────────────────────────────────────────────────
 // Builds a #site=<id> link; the boot sequence opens that site on load.
-function siteShareURL(id){return location.origin+location.pathname+'#site='+encodeURIComponent(id);}
+// Build the deep link from the page's own URL (minus any existing hash). location.origin is
+// unreliable — for file:// pages it serialises to the string "null", which produced a broken link
+// and a blank screen when opened. Stripping the hash off location.href works on file:// and https.
+function siteShareURL(id){return location.href.split('#')[0]+'#site='+encodeURIComponent(id);}
 async function shareSite(id){
   const site=LAUNCHES.find(s=>s.id===id)||ALL_LZS.find(s=>s.id===id);
   const name=(site&&site.name)||'launch';
@@ -1140,12 +1143,16 @@ async function openNearestStation(lat,lon){
     if(!best){setBadge('No nearby weather station found.');return;}
     clearNearWx();                  // drop any previous nearest-station pin first
     stashSidebar();                 // mobile: tuck the detail panel away so the pin is visible
+    // Frame BOTH the launch (lat,lon) and the station so neither leaves the screen. On desktop the
+    // detail sidebar covers the right ~316px, so pad that side; on mobile it's been stashed away.
+    const desk=window.innerWidth>768;
     if(useMapLibre&&mlMap){
       const el=document.createElement('div');el.innerHTML=VANE_SVG;el.style.cssText='cursor:pointer;line-height:0;';
       const pop=new maplibregl.Popup({offset:18,closeButton:true}).setHTML('<div class="oa-pop"><b>🌡 '+(best.name||'Station')+'</b><br>Loading…</div>');
       const mk=new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat([best.lon,best.lat]).setPopup(pop).addTo(mlMap);
       window._nearWx={mk};
-      mlMap.flyTo({center:[best.lon,best.lat],zoom:Math.max(mlMap.getZoom(),11),essential:true});
+      const b=new maplibregl.LngLatBounds([lon,lat],[lon,lat]);b.extend([best.lon,best.lat]);
+      mlMap.fitBounds(b,{padding:{top:80,bottom:80,left:80,right:desk?346:80},maxZoom:13,duration:800,essential:true});
       mk.togglePopup();
       pop.on('close',clearNearWx);  // close the popup → the lone pin goes away
       fetchStationObs(best.id).then(o=>pop.setHTML('<div class="oa-pop">'+obsHTML(best.name||'Station',o,best.id)+'</div>'));
@@ -1154,7 +1161,8 @@ async function openNearestStation(lat,lon){
       window._nearWx={mk};
       mk.bindPopup('<b>🌡 '+(best.name||'Station')+'</b><br>Loading…').openPopup();
       mk.on('popupclose',clearNearWx);
-      lfMap.setView([best.lat,best.lon],Math.max(lfMap.getZoom(),11));
+      const b=L.latLngBounds([[lat,lon],[best.lat,best.lon]]);
+      lfMap.fitBounds(b,{paddingTopLeft:[80,80],paddingBottomRight:[desk?346:80,80],maxZoom:13});
       fetchStationObs(best.id).then(o=>mk.setPopupContent(obsHTML(best.name||'Station',o,best.id)));
     }
   }catch(e){setBadge('⚠ Could not locate the nearest weather station.');}
