@@ -2387,6 +2387,7 @@ function renderForecast(series){
 }
 // "Now" button: smooth-scroll every visible forecast back to the current-hour column.
 function forecastNow(){
+  if(windState.time)resetWindTime();   // a different time was picked → snap the overlay back to live/current
   document.querySelectorAll('#forecast .fc-scroll,.pp-fc-wrap .fc-scroll').forEach(s=>{
     try{s.scrollTo({left:s._nowLeft||0,behavior:'smooth'});}catch(e){s.scrollLeft=s._nowLeft||0;}
   });
