@@ -2119,11 +2119,24 @@ function drawRocket(){
   bindRocket();
   const pt=projectLL(fcTarget.lat,fcTarget.lon);if(!pt){host.style.display='none';return;}
   const nowT=cmpAxis[0];
-  const feathers=cmpData.map(r=>{const e=r.byTime[nowT];if(!e)return'';
-    // arrow points the way the wind blows TO (dir + 180); dark on light pills for contrast
-    const arrow=`<svg class="rk-arrow" viewBox="0 0 16 16" style="transform:rotate(${(e.dir+180)%360}deg)"><line x1="8" y1="3.5" x2="8" y2="13" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/><polygon points="8,1.5 4.4,7 11.6,7" fill="#0f172a"/></svg>`;
-    return`<div class="rk-feather"><div class="rk-name">${r.label}</div><div class="rk-blade" style="background:${windColor(e.wind)}">${arrow}<span class="rk-spd">${cvWind(e.wind)}</span><span class="rk-gst">G${cvWind(e.gust)}</span></div></div>`;}).join('');
-  host.innerHTML=`<div class="rk-fan">${feathers}</div><div class="rk-dot"></div>`;
+  // Windy-style: each model is a long arrow radiating from the site point, aimed the way the
+  // wind blows TO (dir + 180), length scaled by speed and coloured by speed, with a small label.
+  const S=260,c=S/2;
+  const arrows=cmpData.map(r=>{const e=r.byTime[nowT];if(!e||e.wind==null||e.dir==null)return'';
+    const ang=((e.dir+180)%360)*Math.PI/180;            // radians, blow-to (0 = up/north)
+    const L=Math.min(34+e.wind*3,116);                  // shaft length grows with wind speed
+    const tx=c+L*Math.sin(ang),ty=c-L*Math.cos(ang);    // arrow tip
+    const col=windColor(e.wind);
+    const ah=11;                                        // arrowhead size
+    const hx1=tx-ah*Math.sin(ang-0.45),hy1=ty+ah*Math.cos(ang-0.45);
+    const hx2=tx-ah*Math.sin(ang+0.45),hy2=ty+ah*Math.cos(ang+0.45);
+    const lx=c+(L+18)*Math.sin(ang),ly=c-(L+18)*Math.cos(ang);   // label just past the tip
+    return`<line x1="${c}" y1="${c}" x2="${tx}" y2="${ty}" stroke="${col}" stroke-width="4.5" stroke-linecap="round"/>`
+      +`<polygon points="${tx.toFixed(1)},${ty.toFixed(1)} ${hx1.toFixed(1)},${hy1.toFixed(1)} ${hx2.toFixed(1)},${hy2.toFixed(1)}" fill="${col}"/>`
+      +`<g transform="translate(${lx.toFixed(1)},${ly.toFixed(1)})"><rect x="-27" y="-9" width="54" height="18" rx="5" fill="rgba(15,23,42,.88)"/><text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="800" fill="#fff">${r.label} ${cvWind(e.wind)}</text></g>`;
+  }).join('');
+  host.innerHTML=`<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}" style="overflow:visible;">${arrows}<circle cx="${c}" cy="${c}" r="5.5" fill="#0f172a" stroke="#fff" stroke-width="2"/></svg>`;
+  host.style.transform='translate(-50%,-50%)';          // centre the SVG on the site point
   host.style.left=pt[0]+'px';host.style.top=pt[1]+'px';host.style.display='block';
 }
 function hideRocket(){const h=document.getElementById('rocket');if(h)h.style.display='none';}
