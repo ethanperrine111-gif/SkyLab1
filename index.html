@@ -2119,23 +2119,33 @@ function drawRocket(){
   bindRocket();
   const pt=projectLL(fcTarget.lat,fcTarget.lon);if(!pt){host.style.display='none';return;}
   const nowT=cmpAxis[0];
-  // Windy-style: each model is a long arrow radiating from the site point, aimed the way the
-  // wind blows TO (dir + 180), length scaled by speed and coloured by speed, with a small label.
-  const S=260,c=S/2;
-  const arrows=cmpData.map(r=>{const e=r.byTime[nowT];if(!e||e.wind==null||e.dir==null)return'';
-    const ang=((e.dir+180)%360)*Math.PI/180;            // radians, blow-to (0 = up/north)
-    const L=Math.min(34+e.wind*3,116);                  // shaft length grows with wind speed
-    const tx=c+L*Math.sin(ang),ty=c-L*Math.cos(ang);    // arrow tip
-    const col=windColor(e.wind);
-    const ah=11;                                        // arrowhead size
-    const hx1=tx-ah*Math.sin(ang-0.45),hy1=ty+ah*Math.cos(ang-0.45);
-    const hx2=tx-ah*Math.sin(ang+0.45),hy2=ty+ah*Math.cos(ang+0.45);
-    const lx=c+(L+18)*Math.sin(ang),ly=c-(L+18)*Math.cos(ang);   // label just past the tip
-    return`<line x1="${c}" y1="${c}" x2="${tx}" y2="${ty}" stroke="${col}" stroke-width="4.5" stroke-linecap="round"/>`
-      +`<polygon points="${tx.toFixed(1)},${ty.toFixed(1)} ${hx1.toFixed(1)},${hy1.toFixed(1)} ${hx2.toFixed(1)},${hy2.toFixed(1)}" fill="${col}"/>`
-      +`<g transform="translate(${lx.toFixed(1)},${ly.toFixed(1)})"><rect x="-27" y="-9" width="54" height="18" rx="5" fill="rgba(15,23,42,.88)"/><text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="800" fill="#fff">${r.label} ${cvWind(e.wind)}</text></g>`;
+  // Windy-app style: each model is a rounded gradient "blade" radiating from the site point,
+  // pointed tip toward centre and aimed the way the wind blows TO (dir + 180); length scales with
+  // speed, colour ramps with speed, the model name sits in a dark pill at the outer end and the
+  // speed (+ gust) runs along the blade.
+  const S=320,c=S/2,hw=12,r0=8,tipLen=18;
+  let defs='';
+  const blades=cmpData.map((r,i)=>{const e=r.byTime[nowT];if(!e||e.wind==null||e.dir==null)return'';
+    const blowTo=(e.dir+180)%360,w=e.wind;
+    const bodyLen=Math.min(34+w*3,104);
+    const yTip=-r0,yBodyIn=-(r0+tipLen),yBodyOut=-(r0+tipLen+bodyLen);
+    const gid='rkg'+i,cTail=windColor(w),cTip=windColor(Math.max(0,w-7));
+    defs+=`<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${cTail}"/><stop offset="1" stop-color="${cTip}"/></linearGradient>`;
+    const flip=(blowTo>90&&blowTo<270);                 // keep text/pill upright on the lower half
+    const spd=cvWind(w),gst=cvWind(e.gust);
+    const spdTxt=(e.gust!=null&&gst>spd)?`${spd} G:${gst}`:`${spd}`;
+    const midY=(yBodyIn+yBodyOut)/2;
+    const nm=r.label,nmW=nm.length*6.4+16;
+    return`<g transform="translate(${c},${c}) rotate(${blowTo})">`
+      +`<polygon points="${-hw+1},${yBodyIn} ${hw-1},${yBodyIn} 0,${yTip}" fill="${cTip}"/>`
+      +`<rect x="${-hw}" y="${yBodyOut}" width="${2*hw}" height="${bodyLen}" rx="${hw}" fill="url(#${gid})" stroke="rgba(255,255,255,.8)" stroke-width="1.2"/>`
+      +`<g transform="translate(0,${midY}) rotate(${flip?90:-90})"><text text-anchor="middle" dominant-baseline="central" font-size="12.5" font-weight="800" fill="#0f172a">${spdTxt}</text></g>`
+      +`<g transform="translate(0,${yBodyOut}) ${flip?'rotate(180)':''}"><rect x="${-nmW/2}" y="-19" width="${nmW}" height="16" rx="8" fill="rgba(15,23,42,.92)"/><text x="0" y="-11" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="800" fill="#fff">${nm}</text></g>`
+      +`</g>`;
   }).join('');
-  host.innerHTML=`<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}" style="overflow:visible;">${arrows}<circle cx="${c}" cy="${c}" r="5.5" fill="#0f172a" stroke="#fff" stroke-width="2"/></svg>`;
+  host.innerHTML=`<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}" style="overflow:visible;"><defs>${defs}</defs>`
+    +`<circle cx="${c}" cy="${c}" r="96" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1"/>`
+    +`${blades}<circle cx="${c}" cy="${c}" r="8" fill="#fff" stroke="#0f172a" stroke-width="2.5"/></svg>`;
   host.style.transform='translate(-50%,-50%)';          // centre the SVG on the site point
   host.style.left=pt[0]+'px';host.style.top=pt[1]+'px';host.style.display='block';
 }
