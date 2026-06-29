@@ -2149,6 +2149,10 @@ function drawRocket(){
   // (e.g. HRRR and GFS often return the same wind) fan apart instead of hiding behind each other.
   const ents=[];
   cmpData.forEach(r=>{const e=r.byTime[nowT];if(e&&e.wind!=null&&e.dir!=null)ents.push({r,e,blowTo:(e.dir+180)%360,w:e.wind});});
+  // Stack order (most important on top). SVG draws later elements above earlier ones, so sort the
+  // priority list in REVERSE — HRRR ends up last and therefore renders on top.
+  const RK={HRRR:0,ECMWF:1,ICON:2,GEM:3,GFS:4,MeteoFr:5};
+  ents.sort((a,b)=>(RK[b.r.label]??99)-(RK[a.r.label]??99));
   const groups={};
   ents.forEach(en=>{const k=Math.round(en.blowTo/6);(groups[k]=groups[k]||[]).push(en);});
   Object.keys(groups).forEach(k=>{const g=groups[k],n=g.length;g.forEach((en,j)=>{en.draw=en.blowTo+(j-(n-1)/2)*10;});});  // spread 10° apart
