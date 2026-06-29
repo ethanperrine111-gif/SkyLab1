@@ -2133,6 +2133,10 @@ function drawRocket(){
   const host=document.getElementById('rocket');if(!host||!cmpData||!cmpAxis.length)return;
   bindRocket();
   const pt=projectLL(fcTarget.lat,fcTarget.lon);if(!pt){host.style.display='none';return;}
+  // The blades point in true compass directions, but when the map is rotated, screen-up no longer
+  // points north. Counter-rotate the whole pin by the map's bearing so the wind stays geographically
+  // correct relative to the terrain instead of spinning with the screen. (Leaflet can't rotate → 0.)
+  let bearing=0;try{if(useMapLibre&&mlMap)bearing=mlMap.getBearing()||0;}catch(e){}
   const nowT=(cmpSelT&&cmpAxis.indexOf(cmpSelT)>=0)?cmpSelT:cmpAxis[0];   // clicked hour, else current
   // Windy-app style: each model is a slim rounded gradient "blade" radiating from the site point —
   // a dark name pill at the OUTER end, the speed (+gust) running lengthwise along a colour-graded
@@ -2178,7 +2182,7 @@ function drawRocket(){
   }).join('');
   host.innerHTML=`<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}" style="overflow:visible;"><defs>${defs}</defs>`
     +`<circle cx="${c}" cy="${c}" r="100" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1"/>`
-    +`${blades}<circle cx="${c}" cy="${c}" r="7" fill="#fff" stroke="#0f172a" stroke-width="2.5"/></svg>`;
+    +`<g transform="rotate(${-bearing} ${c} ${c})">${blades}</g></svg>`;
   host.style.transform='translate(-50%,-50%)';          // centre the SVG on the site point
   host.style.left=pt[0]+'px';host.style.top=pt[1]+'px';host.style.display='block';
 }
