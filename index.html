@@ -2136,12 +2136,15 @@ function drawRocket(){
     const yTip=-r0,yBodyIn=-(r0+tipLen),yBodyOut=-(r0+tipLen+bodyLen);
     const gid='rkg'+i,cOut=vivid(w),cIn=vivid(Math.max(0,w-6));
     defs+=`<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${cOut}"/><stop offset="1" stop-color="${cIn}"/></linearGradient>`;
-    const flip=(blowTo>90&&blowTo<270),trot=flip?90:-90;   // keep lengthwise text upright
+    // Lengthwise text: choose the rotation that keeps it the right way up (never upside-down) so
+    // it's easiest to read while still running along the blade.
+    const flip=(blowTo>180),trot=flip?90:-90;
     const spd=cvWind(w),gst=cvWind(e.gust);
     const spdTxt=(e.gust!=null&&gst>spd)?`${spd} G:${gst}`:`${spd}`;
     const midY=(yBodyIn+yBodyOut)/2;
     const nm=r.label,nmLen=nm.length*6.6+14,yName=yBodyOut-nmLen/2-2;
-    return`<g transform="translate(${c},${c}) rotate(${blowTo})">`
+    // pointer-events:auto + onclick → tapping a blade raises it above any it overlaps.
+    return`<g transform="translate(${c},${c}) rotate(${blowTo})" style="pointer-events:auto;cursor:pointer;" onclick="this.parentNode.appendChild(this)">`
       +`<polygon points="${-hw+1.5},${yBodyIn} ${hw-1.5},${yBodyIn} 0,${yTip}" fill="${cIn}" stroke="rgba(255,255,255,.85)" stroke-width="1" stroke-linejoin="round"/>`
       +`<rect x="${-hw}" y="${yBodyOut}" width="${2*hw}" height="${bodyLen}" rx="${hw}" fill="url(#${gid})" stroke="rgba(255,255,255,.9)" stroke-width="1.2"/>`
       +`<g transform="translate(0,${midY}) rotate(${trot})"><text text-anchor="middle" dominant-baseline="central" font-size="11.5" font-weight="800" fill="#fff" stroke="rgba(0,0,0,.35)" stroke-width="0.5" paint-order="stroke">${spdTxt}</text></g>`
