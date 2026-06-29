@@ -1097,7 +1097,18 @@ function fetchStationObs(id){
 function stationLink(id){return id?`<br><a href="https://www.weather.gov/wrh/timeseries?site=${id}" target="_blank" rel="noopener" style="color:#2563eb;font-weight:700;">Open full station data →</a>`:'';}
 // Button helper + handler: find the nearest NWS station to a site and open its weather.gov page.
 let wxStationsCache=null;
-function stationBtn(lat,lon){return`<button class="dirbtn stbtn" onclick="openNearestStation(${lat},${lon})">🌡 Closest weather station</button>`;}
+function stationBtn(lat,lon){return`<button class="dirbtn stbtn" id="stbtn-near" onclick="openNearestStation(${lat},${lon})">🌡 Closest weather station<span class="stbtn-dist" style="opacity:.75;font-weight:600;"></span></button>`;}
+// Fill in the distance (and name) of the nearest NWS station on the open popup's station button.
+async function fillStationDist(lat,lon){
+  try{
+    if(!wxStationsCache)wxStationsCache=await fetchWxStations();
+    const list=wxStationsCache||[];let best=null,bd=Infinity;
+    for(const s of list){if(s.lat==null||s.lon==null)continue;const d=kmBetween(lat,lon,s.lat,s.lon);if(d<bd){bd=d;best=s;}}
+    const el=document.querySelector('#stbtn-near .stbtn-dist');if(!el||!best)return;
+    el.textContent=` · ${(bd*0.621371).toFixed(1)} mi`;
+    const btn=el.closest('.stbtn');if(btn&&best.name)btn.title=best.name+' — '+(bd*0.621371).toFixed(1)+' mi away';
+  }catch(e){}
+}
 function webcamBtnHTML(site){if(!site.cams||!site.cams.length)return'';return site.cams.map(c=>`<a class="dirbtn" href="${c.url}" target="_blank" rel="noopener">📷 ${c.name}</a>`).join('');}
 async function openNearestStation(lat,lon){
   const tab=window.open('','_blank');   // open synchronously so the popup blocker doesn't eat it after the await
@@ -2834,6 +2845,7 @@ function onLaunchClick(site,e){
   showPopup(site.lat,site.lon,launchPop(site,w));
   wireLaunchEditor(site);
   mountThumb(site,site.facing);
+  fillStationDist(site.lat,site.lon);         // show miles to the nearest weather station on the button
   highlightConnectedLZ(site.id);              // light up the landing zone linked to this launch
 }
 function onLZClick(lz,e){
@@ -2846,6 +2858,7 @@ function onLZClick(lz,e){
   showPopup(lz.lat,lz.lon,lzPop(lz,w));
   mountThumb(lz,null);
   wireLZEditor(lz);
+  fillStationDist(lz.lat,lz.lon);   // show miles to the nearest weather station on the button
   showLZBoundary(lz);          // draw just this LZ's boundary
 }
 
