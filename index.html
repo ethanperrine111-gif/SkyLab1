@@ -1653,7 +1653,8 @@ function computeGlideRing(site,gr){
     for(let d=stepM;d<=maxD;d+=stepM){
       const lon=site.lon+(d*sin)/mPerLon,lat=site.lat+(d*cos)/mPerLat;
       const glideAlt=A-d/gr,terr=mlMap.queryTerrainElevation([lon,lat]);
-      if(terr!=null&&glideAlt<=terr)break;                   // glide path meets the ground/ridge
+      if(terr==null)break;                                   // ran past loaded DEM tiles — stop this ray
+      if(glideAlt<=terr)break;                               // glide path meets the ground/ridge
       lastLon=lon;lastLat=lat;
     }
     ring.push([lastLon,lastLat]);
@@ -1661,7 +1662,15 @@ function computeGlideRing(site,gr){
   ring.push(ring[0]);
   return{type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Polygon',coordinates:[ring]}}]};
 }
-function drawGlide(site){ensureGlideLayer();const d=computeGlideRing(site,glideState.gr);if(d)mlMap.getSource('glide').setData(d);}
+function drawGlide(site){
+  ensureGlideLayer();
+  const apply=()=>{const d=computeGlideRing(site,glideState.gr);if(d){mlMap.getSource('glide').setData(d);return true;}return false;};
+  if(apply())return;                                         // terrain ready → drawn
+  // Just-moved pin: its DEM tiles aren't loaded yet. Bring the launch into view, then
+  // poll until queryTerrainElevation has data and the cone can be traced.
+  try{mlMap.easeTo({center:[site.lon,site.lat],duration:300});}catch(e){}
+  let n=0;const t=setInterval(()=>{if(glideState.id!==site.id||apply()||++n>15)clearInterval(t);},300);
+}
 function clearGlide(){if(mlMap.getSource('glide'))mlMap.getSource('glide').setData({type:'FeatureCollection',features:[]});}
 function toggleGlide(id,btn){
   const site=LAUNCHES.find(s=>s.id===id);if(!site)return;
