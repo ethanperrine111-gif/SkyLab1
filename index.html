@@ -1164,8 +1164,9 @@ function obsHTML(name,o,id){
   const cT=o.temperature&&o.temperature.value,tF=cT!=null?Math.round(cT*9/5+32)+'°F':'—';
   const wd=o.windDirection&&o.windDirection.value,ws=o.windSpeed&&o.windSpeed.value,wg=o.windGust&&o.windGust.value;
   const mph=v=>v!=null?Math.round(v*0.621):null;   // NWS windSpeed is km/h
-  const wind=ws!=null?`${wd!=null?d2c(wd)+' '+Math.round(wd)+'° · ':''}${mph(ws)} mph${wg!=null?' (gust '+mph(wg)+')':''}`:'calm / —';
-  return`<b>🌡 ${name}</b><br>Wind: ${wind}<br>Temp: ${tF}${o.textDescription?`<br><span style="color:#64748b;font-size:11px;">${o.textDescription}</span>`:''}${stationLink(id)}`;
+  const wind=ws!=null?`${wd!=null?d2c(wd)+' '+Math.round(wd)+'° · ':''}${mph(ws)} mph`:'calm / —';
+  const gust=wg!=null?`${mph(wg)} mph`:'—';
+  return`<b>🌡 ${name}</b><br>Wind: ${wind}<br>Gust: ${gust}<br>Temp: ${tF}${o.textDescription?`<br><span style="color:#64748b;font-size:11px;">${o.textDescription}</span>`:''}${stationLink(id)}`;
 }
 const FEATURE_LAYERS={
   obstacles:{color:'#ef4444',marker:'circle',fetch:fetchObstacles},
