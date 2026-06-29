@@ -2767,9 +2767,9 @@ async function refreshMovedLaunch(site){
     const j=await r.json();if(j&&j.elevation&&j.elevation[0]!=null)site.alt=Math.round(j.elevation[0]*3.28084);
   }catch(e){}
   saveLaunchPos();saveCustomLaunches();                      // persist the re-derived fields
-  try{const w=await fetchHRRR(site.lat,site.lon);if(w){siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};recolorMarkers();}}catch(e){}
   if(glideState.id===site.id)drawGlide(site);               // redraw glide cone from the new spot
-  if(currentLaunchId===site.id)onLaunchClick(site);         // rebuild popup with the new facing/alt/wind
+  if(currentLaunchId===site.id)onLaunchClick(site);         // rebuild popup NOW so facing/alt/glide show immediately
+  try{const w=await fetchHRRR(site.lat,site.lon);if(w){siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};recolorMarkers();if(currentLaunchId===site.id)onLaunchClick(site);}}catch(e){}
 }
 // Press-and-hold anywhere on the map (touch) to drop an ad-hoc takeoff right there and run the
 // best-glide / reachable-LZ analysis — no "Fly from here?" tap needed. Tap still shows the prompt.
@@ -3214,8 +3214,8 @@ function wireLaunchEditor(site){
   const nameEl=document.getElementById('led-name');if(!nameEl)return;
   const persist=()=>{saveLaunchPos();saveCustomLaunches();};   // auto-persist every launch edit
   nameEl.oninput=e=>{site.name=e.target.value;persist();};
-  document.getElementById('led-facing').oninput=e=>{const v=parseInt(e.target.value);if(!isNaN(v))site.facing=((v%360)+360)%360;persist();};
-  document.getElementById('led-alt').oninput=e=>{const v=parseInt(e.target.value);if(!isNaN(v))site.alt=v;persist();};
+  document.getElementById('led-facing').oninput=e=>{const v=parseInt(e.target.value);if(!isNaN(v))site.facing=((v%360)+360)%360;persist();if(glideState.id===site.id)drawGlide(site);};
+  document.getElementById('led-alt').oninput=e=>{const v=parseInt(e.target.value);if(!isNaN(v))site.alt=v;persist();if(glideState.id===site.id)drawGlide(site);};
   const wf=document.getElementById('led-windfrom'),wt=document.getElementById('led-windto');
   const setWin=()=>{const a=parseInt(wf.value),b=parseInt(wt.value);if(isNaN(a)||isNaN(b))return;
     site.wind=[((a%360)+360)%360,((b%360)+360)%360];persist();
