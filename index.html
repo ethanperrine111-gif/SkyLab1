@@ -2756,6 +2756,21 @@ async function flyFromHere(lat,lon){
   fetchHRRR(site.lat,site.lon).then(w=>{if(!w)return;siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};recolorMarkers();});
 }
 
+// After a launch pin is dragged to a new spot, re-derive everything that depends on location:
+// terrain elevation, the slope's downhill direction (= takeoff facing / wind needed), and the
+// weather for the new coordinates — then rebuild the open popup so all pin info reflects the move.
+async function refreshMovedLaunch(site){
+  const downhill=slopeDownhill(site.lat,site.lon);          // new slope aspect = new facing
+  if(downhill!=null)site.facing=Math.round(downhill);
+  try{                                                       // refresh ground elevation
+    const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${site.lat.toFixed(5)}&longitude=${site.lon.toFixed(5)}`);
+    const j=await r.json();if(j&&j.elevation&&j.elevation[0]!=null)site.alt=Math.round(j.elevation[0]*3.28084);
+  }catch(e){}
+  saveLaunchPos();saveCustomLaunches();                      // persist the re-derived fields
+  try{const w=await fetchHRRR(site.lat,site.lon);if(w){siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};recolorMarkers();}}catch(e){}
+  if(glideState.id===site.id)drawGlide(site);               // redraw glide cone from the new spot
+  if(currentLaunchId===site.id)onLaunchClick(site);         // rebuild popup with the new facing/alt/wind
+}
 // Press-and-hold anywhere on the map (touch) to drop an ad-hoc takeoff right there and run the
 // best-glide / reachable-LZ analysis — no "Fly from here?" tap needed. Tap still shows the prompt.
 let lpTimer=null, lpStart=null, suppressMapClick=false;
@@ -3255,8 +3270,8 @@ function createLaunchMarker(site){
   el.style.cursor='pointer';
   el.innerHTML=mkLaunchSVG(col,site,w);
   el.addEventListener('click',e=>onLaunchClick(site,e));
-  if(useMapLibre&&mlMap){launchElMap[site.id]=el;const mk=new maplibregl.Marker({element:el,anchor:'bottom',draggable:false,opacityWhenCovered:'1'}).setLngLat([site.lon,site.lat]).addTo(mlMap);mk.on('dragend',()=>{const ll=mk.getLngLat();site.lat=ll.lat;site.lon=ll.lng;applyConnections();saveLaunchPos();saveCustomLaunches();});launchMarkerMap[site.id]=mk;}
-  else if(lfMap){const icon=L.divIcon({html:mkLaunchSVG(col,site,w),iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:''});const mk=L.marker([site.lat,site.lon],{icon,draggable:false}).addTo(lfMap).on('click',e=>onLaunchClick(site,e));mk.on('dragend',()=>{const ll=mk.getLatLng();site.lat=ll.lat;site.lon=ll.lng;applyConnections();saveLaunchPos();saveCustomLaunches();});launchElMap[site.id]=mk;launchMarkerMap[site.id]=mk;}
+  if(useMapLibre&&mlMap){launchElMap[site.id]=el;const mk=new maplibregl.Marker({element:el,anchor:'bottom',draggable:false,opacityWhenCovered:'1'}).setLngLat([site.lon,site.lat]).addTo(mlMap);mk.on('dragend',()=>{const ll=mk.getLngLat();site.lat=ll.lat;site.lon=ll.lng;applyConnections();refreshMovedLaunch(site);});launchMarkerMap[site.id]=mk;}
+  else if(lfMap){const icon=L.divIcon({html:mkLaunchSVG(col,site,w),iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:''});const mk=L.marker([site.lat,site.lon],{icon,draggable:false}).addTo(lfMap).on('click',e=>onLaunchClick(site,e));mk.on('dragend',()=>{const ll=mk.getLatLng();site.lat=ll.lat;site.lon=ll.lng;applyConnections();refreshMovedLaunch(site);});launchElMap[site.id]=mk;launchMarkerMap[site.id]=mk;}
 }
 function addMarkers(){
   drawLZZones();                                  // landing-field boundaries under the pins
