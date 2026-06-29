@@ -162,6 +162,9 @@ body.dark .cmp-head .cmp-c{background:#0b1220;color:#94a3b8;}
 .cmp-head .cmp-lbl{background:#f8fafc;}
 body.dark .cmp-head .cmp-lbl{background:#0b1220;}
 .cmp-newday{box-shadow:inset 2px 0 0 #2563eb;}
+.cmp-c{cursor:pointer;}
+.cmp-c.cmp-tsel{box-shadow:inset 0 0 0 2px #0ea5e9;background:rgba(14,165,233,.12);}
+.cmp-head .cmp-c.cmp-tsel{background:rgba(14,165,233,.18);color:#0369a1;}
 .cmp-foot{padding:8px 12px;font-size:11px;color:#64748b;}
 #rocket{position:absolute;z-index:6;display:none;transform:translate(-50%,-100%);pointer-events:none;}
 .rk-fan{display:flex;gap:4px;align-items:flex-end;padding-bottom:2px;}
@@ -2006,11 +2009,11 @@ function modelSelectHTML(){return`<select class="nb-model" title="Weather model"
 // ── Multi-model comparison (Windy-style) ──────────────────────────────────────
 // On-demand: fetches several models only when the user opens the panel.
 const COMPARE_MODELS=[['gfs_hrrr','HRRR'],['gfs_seamless','GFS'],['ecmwf_ifs025','ECMWF'],['icon_seamless','ICON'],['meteofrance_seamless','MeteoFr'],['gem_seamless','GEM']];
-let cmpData=null,cmpAxis=[],rocketOn=false;
+let cmpData=null,cmpAxis=[],rocketOn=false,cmpSelT=null;   // cmpSelT = clicked forecast hour the map pin shows
 async function fetchCompareModel(model,label){
   try{
     const u=`https://api.open-meteo.com/v1/forecast?latitude=${fcTarget.lat}&longitude=${fcTarget.lon}`+
-      `&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m&timezone=America%2FDenver&wind_speed_unit=mph&models=${model}&forecast_days=2`;
+      `&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m&timezone=America%2FDenver&wind_speed_unit=mph&models=${model}&forecast_days=14`;
     const j=await(await fetch(u)).json();const h=j&&j.hourly;if(!h||!h.time)return{label,byTime:{}};
     const byTime={};
     for(let i=0;i<h.time.length;i++){const ws=h.wind_speed_10m[i];if(ws==null)continue;
@@ -2022,7 +2025,7 @@ async function fetchCompareModel(model,label){
 const CMP_CACHE_KEY='skylab_cmpcache_v1';
 function saveCmpCache(){try{localStorage.setItem(CMP_CACHE_KEY,JSON.stringify({ts:Date.now(),lat:fcTarget.lat,lon:fcTarget.lon,label:fcTarget.label,data:cmpData}));}catch(e){}}
 function loadCmpCache(){try{return JSON.parse(localStorage.getItem(CMP_CACHE_KEY)||'null');}catch(e){return null;}}
-function computeCmpAxis(data){const set=new Set();data.forEach(r=>Object.keys(r.byTime).forEach(t=>set.add(t)));const now=Date.now();return[...set].sort().filter(t=>new Date(t).getTime()>=now-60*60*1000).slice(0,36);}
+function computeCmpAxis(data){const set=new Set();data.forEach(r=>Object.keys(r.byTime).forEach(t=>set.add(t)));const now=Date.now();return[...set].sort().filter(t=>new Date(t).getTime()>=now-60*60*1000).slice(0,336);}  // ~2 weeks of hours
 function toggleModelCompare(){
   const p=document.getElementById('model-compare');
   if(p&&p.classList.contains('open'))closeModelCompare();else openModelCompare();
@@ -2049,6 +2052,7 @@ async function openModelCompare(){
   document.getElementById('cmp-body').innerHTML='<div class="cmp-load">Loading models…</div>';
   // Auto-show the Windy-style pin on the map as soon as the comparison opens.
   rocketOn=true;const rb=document.getElementById('rocket-btn');if(rb){rb.classList.add('active');rb.textContent='📍 Hide map pin';}
+  cmpSelT=null;                       // start on the current hour each time the comparison opens
   const state=await loadCompareData();
   if(state==='cached')document.getElementById('cmp-title').textContent='Models · '+(fcTarget.label||'')+' · cached '+ageStr(loadCmpCache().ts)+' ago';
   renderModelCompare();
@@ -2057,6 +2061,16 @@ async function openModelCompare(){
 function renderModelCompare(){
   const body=document.getElementById('cmp-body');if(body)body.innerHTML=compareGridHTML();
 }
+// Click a time column → the map pin (and its blades) jump to that forecast hour.
+function pickCmpTime(t){
+  cmpSelT=t;
+  document.querySelectorAll('#model-compare .cmp-c.cmp-tsel').forEach(c=>c.classList.remove('cmp-tsel'));
+  document.querySelectorAll('#model-compare .cmp-c[data-t="'+t+'"]').forEach(c=>c.classList.add('cmp-tsel'));
+  if(!rocketOn){rocketOn=true;const rb=document.getElementById('rocket-btn');if(rb){rb.classList.add('active');rb.textContent='📍 Hide map pin';}}
+  drawRocket();
+  const d=new Date(t),hr=d.getHours(),ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
+  const ti=document.getElementById('cmp-title');if(ti)ti.textContent='Models · '+(fcTarget.label||'')+' · '+FC_DAYS[d.getDay()].slice(0,3)+' '+ap;
+}
 // Build the comparison grid markup from cmpData/cmpAxis (shared by the top panel and the site menu).
 function compareGridHTML(){
   if(!cmpAxis.length||!cmpData)return '<div class="cmp-load">No model data right now (rate-limited?). Try again shortly.</div>';
@@ -2064,7 +2078,7 @@ function compareGridHTML(){
   let lastDay='';
   cmpAxis.forEach(t=>{const d=new Date(t),hr=d.getHours();const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
     const dk=FC_DAYS[d.getDay()].slice(0,3)+' '+d.getDate();const nd=dk!==lastDay;lastDay=dk;
-    hdr+=`<div class="cmp-c cmp-h${nd?' cmp-newday':''}">${nd?`<b>${dk}</b><br>`:''}${ap}</div>`;});
+    hdr+=`<div class="cmp-c cmp-h${nd?' cmp-newday':''}${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')">${nd?`<b>${dk}</b><br>`:''}${ap}</div>`;});
   hdr+='</div>';
   let rows='';
   const n=cmpAxis.length;
@@ -2077,8 +2091,8 @@ function compareGridHTML(){
     const rowStyle=has?` style="background:linear-gradient(to right,${grad})"`:'';
     rows+=`<div class="cmp-row cmp-grad"${rowStyle}><div class="cmp-lbl">${r.label}${has?'':' <span style="opacity:.5">—</span>'}</div>`;
     cmpAxis.forEach(t=>{const e=r.byTime[t];
-      if(!e){rows+='<div class="cmp-c cmp-empty"></div>';return;}
-      rows+=`<div class="cmp-c">${dirArrowCell(e.dir)}<span class="cmp-w">${cvWind(e.wind)}</span><span class="cmp-g">${cvWind(e.gust)}</span></div>`;});
+      if(!e){rows+=`<div class="cmp-c cmp-empty${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')"></div>`;return;}
+      rows+=`<div class="cmp-c${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')">${dirArrowCell(e.dir)}<span class="cmp-w">${cvWind(e.wind)}</span><span class="cmp-g">${cvWind(e.gust)}</span></div>`;});
     rows+='</div>';
   });
   return '<div class="cmp-scroll"><div class="cmp-grid">'+hdr+rows+'</div></div>'+
@@ -2118,7 +2132,7 @@ function drawRocket(){
   const host=document.getElementById('rocket');if(!host||!cmpData||!cmpAxis.length)return;
   bindRocket();
   const pt=projectLL(fcTarget.lat,fcTarget.lon);if(!pt){host.style.display='none';return;}
-  const nowT=cmpAxis[0];
+  const nowT=(cmpSelT&&cmpAxis.indexOf(cmpSelT)>=0)?cmpSelT:cmpAxis[0];   // clicked hour, else current
   // Windy-app style: each model is a slim rounded gradient "blade" radiating from the site point —
   // a dark name pill at the OUTER end, the speed (+gust) running lengthwise along a colour-graded
   // capsule, and a pointed arrow tip at the INNER end aimed where the wind blows (dir + 180).
