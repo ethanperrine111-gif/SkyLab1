@@ -1126,8 +1126,11 @@ async function fillStationDist(lat,lon){
     const btn=el.closest('.stbtn');if(btn&&best.name)btn.title=best.name+' — '+(bd*0.621371).toFixed(1)+' mi away';
   }catch(e){}
 }
-// Fly the map to the nearest weather station's pin and open its popup (live obs + a link to the
-// full weather.gov page) rather than jumping straight off-site.
+// Remove the single temporary "nearest station" pin (works for both map engines — both markers
+// expose .remove()). Leaves the user-toggled "Weather stations" layer alone.
+function clearNearWx(){const n=window._nearWx;if(n){window._nearWx=null;try{n.mk.remove();}catch(e){}}}
+// Drop ONE temporary pin at the nearest weather station and open its popup (live obs + a link to
+// the full weather.gov page). We don't switch on the whole station layer, so only this pin shows.
 async function openNearestStation(lat,lon){
   try{
     if(!wxStationsCache)wxStationsCache=await fetchWxStations();
@@ -1135,19 +1138,24 @@ async function openNearestStation(lat,lon){
     let best=null,bd=Infinity;
     for(const s of list){if(s.lat==null||s.lon==null)continue;const d=(s.lat-lat)**2+((s.lon-lon)*Math.cos(lat*Math.PI/180))**2;if(d<bd){bd=d;best=s;}}
     if(!best){setBadge('No nearby weather station found.');return;}
-    // Turn the weather-station pins on so the station is actually visible on the map.
-    const cb=document.getElementById('ov-wx');if(cb)cb.checked=true;
-    await toggleFeatureLayer('wx',true);
-    stashSidebar();   // mobile: tuck the detail panel away so the pin is visible
+    clearNearWx();                  // drop any previous nearest-station pin first
+    stashSidebar();                 // mobile: tuck the detail panel away so the pin is visible
     if(useMapLibre&&mlMap){
+      const el=document.createElement('div');el.innerHTML=VANE_SVG;el.style.cssText='cursor:pointer;line-height:0;';
+      const pop=new maplibregl.Popup({offset:18,closeButton:true}).setHTML('<div class="oa-pop"><b>🌡 '+(best.name||'Station')+'</b><br>Loading…</div>');
+      const mk=new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat([best.lon,best.lat]).setPopup(pop).addTo(mlMap);
+      window._nearWx={mk};
       mlMap.flyTo({center:[best.lon,best.lat],zoom:Math.max(mlMap.getZoom(),11),essential:true});
-      const pop=new maplibregl.Popup({offset:12,closeButton:true}).setLngLat([best.lon,best.lat]);
-      pop.setHTML('<div class="oa-pop"><b>🌡 '+(best.name||'Station')+'</b><br>Loading…</div>').addTo(mlMap);
+      mk.togglePopup();
+      pop.on('close',clearNearWx);  // close the popup → the lone pin goes away
       fetchStationObs(best.id).then(o=>pop.setHTML('<div class="oa-pop">'+obsHTML(best.name||'Station',o,best.id)+'</div>'));
     }else if(lfMap){
+      const mk=L.marker([best.lat,best.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[26,26],iconAnchor:[5,23]})}).addTo(lfMap);
+      window._nearWx={mk};
+      mk.bindPopup('<b>🌡 '+(best.name||'Station')+'</b><br>Loading…').openPopup();
+      mk.on('popupclose',clearNearWx);
       lfMap.setView([best.lat,best.lon],Math.max(lfMap.getZoom(),11));
-      const pop=L.popup({offset:[0,-10]}).setLatLng([best.lat,best.lon]).setContent('<b>🌡 '+(best.name||'Station')+'</b><br>Loading…').openOn(lfMap);
-      fetchStationObs(best.id).then(o=>pop.setContent(obsHTML(best.name||'Station',o,best.id)));
+      fetchStationObs(best.id).then(o=>mk.setPopupContent(obsHTML(best.name||'Station',o,best.id)));
     }
   }catch(e){setBadge('⚠ Could not locate the nearest weather station.');}
 }
