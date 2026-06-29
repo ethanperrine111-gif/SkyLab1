@@ -597,7 +597,6 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   </div>
   <div id="forecast"><div class="nb-load">Loading forecast…</div></div>
   <div id="model-compare">
-    <div id="cmp-bar"><span id="cmp-title">Model comparison</span><div class="cmp-actions"><button id="rocket-btn" onclick="toggleRocket()">📍 Show on map</button><button id="cmp-back" onclick="closeModelCompare()" title="Back to forecast">← Forecast</button></div></div>
     <div id="cmp-body"><div class="cmp-load">Loading models…</div></div>
   </div>
   <div id="map-wrap">
@@ -2049,13 +2048,11 @@ async function openModelCompare(){
   try{const mp=document.getElementById('menu-panel');if(mp)mp.classList.remove('open');}catch(e){}
   panel.classList.add('open');document.body.classList.add('compare-open');
   setTimeout(resizeActiveMap,260);   // map area shrank — refit
-  document.getElementById('cmp-title').textContent='Models · '+(fcTarget.label||'');
   document.getElementById('cmp-body').innerHTML='<div class="cmp-load">Loading models…</div>';
   // Auto-show the Windy-style pin on the map as soon as the comparison opens.
   rocketOn=true;const rb=document.getElementById('rocket-btn');if(rb){rb.classList.add('active');rb.textContent='📍 Hide map pin';}
   cmpSelT=null;                       // start on the current hour each time the comparison opens
   const state=await loadCompareData();
-  if(state==='cached')document.getElementById('cmp-title').textContent='Models · '+(fcTarget.label||'')+' · cached '+ageStr(loadCmpCache().ts)+' ago';
   renderModelCompare();
   if(rocketOn)drawRocket();
 }
