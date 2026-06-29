@@ -588,7 +588,6 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <option value="best_match">Best match</option>
         <option value="__compare__">⚖ Compare models</option>
       </select>
-      <button id="fc-compare" onclick="toggleModelCompare()" title="Compare weather models side by side">⚖ Compare</button>
       <button id="fc-toggle" onclick="toggleForecast()" title="Show/hide forecast" aria-label="Toggle forecast">▴</button>
     </div>
   </div>
@@ -926,6 +925,12 @@ function openFavorites(){
   document.getElementById('fav-overlay').classList.add('open');
 }
 function closeFavorites(){document.getElementById('fav-overlay').classList.remove('open');}
+// Swipe left anywhere on the favorites overlay to close it (mobile gesture).
+(function(){const ov=document.getElementById('fav-overlay');if(!ov)return;let sx=0,sy=0,tracking=false;
+  ov.addEventListener('touchstart',e=>{const t=e.changedTouches[0];sx=t.clientX;sy=t.clientY;tracking=true;},{passive:true});
+  ov.addEventListener('touchend',e=>{if(!tracking)return;tracking=false;const t=e.changedTouches[0];const dx=t.clientX-sx,dy=t.clientY-sy;
+    if(dx<-60&&Math.abs(dx)>Math.abs(dy)*1.5)closeFavorites();},{passive:true});   // clear left swipe
+})();
 function openModelsInfo(){document.getElementById('models-overlay').classList.add('open');}
 function closeModelsInfo(){document.getElementById('models-overlay').classList.remove('open');}
 function removeFav(id){
