@@ -588,6 +588,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <option value="icon_seamless">ICON</option>
         <option value="gem_seamless">GEM</option>
         <option value="gfs_seamless">GFS</option>
+        <option value="meteofrance_seamless">MeteoFr</option>
         <option value="best_match">Best match</option>
         <option value="__compare__">⚖ Compare models</option>
       </select>
@@ -2004,7 +2005,7 @@ function probeCenter(){if(!centerProbeActive())return;const ll=mapCenterLL();if(
 function updateXhair(){document.body.classList.toggle('show-xhair',centerProbeActive());}
 // ── NOW bar: detailed current-conditions strip ────────────────────────────────
 function cloudWord(c){return c<25?'Clear':c<55?'Partly cloudy':c<85?'Mostly cloudy':'Overcast';}
-const WX_MODELS=[['gfs_hrrr','HRRR'],['ecmwf_ifs025','ECMWF'],['icon_seamless','ICON'],['gem_seamless','GEM'],['gfs_seamless','GFS'],['best_match','Best match']];
+const WX_MODELS=[['gfs_hrrr','HRRR'],['ecmwf_ifs025','ECMWF'],['icon_seamless','ICON'],['gem_seamless','GEM'],['gfs_seamless','GFS'],['meteofrance_seamless','MeteoFr'],['best_match','Best match']];
 function modelSelectHTML(){return`<select class="nb-model" title="Weather model" onchange="setModel(this.value)">${WX_MODELS.map(([v,l])=>`<option value="${v}"${v===currentModel?' selected':''}>${l}</option>`).join('')}<option value="__compare__">⚖ Compare models</option></select>`;}
 // ── Multi-model comparison (Windy-style) ──────────────────────────────────────
 // On-demand: fetches several models only when the user opens the panel.
