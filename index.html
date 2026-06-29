@@ -2509,9 +2509,7 @@ function pickWindTime(iso){
   if(windState.on){                                       // wind layer on → also re-time the animation
     setBadge('🌬 Wind @ '+lbl+' · click the slot again for live');
     fetchWindGrid(iso).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});
-  }else{
-    setBadge('🕑 '+lbl+' selected · turn on 🌬 Wind to animate · click again to clear');
-  }
+  }                                                       // wind layer off → just highlight, no badge prompt
 }
 function resetWindTime(){
   windState.time=null;
