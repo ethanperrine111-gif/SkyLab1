@@ -1566,12 +1566,15 @@ function makeFlightLayer(){
       gl.disable(gl.DEPTH_TEST);
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
       const n=Math.max(2,Math.floor(this.count*this.progress));
-      // Solid blue flight path. WebGL line width is capped at 1px on most platforms, so we
-      // overlay round points along every vertex to render a genuinely THICK blue line.
+      // Solid WHITE flight path, REVEALED progressively by the moving marker — we draw only the
+      // flown 0..n vertices, not the whole path, so the line grows behind the dot instead of
+      // appearing all at once. WebGL line width is capped at ~1px on most platforms, so we lay
+      // overlapping round points along every flown vertex to form a thick, continuous (non-dotted)
+      // white line.
       gl.uniform1f(this.uRound,0.0);
-      gl.uniform4f(this.uCol,0.10,0.40,1.0,1.0);gl.drawArrays(gl.LINE_STRIP,0,this.count);
+      gl.uniform4f(this.uCol,1.0,1.0,1.0,1.0);gl.drawArrays(gl.LINE_STRIP,0,n);
       gl.uniform1f(this.uRound,1.0);
-      gl.uniform1f(this.uSize,8.5);gl.uniform4f(this.uCol,0.08,0.38,1.0,1.0);gl.drawArrays(gl.POINTS,0,this.count);
+      gl.uniform1f(this.uSize,8.5);gl.uniform4f(this.uCol,1.0,1.0,1.0,1.0);gl.drawArrays(gl.POINTS,0,n);
       gl.uniform1f(this.uSize,16.0);gl.uniform4f(this.uCol,1.0,0.80,0.12,1.0);gl.drawArrays(gl.POINTS,Math.max(0,n-1),1);
     }
   };
@@ -1638,13 +1641,15 @@ async function simulateFlight(sid){
   }else if(lfMap){
     const path=buildFlightPath3(site,site.alt*M,(site.lzAlt||4500)*M,1,plan,ratio);
     const latlngs=path.map(p=>[p.lat,p.lng]);
-    const full=L.polyline(latlngs,{color:'#3b82f6',weight:2,opacity:0.4}).addTo(lfMap);
-    const flown=L.polyline([],{color:'#2563eb',weight:3}).addTo(lfMap);
+    // No faint full-path preview — the path is revealed only as the dot flies it. A dark casing
+    // sits under the solid white line so it stays visible on light map tiles.
+    const flownCase=L.polyline([],{color:'#1e293b',weight:6,opacity:0.5}).addTo(lfMap);
+    const flown=L.polyline([],{color:'#ffffff',weight:3,opacity:1}).addTo(lfMap);
     const dot=L.circleMarker(latlngs[0],{radius:6,color:'#d97706',fillColor:'#fbbf24',fillOpacity:1,weight:2}).addTo(lfMap);
-    lfFlight.push(full,flown,dot);
+    lfFlight.push(flownCase,flown,dot);
     try{const lb=L.latLngBounds(latlngs);if(lb.isValid())lfMap.fitBounds(lb,{padding:[30,30],maxZoom:15});}catch(e){}
     const t0=performance.now(),DUR=7000;
-    const step=now=>{const e=Math.min(1,(now-t0)/DUR);const n=Math.max(1,Math.floor(latlngs.length*e));flown.setLatLngs(latlngs.slice(0,n));dot.setLatLng(latlngs[n-1]);if(e<1)flightRAF=requestAnimationFrame(step);else if(btn){btn.disabled=false;btn.textContent='🪂 Replay flight → LZ';}};
+    const step=now=>{const e=Math.min(1,(now-t0)/DUR);const n=Math.max(1,Math.floor(latlngs.length*e));const seg=latlngs.slice(0,n);flownCase.setLatLngs(seg);flown.setLatLngs(seg);dot.setLatLng(latlngs[n-1]);if(e<1)flightRAF=requestAnimationFrame(step);else if(btn){btn.disabled=false;btn.textContent='🪂 Replay flight → LZ';}};
     flightRAF=requestAnimationFrame(step);
   }
 }
@@ -3425,9 +3430,30 @@ function loadWxCache(){try{return JSON.parse(localStorage.getItem(WX_CACHE_KEY)|
 function saveFcCache(series){try{localStorage.setItem(FC_CACHE_KEY,JSON.stringify({ts:Date.now(),lat:fcTarget.lat,lon:fcTarget.lon,series}));}catch(e){}}
 function loadFcCache(){try{return JSON.parse(localStorage.getItem(FC_CACHE_KEY)||'null');}catch(e){return null;}}
 function ageStr(ts){const m=Math.round((Date.now()-ts)/60000);if(m<60)return m+' min';const h=Math.round(m/60);return h<48?h+' hr':Math.round(h/24)+' days';}
-let wxBannerShown=false;
-function showWxBanner(msg){if(wxBannerShown)return;wxBannerShown=true;let b=document.getElementById('wx-banner');if(!b){b=document.createElement('div');b.id='wx-banner';b.title='Dismiss';b.onclick=()=>{b.style.display='none';};document.body.appendChild(b);}b.innerHTML=msg+'  ✕';b.style.display='block';}
-function hideWxBanner(){const b=document.getElementById('wx-banner');if(b)b.style.display='none';}
+let wxBannerShown=false, wxRetryAt=0, wxRetryTimer=null, wxCooldownMs=60000, wxRetrying=false;
+function ensureWxBanner(){let b=document.getElementById('wx-banner');if(!b){b=document.createElement('div');b.id='wx-banner';b.title='Dismiss';b.onclick=()=>{hideWxBanner();};document.body.appendChild(b);}return b;}
+function showWxBanner(msg){if(wxBannerShown)return;wxBannerShown=true;const b=ensureWxBanner();b.innerHTML=msg+'  ✕';b.style.display='block';}
+function hideWxBanner(){const b=document.getElementById('wx-banner');if(b)b.style.display='none';if(wxRetryTimer){clearInterval(wxRetryTimer);wxRetryTimer=null;}}
+function fmtMMSS(ms){ms=Math.max(0,ms);const s=Math.round(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+// Cache-fallback banner with a live "next live attempt in M:SS" countdown. When it hits zero we
+// auto-retry the live fetch; if it's still rate-limited the cooldown backs off (1→2→4… min, cap 15).
+function showWxCachedBanner(baseMsg){
+  wxBannerShown=true;
+  const b=ensureWxBanner();b.style.display='block';
+  if(wxRetryTimer)clearInterval(wxRetryTimer);
+  wxRetryAt=Date.now()+wxCooldownMs;
+  wxCooldownMs=Math.min(wxCooldownMs*2,900000);   // back off for the next failure
+  const tick=()=>{
+    const left=wxRetryAt-Date.now();
+    if(left<=0){clearInterval(wxRetryTimer);wxRetryTimer=null;b.innerHTML=baseMsg+' · <b>checking live weather…</b>';retryLiveWeather();return;}
+    b.innerHTML=baseMsg+` · next live attempt in <b>${fmtMMSS(left)}</b>  ✕`;
+  };
+  wxRetryTimer=setInterval(tick,1000);tick();
+}
+async function retryLiveWeather(){
+  if(wxRetrying)return;wxRetrying=true;
+  try{wxBannerShown=false;await loadWeather();}finally{wxRetrying=false;}
+}
 
 async function loadWeather(){
   wxCache={};siteWx={};
@@ -3440,12 +3466,12 @@ async function loadWeather(){
     if(c){
       if(c.slcWx){slcWx=c.slcWx;updateVane(slcWx,'SLC Wind');}
       if(c.siteWx)siteWx=Object.assign({},c.siteWx);
-      showWxBanner(`⚠ Live weather unavailable — showing cached data from ${ageStr(c.ts)} ago`);
+      showWxCachedBanner(`⚠ Live weather unavailable — showing cached data from ${ageStr(c.ts)} ago`);
     }else{
-      showWxBanner('⚠ Live weather unavailable — Open-Meteo request limit reached. Try again later.');
+      showWxCachedBanner('⚠ Live weather unavailable — Open-Meteo request limit reached');
     }
   }else{
-    hideWxBanner();saveWxCache();
+    wxBannerShown=false;wxCooldownMs=60000;hideWxBanner();saveWxCache();   // back to live: reset the cooldown
   }
   recolorMarkers();
 }
