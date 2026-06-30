@@ -641,6 +641,10 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="radio" name="baselayer" value="sat" onchange="setBaseLayer('sat')"/> Satellite</label>
         <label class="lp-row"><input type="radio" name="baselayer" value="topo" onchange="setBaseLayer('topo')"/> Topo</label>
         <div class="lp-div"></div>
+        <div class="lp-sec">Sites</div>
+        <label class="lp-row"><input type="checkbox" id="ov-takeoffs" checked onchange="toggleTakeoffs(this.checked)"/> 🛫 Takeoffs (launches)</label>
+        <label class="lp-row"><input type="checkbox" id="ov-lzs" checked onchange="toggleLZs(this.checked)"/> 🛬 Landing zones (LZ)</label>
+        <div class="lp-div"></div>
         <div class="lp-sec">Overlay</div>
         <label class="lp-row"><input type="checkbox" id="ov-wind" onchange="toggleWindAnim(this.checked)"/> 🌬 Wind animation</label>
         <label class="lp-row"><input type="checkbox" id="ov-radar" onchange="toggleOverlay('radar',this.checked)"/> 🌧 Radar (precip)</label>
@@ -1323,10 +1327,10 @@ async function fetchTFR(){
   // function was deployed with --no-verify-jwt.
   try{
     const r=await fetch(TFR_LIVE_URL,{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
-    if(r.ok){const gj=await r.json();if(gj&&Array.isArray(gj.features))return gj;}
+    if(r.ok){const gj=await r.json();if(gj&&Array.isArray(gj.features))return{gj,source:'live'};}
   }catch(e){}
-  // Fallback: FAA ArcGIS security-TFR layer.
-  try{const r=await fetch(TFR_FALLBACK_URL);if(r.ok){const gj=await r.json();if(gj&&gj.features)return gj;}}catch(e){}
+  // Fallback: FAA ArcGIS security-TFR layer (long-term fixed-boundary TFRs only — sparse near Utah).
+  try{const r=await fetch(TFR_FALLBACK_URL);if(r.ok){const gj=await r.json();if(gj&&gj.features)return{gj,source:'fallback'};}}catch(e){}
   return null;
 }
 function tfrPopupHTML(p){
@@ -1367,11 +1371,12 @@ async function toggleTFR(on){
   if(!on){setTFRVisible(false);return;}
   if(!tfrLoaded){
     setBadge('Loading TFRs…');
-    const gj=await fetchTFR();
+    const res=await fetchTFR();
     setBadge('');
-    if(!gj){uncheck('tfr');setBadge('⚠ TFR data unavailable right now. Try again shortly, or check tfr.faa.gov.');return;}
-    renderTFR(gj);tfrLoaded=true;
-    if(!gj.features.length)setBadge('No active TFRs near Utah right now.');
+    if(!res){uncheck('tfr');setBadge('⚠ TFR data unavailable right now. Try again shortly, or check tfr.faa.gov.');return;}
+    renderTFR(res.gj);tfrLoaded=true;
+    if(res.source==='fallback')setBadge('⛔ Live TFR feed not enabled yet — showing FAA security TFRs only (few near Utah). Tap a TFR or see tfr.faa.gov for live wildfire/VIP TFRs.');
+    else if(!res.gj.features.length)setBadge('✓ No active TFRs near Utah right now.');
   }
   setTFRVisible(true);
 }
@@ -3512,6 +3517,7 @@ function buildLZMarkers(){
     }
   });
   cullGhostMarkers();
+  if(typeof applyMarkerVisibility==='function')applyMarkerVisibility();
 }
 
 // ── Menu (map key + LZ tools) ─────────────────────────────────────────────────
@@ -3673,6 +3679,21 @@ function addMarkers(){
   LAUNCHES.forEach(createLaunchMarker);
   buildLZMarkers();        // LZ pins from the editable store
   drawConnectors();        // LZ → takeoff link lines
+  applyMarkerVisibility();
+}
+// Show/hide whole categories of pins (Layers panel → Sites). Markers get rebuilt on weather/edits,
+// so applyMarkerVisibility() is re-run after every rebuild to keep the chosen state sticky.
+let showTakeoffs=true, showLZs=true;
+function toggleTakeoffs(on){showTakeoffs=on;applyMarkerVisibility();}
+function toggleLZs(on){showLZs=on;applyMarkerVisibility();}
+function applyMarkerVisibility(){
+  if(useMapLibre){
+    Object.values(launchElMap).forEach(el=>{if(el&&el.style)el.style.display=showTakeoffs?'':'none';});
+    Object.values(lzElMap).forEach(el=>{if(el&&el.style)el.style.display=showLZs?'':'none';});
+  }else if(lfMap){
+    Object.values(launchMarkerMap).forEach(mk=>{if(!mk)return;if(showTakeoffs)mk.addTo(lfMap);else try{lfMap.removeLayer(mk);}catch(e){}});
+    Object.values(lzMarkerMap).forEach(mk=>{if(!mk)return;if(showLZs)mk.addTo(lfMap);else try{lfMap.removeLayer(mk);}catch(e){}});
+  }
 }
 
 // ── Graceful degradation: cache last-good weather, fall back when rate-limited ──
