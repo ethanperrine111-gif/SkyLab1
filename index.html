@@ -389,6 +389,24 @@ body.dark .ppwind-note{color:#94a3b8;}
 .ppcalc .ppch{font-size:9px;color:#94a3b8;margin-top:1px;}
 body.dark .ppcalc .ppc{background:#1e293b;border-color:#334155;}
 body.dark .ppcalc .ppcv{color:#e2e8f0;}
+/* Wind-aloft (hodograph + rose) & Sun/shade panels */
+.ppwa,.ppsun{margin-top:9px;}
+.ppwa-body,.ppsun-body{margin-top:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:10px;}
+body.dark .ppwa-body,body.dark .ppsun-body{background:#0f172a;border-color:#1e293b;}
+.wa-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.wa-cell{flex:1 1 150px;min-width:150px;text-align:center;}
+.wa-cap{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin-bottom:3px;}
+.wa-sub{font-size:10px;color:#94a3b8;margin-top:3px;line-height:1.35;}
+body.dark .wa-cap{color:#94a3b8;}
+.sun-row{display:flex;gap:8px;margin-bottom:8px;}
+.sun-stat{flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;text-align:center;}
+body.dark .sun-stat{background:#1e293b;border-color:#334155;}
+.sun-stat-l{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#64748b;}
+.sun-stat-v{font-size:15px;font-weight:800;color:#0f172a;margin-top:1px;}
+body.dark .sun-stat-v{color:#f1f5f9;}
+.sun-note{font-size:11px;color:#475569;line-height:1.45;margin-top:7px;}
+body.dark .sun-note{color:#94a3b8;}
+.sun-bar-lbl{display:flex;justify-content:space-between;font-size:9.5px;color:#94a3b8;margin-top:3px;}
 /* Top-bar Favorites button */
 #fav-btn{flex-shrink:0;background:rgba(255,255,255,.12);color:#fcd34d;border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:5px 9px;cursor:pointer;font-size:14px;font-weight:800;line-height:1;}
 /* Keep every top-bar control the same height so the row lines up. */
@@ -2081,13 +2099,126 @@ function tfrFlagHTML(site){
   const tip=(r?r.icon+' '+r.label:'Inside an active temporary flight restriction').replace(/"/g,'');
   return `<span class="tfr-flag" title="${tip}">⛔ NO FLY · TFR</span>`;
 }
+// ── Wind aloft (hodograph) + daily wind rose ─────────────────────────────────
+// Hodograph: tip of each level's wind vector plotted on a polar plane (north up).
+// A straight line = unidirectional flow; a curving/turning line = directional shear,
+// i.e. wind veers/backs with height — that's the thermal-drift picture pilots want.
+const HODO_LVLS=[{v:'10m',lbl:'Sfc'},{v:'925hPa',lbl:'2.5k'},{v:'850hPa',lbl:'4.8k'},{v:'700hPa',lbl:'9.9k'},{v:'600hPa',lbl:'13.8k'},{v:'500hPa',lbl:'18.3k'}];
+function windAloftHTML(site){
+  return`<div class="ppwa"><button class="flybtn" id="wabtn-${site.id}" onclick="loadWindAloft('${site.id}',this)">🌀 Wind aloft &amp; rose</button><div class="ppwa-body" id="wabody-${site.id}" style="display:none;"></div></div>`;
+}
+async function loadWindAloft(id,btn){
+  const site=LAUNCHES.find(s=>s.id===id);if(!site)return;
+  const body=document.getElementById('wabody-'+id);if(!body)return;
+  if(body.style.display!=='none'){body.style.display='none';btn.innerHTML='🌀 Wind aloft &amp; rose';return;}
+  body.style.display='block';btn.innerHTML='🌀 Hide wind aloft';
+  if(body.dataset.loaded)return;
+  body.innerHTML='<div class="nb-load" style="padding:8px;">Loading winds…</div>';
+  try{
+    const cur=HODO_LVLS.map(l=>`wind_speed_${l.v},wind_direction_${l.v}`).join(',');
+    // No &models → Open-Meteo best_match, so every pressure level is always available.
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${site.lat}&longitude=${site.lon}&current=${cur}&hourly=wind_speed_10m,wind_direction_10m&daily=sunrise,sunset&wind_speed_unit=mph&timezone=America%2FDenver&forecast_days=1`;
+    const j=await(await fetch(url)).json();
+    const c=j.current||{};
+    const levels=HODO_LVLS.map(l=>({lbl:l.lbl,sp:c['wind_speed_'+l.v],dir:c['wind_direction_'+l.v]})).filter(x=>x.sp!=null&&x.dir!=null);
+    const h=j.hourly||{}, sr=j.daily&&j.daily.sunrise&&j.daily.sunrise[0], ss=j.daily&&j.daily.sunset&&j.daily.sunset[0];
+    const srH=sr?hourOf(sr):8, ssH=ss?hourOf(ss):19;
+    const rose=Array.from({length:16},()=>({n:0,sum:0}));
+    if(h.time)h.time.forEach((t,i)=>{const hr=+t.slice(11,13);if(hr<srH||hr>ssH)return;const sp=h.wind_speed_10m[i],dr=h.wind_direction_10m[i];if(sp==null||dr==null)return;const sec=Math.round(dr/22.5)%16;rose[sec].n++;rose[sec].sum+=sp;});
+    body.innerHTML=`<div class="wa-grid"><div class="wa-cell"><div class="wa-cap">Wind aloft now</div>${hodographSVG(levels)}<div class="wa-sub">Each dot = wind at that height. A curving line means direction shifts with altitude (drift &amp; shear).</div></div><div class="wa-cell"><div class="wa-cap">Today's wind rose</div>${windRoseSVG(rose,site)}<div class="wa-sub">Daytime surface wind by direction; longer = more hours, color = avg speed. ● = launch facing (${d2c(site.facing)}).</div></div></div>`;
+    body.dataset.loaded='1';
+  }catch(e){body.innerHTML='<div class="wa-sub" style="text-align:center;padding:6px;">Couldn’t load winds aloft.</div>';}
+}
+function hodographSVG(levels){
+  if(!levels.length)return'<div class="wa-sub">No data.</div>';
+  const cx=90,cy=92,Rpx=70,maxSp=Math.max(10,...levels.map(l=>l.sp)),ringMax=Math.ceil(maxSp/10)*10,scale=Rpx/ringMax;
+  let rings='';for(let r=10;r<=ringMax;r+=10)rings+=`<circle cx="${cx}" cy="${cy}" r="${(r*scale).toFixed(1)}" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 3"/>`;
+  rings+=`<line x1="${cx}" y1="${cy-Rpx}" x2="${cx}" y2="${cy+Rpx}" stroke="#e2e8f0"/><line x1="${cx-Rpx}" y1="${cy}" x2="${cx+Rpx}" y2="${cy}" stroke="#e2e8f0"/>`;
+  const pts=levels.map(l=>{const r=l.dir*Math.PI/180,u=-l.sp*Math.sin(r),v=-l.sp*Math.cos(r);return{x:cx+u*scale,y:cy-v*scale,l};});
+  const path=pts.map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+  const cols=['#2563eb','#0891b2','#16a34a','#ca8a04','#ea580c','#dc2626'];
+  let dots='';pts.forEach((p,i)=>{const col=cols[Math.min(cols.length-1,i)];dots+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.2" fill="${col}"/>`;if(i===0||i===pts.length-1)dots+=`<text x="${p.x.toFixed(1)}" y="${(p.y-6).toFixed(1)}" font-size="8" font-weight="700" text-anchor="middle" fill="${col}">${p.l.lbl}</text>`;});
+  return`<svg viewBox="0 0 180 184" width="100%" style="max-width:168px;"><text x="90" y="10" font-size="8" text-anchor="middle" fill="#94a3b8">N</text><text x="174" y="95" font-size="8" text-anchor="middle" fill="#94a3b8">E</text><text x="90" y="181" font-size="8" text-anchor="middle" fill="#94a3b8">S</text><text x="6" y="95" font-size="8" text-anchor="middle" fill="#94a3b8">W</text>${rings}<text x="${cx+2}" y="${(cy-ringMax*scale+9).toFixed(1)}" font-size="7" fill="#94a3b8">${ringMax}mph</text><path d="${path}" fill="none" stroke="#475569" stroke-width="1.6"/>${dots}</svg>`;
+}
+function windRoseSVG(rose,site){
+  const cx=90,cy=92,Rpx=66,maxN=Math.max(1,...rose.map(s=>s.n)),spCol=a=>a<8?'#22c55e':a<12?'#84cc16':a<16?'#eab308':a<20?'#f97316':'#ef4444';
+  let petals='';
+  rose.forEach((s,i)=>{if(!s.n)return;const avg=s.sum/s.n,r=8+(s.n/maxN)*(Rpx-8),a=i*22.5,half=10,a1=(a-half)*Math.PI/180,a2=(a+half)*Math.PI/180;const x1=cx+r*Math.sin(a1),y1=cy-r*Math.cos(a1),x2=cx+r*Math.sin(a2),y2=cy-r*Math.cos(a2);petals+=`<path d="M${cx} ${cy} L${x1.toFixed(1)} ${y1.toFixed(1)} A${r.toFixed(1)} ${r.toFixed(1)} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z" fill="${spCol(avg)}" fill-opacity=".85" stroke="#fff" stroke-width=".5"/>`;});
+  let facing='';if(site.facing!=null){const ar=site.facing*Math.PI/180,fx=cx+Rpx*Math.sin(ar),fy=cy-Rpx*Math.cos(ar);facing=`<circle cx="${fx.toFixed(1)}" cy="${fy.toFixed(1)}" r="4" fill="#2563eb" stroke="#fff" stroke-width="1"/>`;}
+  return`<svg viewBox="0 0 180 184" width="100%" style="max-width:168px;"><text x="90" y="10" font-size="8" text-anchor="middle" fill="#94a3b8">N</text><text x="174" y="95" font-size="8" text-anchor="middle" fill="#94a3b8">E</text><text x="90" y="181" font-size="8" text-anchor="middle" fill="#94a3b8">S</text><text x="6" y="95" font-size="8" text-anchor="middle" fill="#94a3b8">W</text>${petals}${facing}<circle cx="${cx}" cy="${cy}" r="2" fill="#64748b"/></svg>`;
+}
+// ── Sun & shade timing (terrain shadow falling on the launch) ─────────────────
+// Build a horizon profile by sampling DEM elevations outward along the sun's daily
+// arc, then step a solar-position model through the day: the launch is lit when the
+// sun's elevation clears the terrain horizon in its current azimuth. Tells you when
+// the slope first catches sun (thermals switch on) and when ridges shade it (they die).
+function shadeTimingHTML(site){
+  return`<div class="ppsun"><button class="flybtn" id="sunbtn-${site.id}" onclick="loadShadeTiming('${site.id}',this)">☀ Sun &amp; shade timing</button><div class="ppsun-body" id="sunbody-${site.id}" style="display:none;"></div></div>`;
+}
+function sunPos(date,lat,lon){
+  const rad=Math.PI/180,deg=180/Math.PI,n=date/86400000+2440587.5-2451545.0;
+  const L=(280.460+0.9856474*n)%360,g=(357.528+0.9856003*n)%360;
+  const lam=L+1.915*Math.sin(g*rad)+0.020*Math.sin(2*g*rad),eps=23.439-0.0000004*n;
+  const ra=Math.atan2(Math.cos(eps*rad)*Math.sin(lam*rad),Math.cos(lam*rad))*deg;
+  const dec=Math.asin(Math.sin(eps*rad)*Math.sin(lam*rad))*deg;
+  const gmst=(280.46061837+360.98564736629*n)%360;
+  let ha=((gmst+lon-ra)+540)%360-180;
+  const haR=ha*rad,latR=lat*rad,decR=dec*rad;
+  const el=Math.asin(Math.sin(latR)*Math.sin(decR)+Math.cos(latR)*Math.cos(decR)*Math.cos(haR))*deg;
+  let az=Math.atan2(-Math.sin(haR),Math.tan(decR)*Math.cos(latR)-Math.sin(latR)*Math.cos(haR))*deg;
+  return{el,az:((az+360)%360)};
+}
+function tzOffMin(date){
+  const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/Denver',hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(date).reduce((a,x)=>{a[x.type]=x.value;return a;},{});
+  const hr=+p.hour===24?0:+p.hour,asUTC=Date.UTC(+p.year,+p.month-1,+p.day,hr,+p.minute,+p.second);
+  return Math.round((asUTC-date)/60000);
+}
+function denverUTC(y,mo,da,mins){const guess=Date.UTC(y,mo-1,da,0,mins);return new Date(guess-tzOffMin(new Date(guess))*60000);}
+function offsetLL(lat,lon,brgDeg,distM){const latR=lat*Math.PI/180,b=brgDeg*Math.PI/180;return[lat+(distM*Math.cos(b))/111320,lon+(distM*Math.sin(b))/(111320*Math.cos(latR))];}
+async function elevBatch(coords){const out=[];for(let i=0;i<coords.length;i+=90){const part=await getGroundElevs(coords.slice(i,i+90));if(!part||!part.length)return null;out.push(...part);}return out;}
+async function loadShadeTiming(id,btn){
+  const site=LAUNCHES.find(s=>s.id===id);if(!site)return;
+  const body=document.getElementById('sunbody-'+id);if(!body)return;
+  if(body.style.display!=='none'){body.style.display='none';btn.innerHTML='☀ Sun &amp; shade timing';return;}
+  body.style.display='block';btn.innerHTML='☀ Hide sun &amp; shade';
+  if(body.dataset.loaded)return;
+  body.innerHTML='<div class="nb-load" style="padding:8px;">Computing terrain shadows…</div>';
+  try{
+    const dp=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).reduce((a,x)=>{a[x.type]=x.value;return a;},{});
+    const Y=+dp.year,MO=+dp.month,DA=+dp.day;
+    const AZ0=45,AZ1=315,STEP=6,DIST=[250,500,1000,2000,4000,7000];
+    const coords=[[site.lat,site.lon]],meta=[];
+    for(let az=AZ0;az<=AZ1;az+=STEP)for(const dM of DIST){const[la,lo]=offsetLL(site.lat,site.lon,az,dM);coords.push([la,lo]);meta.push({az,dM});}
+    const elev=await elevBatch(coords);
+    if(!elev||!elev.length)throw 0;
+    const launchE=elev[0],nAz=Math.round((AZ1-AZ0)/STEP)+1,horizon=new Array(nAz).fill(0);
+    meta.forEach((m,i)=>{const e=elev[i+1];if(e==null)return;const ang=Math.atan2(e-launchE,m.dM)*180/Math.PI,idx=Math.round((m.az-AZ0)/STEP);if(ang>horizon[idx])horizon[idx]=ang;});
+    const horizonAt=az=>{if(az<AZ0||az>AZ1)return 0;const f=(az-AZ0)/STEP,i=Math.floor(f),t=f-i;return(horizon[i]||0)+((horizon[Math.min(nAz-1,i+1)]||0)-(horizon[i]||0))*t;};
+    const litAt=mins=>{const s=sunPos(denverUTC(Y,MO,DA,mins),site.lat,site.lon);return s.el>0.5&&s.el>horizonAt(s.az)+0.4;};
+    const elAt=mins=>sunPos(denverUTC(Y,MO,DA,mins),site.lat,site.lon).el;
+    let srise=null,sset=null;for(let m=240;m<=1300;m+=2){if(elAt(m)>0){if(srise==null)srise=m;sset=m;}}
+    const fmt=m=>{let h=Math.floor(m/60),mi=Math.round(m%60),ap=h<12?'a':'p',hh=h%12||12;return hh+':'+(mi<10?'0':'')+mi+ap;};
+    if(srise==null){body.innerHTML='<div class="sun-note">Sun stays below the horizon today.</div>';body.dataset.loaded='1';return;}
+    let litS=null,litE=null,litMin=0;for(let m=srise;m<=sset;m+=4)if(litAt(m)){if(litS==null)litS=m;litE=m;litMin+=4;}
+    let bar='';const W=200,segs=120;for(let k=0;k<segs;k++){const m=srise+(sset-srise)*k/segs,x=(k/segs)*W;bar+=`<rect x="${x.toFixed(1)}" y="0" width="${(W/segs+0.6).toFixed(1)}" height="14" fill="${litAt(m)?'#fbbf24':'#475569'}"/>`;}
+    let stats;
+    if(litS==null){stats='<div class="sun-note">⛰ This launch sits in terrain shadow all day — surrounding ridges block direct sun, so expect weak or no thermals.</div>';}
+    else{
+      const allDay=litS<=srise+6&&litE>=sset-6,hrs=Math.floor(litMin/60),mns=litMin%60;
+      stats=`<div class="sun-row"><div class="sun-stat"><div class="sun-stat-l">☀ Sun hits</div><div class="sun-stat-v">${fmt(litS)}</div></div><div class="sun-stat"><div class="sun-stat-l">🌑 Shades over</div><div class="sun-stat-v">${fmt(litE)}</div></div><div class="sun-stat"><div class="sun-stat-l">Direct sun</div><div class="sun-stat-v">${hrs}h ${mns}m</div></div></div>`+
+        (allDay?'':`<div class="sun-note">${litS>srise+6?`Eastern terrain delays sun on launch ~${Math.round(litS-srise)} min past sunrise. `:''}${litE<sset-6?`Western ridges shade the launch ~${Math.round(sset-litE)} min before sunset.`:''}</div>`);
+    }
+    body.innerHTML=stats+`<svg viewBox="0 0 200 14" preserveAspectRatio="none" width="100%" height="14" style="border-radius:4px;margin-top:6px;display:block;">${bar}</svg><div class="sun-bar-lbl"><span>🌅 ${fmt(srise)}</span><span>🌇 ${fmt(sset)}</span></div><div class="sun-note">🔥 Thermals usually build ~1–2 h after the launch is lit and fade within ~30–60 min of it falling into shade.</div>`;
+    body.dataset.loaded='1';
+  }catch(e){body.innerHTML='<div class="wa-sub" style="text-align:center;padding:6px;">Couldn’t compute shadows (terrain data unavailable).</div>';}
+}
 function launchPop(site,w){
   const s=w?flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir):'caution';
   const dir=`<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to trailhead</a>`;
   const bio=siteBioHTML(site);
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
