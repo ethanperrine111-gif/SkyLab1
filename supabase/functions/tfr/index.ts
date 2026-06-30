@@ -112,7 +112,8 @@ function xmlToFeatures(xmlRaw: string, meta: ListItem): unknown[] {
 
   const props = (extra: Record<string, unknown>) => ({
     name, type: meta.type, facility: meta.facility, state: meta.state,
-    notam: meta.notam_id, effective, expires, floor, ceiling, source: "live", ...extra,
+    description: meta.description, notam: meta.notam_id, effective, expires,
+    floor, ceiling, source: "live", ...extra,
   });
 
   const areas = tagAll(xml, "abdMergedArea");

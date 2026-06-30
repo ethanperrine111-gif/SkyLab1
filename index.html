@@ -1333,17 +1333,34 @@ async function fetchTFR(){
   try{const r=await fetch(TFR_FALLBACK_URL);if(r.ok){const gj=await r.json();if(gj&&gj.features)return{gj,source:'fallback'};}}catch(e){}
   return null;
 }
+// Translate the FAA TFR category (+ any free text) into a plain-English reason so a pilot
+// can tell at a glance WHY the airspace is closed — wildfire being the usual Utah-summer case.
+function tfrReason(p){
+  const t=(p.type||p.LOCAL_TYPE||'').toUpperCase();
+  const blob=((p.name||p.NAME||'')+' '+(p.description||'')+' '+(p.notam||'')+' '+(p.WKHR_RMK||'')).toLowerCase();
+  if(/\bfire\b|wildfire|firefight/.test(blob))   return {icon:'🔥',label:'Wildfire — firefighting aircraft likely operating'};
+  if(t==='HAZARDS')                              return {icon:'⚠️',label:'Hazard area (most often wildfire firefighting)'};
+  if(t==='SECURITY'||/national defense|security/.test(blob)) return {icon:'🛡',label:'Security / national-defense restriction'};
+  if(t==='VIP'||/presidential|\bvip\b/.test(blob))          return {icon:'🎖',label:'VIP / Presidential movement'};
+  if(t==='SPACE OPERATIONS'||/space op|launch|rocket/.test(blob)) return {icon:'🚀',label:'Space launch / recovery operations'};
+  if(t==='SPORTING'||t==='SPECIAL'||/air ?show|aerial demo|sporting|stadium|speedway|\brace\b/.test(blob)) return {icon:'🎪',label:'Air show / sporting event'};
+  if(/emergency/.test(blob))                     return {icon:'🚨',label:'Emergency air-traffic restriction'};
+  if(t)                                          return {icon:'⛔',label:t.charAt(0)+t.slice(1).toLowerCase().replace(/_/g,' ')};
+  return null;
+}
 function tfrPopupHTML(p){
   p=p||{};
   // Handles both the live FAA feed (lowercase props) and the ArcGIS fallback (UPPERCASE props).
   const name=p.name||p.NAME||p.LOCAL_TYPE||'Temporary Flight Restriction';
-  const type=p.type||p.LOCAL_TYPE||'';
+  const reason=tfrReason(p);
+  const desc=p.description||'';
   const loc=[p.facility||p.CITY,p.state||p.STATE].filter(Boolean).join(', ');
   const alt=(p.floor||p.ceiling)?((p.floor||'SFC')+' – '+(p.ceiling||'unlimited')):'';
   const when=(p.effective||p.expires)?((p.effective||'')+(p.expires?' → '+p.expires:'')):'';
   return '<div class="oa-pop"><div style="font-weight:800;margin-bottom:3px;">⛔ '+name+'</div>'
-    +(type&&type!==name?'<div>'+type+(p.notam?' · '+p.notam:'')+'</div>':(p.notam?'<div>'+p.notam+'</div>':''))
-    +(loc?'<div>'+loc+'</div>':'')
+    +(reason?'<div style="margin:3px 0 5px;padding:4px 7px;border-radius:6px;background:rgba(220,38,38,.16);font-weight:700;line-height:1.25;">'+reason.icon+' '+reason.label+'</div>':'')
+    +(desc?'<div>'+desc+'</div>':'')
+    +(loc?'<div style="font-size:11px;opacity:.8;">'+loc+(p.notam?' · NOTAM '+p.notam:'')+'</div>':(p.notam?'<div style="font-size:11px;opacity:.8;">NOTAM '+p.notam+'</div>':''))
     +(alt?'<div style="margin-top:3px;">Altitude: '+alt+'</div>':'')
     +(when?'<div style="font-size:11px;opacity:.8;">'+when+'</div>':'')
     +(p.WKHR_RMK?'<div style="margin-top:3px;">'+p.WKHR_RMK+'</div>':'')
