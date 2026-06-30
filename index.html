@@ -1454,7 +1454,7 @@ function renderAQI(pts){
     pts.forEach(p=>{
       const el=document.createElement('div');
       el.className='aqi-badge';
-      el.style.cssText='width:30px;height:30px;border-radius:50%;background:'+aqiColor(p.aqi)+';border:3px solid #fff;color:#fff;font:800 13px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 6px rgba(0,0,0,.55);text-shadow:0 1px 2px rgba(0,0,0,.5);cursor:pointer;';
+      el.style.cssText='width:32px;height:32px;box-sizing:border-box;border-radius:50%;background:'+aqiColor(p.aqi)+';border:3px solid #fff;color:#fff;font:800 11px/1 system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 6px rgba(0,0,0,.55);text-shadow:0 1px 2px rgba(0,0,0,.5);cursor:pointer;';
       el.textContent=Math.round(p.aqi);
       const mk=new maplibregl.Marker({element:el,anchor:'center',offset:[16,-48]}).setLngLat([p.lon,p.lat]).addTo(mlMap);
       el.addEventListener('click',ev=>{ev.stopPropagation();new maplibregl.Popup({offset:16,closeButton:true}).setLngLat([p.lon,p.lat]).setHTML(aqiPopupHTML(p)).addTo(mlMap);});
@@ -1462,7 +1462,7 @@ function renderAQI(pts){
     });
   }else if(lfMap){
     if(lfAQI){try{lfMap.removeLayer(lfAQI);}catch(e){}}
-    lfAQI=L.layerGroup(pts.map(p=>{const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'aqi-badge',html:`<div style="width:28px;height:28px;border-radius:50%;background:${aqiColor(p.aqi)};border:3px solid #fff;color:#fff;font:800 12px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);">${Math.round(p.aqi)}</div>`,iconSize:[28,28],iconAnchor:[-2,62]})});mk.bindPopup(aqiPopupHTML(p));return mk;})).addTo(lfMap);
+    lfAQI=L.layerGroup(pts.map(p=>{const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'aqi-badge',html:`<div style="width:28px;height:28px;box-sizing:border-box;border-radius:50%;background:${aqiColor(p.aqi)};border:3px solid #fff;color:#fff;font:800 11px/1 system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);">${Math.round(p.aqi)}</div>`,iconSize:[28,28],iconAnchor:[-2,62]})});mk.bindPopup(aqiPopupHTML(p));return mk;})).addTo(lfMap);
   }
 }
 function setAQIVisible(on){
