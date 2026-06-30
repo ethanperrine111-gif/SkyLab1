@@ -603,6 +603,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
 .mk-red{z-index:410 !important;}
 .mk-yellow{z-index:420 !important;}
 .mk-green{z-index:430 !important;}
+/* AQI badges tuck behind the pins (below the 400–430 launch range) so the pin sits on top. */
+.aqi-badge{z-index:300 !important;}
 /* Popups must sit above every pin (which are forced to z-index 400–430 above). */
 .maplibregl-popup{z-index:600 !important;}
 .leaflet-popup-pane{z-index:800 !important;}
@@ -1397,6 +1399,20 @@ function setTFRVisible(on){
   if(useMapLibre&&mlMap){['tfr-fill','tfr-line'].forEach(id=>{if(mlMap.getLayer(id)){try{mlMap.setLayoutProperty(id,'visibility',on?'visible':'none');}catch(e){}}});}
   else if(lfMap&&lfTFR){if(on)lfTFR.addTo(lfMap);else{try{lfMap.removeLayer(lfTFR);}catch(e){}}}
 }
+// Ray-cast point-in-polygon (outer ring) so we can tell if a launch sits inside a restriction.
+function pointInRing(lon,lat,ring){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];if(((yi>lat)!==(yj>lat))&&(lon<(xj-xi)*(lat-yi)/(yj-yi)+xi))inside=!inside;}return inside;}
+function tfrAtPoint(lon,lat,gj){
+  if(!gj||!gj.features)return null;
+  for(const f of gj.features){const g=f.geometry;if(!g)continue;
+    const polys=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];
+    for(const poly of polys){if(poly[0]&&pointInRing(lon,lat,poly[0]))return f.properties||{};}}
+  return null;
+}
+// Flag every launch that falls inside an active TFR and repaint it red (no-fly).
+function applyTFRtoLaunches(gj){
+  LAUNCHES.forEach(site=>{const hit=tfrAtPoint(site.lon,site.lat,gj);site.inTFR=!!hit;site.tfrInfo=hit||null;});
+  recolorMarkers();
+}
 async function toggleTFR(on){
   if(!on){setTFRVisible(false);return;}
   if(!tfrLoaded){
@@ -1404,7 +1420,7 @@ async function toggleTFR(on){
     const res=await fetchTFR();
     setBadge('');
     if(!res){uncheck('tfr');setBadge('⚠ TFR data unavailable right now. Try again shortly, or check tfr.faa.gov.');return;}
-    renderTFR(res.gj);tfrLoaded=true;
+    renderTFR(res.gj);tfrLoaded=true;applyTFRtoLaunches(res.gj);
     if(res.source==='fallback')setBadge('⛔ Live TFR feed not enabled yet — showing FAA security TFRs only (few near Utah). Tap a TFR or see tfr.faa.gov for live wildfire/VIP TFRs.');
     else if(!res.gj.features.length)setBadge('✓ No active TFRs near Utah right now.');
   }
@@ -1432,19 +1448,21 @@ function renderAQI(pts){
   if(useMapLibre&&mlMap){
     // Render AQI as HTML markers (the same mechanism the launch pins use, which paint
     // reliably) rather than a canvas circle layer — that layer was being added without
-    // error yet never painting on some GPUs. Offset to the upper-right of each pin.
+    // error yet never painting on some GPUs. Offset up-right at ~45° from the pin head so
+    // the badge overlaps the pin (which sits on top via z-index) with the number exposed.
     aqiMarkers.forEach(m=>{try{m.remove();}catch(e){}});aqiMarkers=[];
     pts.forEach(p=>{
       const el=document.createElement('div');
+      el.className='aqi-badge';
       el.style.cssText='width:30px;height:30px;border-radius:50%;background:'+aqiColor(p.aqi)+';border:3px solid #fff;color:#fff;font:800 13px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 6px rgba(0,0,0,.55);text-shadow:0 1px 2px rgba(0,0,0,.5);cursor:pointer;';
       el.textContent=Math.round(p.aqi);
-      const mk=new maplibregl.Marker({element:el,anchor:'center',offset:[23,-55]}).setLngLat([p.lon,p.lat]).addTo(mlMap);
+      const mk=new maplibregl.Marker({element:el,anchor:'center',offset:[16,-48]}).setLngLat([p.lon,p.lat]).addTo(mlMap);
       el.addEventListener('click',ev=>{ev.stopPropagation();new maplibregl.Popup({offset:16,closeButton:true}).setLngLat([p.lon,p.lat]).setHTML(aqiPopupHTML(p)).addTo(mlMap);});
       aqiMarkers.push(mk);
     });
   }else if(lfMap){
     if(lfAQI){try{lfMap.removeLayer(lfAQI);}catch(e){}}
-    lfAQI=L.layerGroup(pts.map(p=>{const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div style="width:28px;height:28px;border-radius:50%;background:${aqiColor(p.aqi)};border:3px solid #fff;color:#fff;font:800 12px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);">${Math.round(p.aqi)}</div>`,iconSize:[28,28],iconAnchor:[-9,69]})});mk.bindPopup(aqiPopupHTML(p));return mk;})).addTo(lfMap);
+    lfAQI=L.layerGroup(pts.map(p=>{const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'aqi-badge',html:`<div style="width:28px;height:28px;border-radius:50%;background:${aqiColor(p.aqi)};border:3px solid #fff;color:#fff;font:800 12px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);">${Math.round(p.aqi)}</div>`,iconSize:[28,28],iconAnchor:[-2,62]})});mk.bindPopup(aqiPopupHTML(p));return mk;})).addTo(lfMap);
   }
 }
 function setAQIVisible(on){
@@ -1937,6 +1955,7 @@ function siteBioHTML(site){
   if(site.bestWindow)info+=`<div class="ppinfo"><span class="ppinfo-k">🕑 Best window:</span> ${site.bestWindow}</div>`;
   if(site.access)info+=`<div class="ppinfo"><span class="ppinfo-k">🚙 Access:</span> ${site.access}</div>`;
   if(site.airspace)info+=`<div class="ppinfo ppinfo-warn"><span class="ppinfo-k">✈ Airspace:</span> ${site.airspace}</div>`;
+  if(site.inTFR){const r=site.tfrInfo?tfrReason(site.tfrInfo):null;info+=`<div class="ppinfo ppinfo-warn"><span class="ppinfo-k">⛔ NO FLY — active TFR:</span> ${r?r.icon+' '+r.label:'Inside a temporary flight restriction'}</div>`;}
   const haz=(site.hazards&&site.hazards.length)?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:'';
   const notes=site.desc?`<details class="ppnotes"><summary>📋 Notes</summary><p>${site.desc}</p></details>`:'';
   return`<div class="ppbio"><div class="ppbio-h">▲ Launch details</div>${factGrid}${info}${haz}${notes}</div>`;
@@ -3699,12 +3718,15 @@ function applyZClass(el,status){
   el.classList.remove('mk-green','mk-yellow','mk-red');
   el.classList.add('mk-launch','mk-'+({flyable:'green',caution:'yellow',no:'red'}[status||'caution']));
 }
+// A launch inside an active TFR is always a hard no-fly (red), overriding its weather status.
+function launchStatus(site){if(site&&site.inTFR)return 'no';const w=siteWx[site.id];return w?.status||'caution';}
 function createLaunchMarker(site){
   const w=siteWx[site.id];
-  const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[w?.status||'caution'];
-  const zc=mkZClass(w?.status);
+  const st=launchStatus(site);
+  const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[st];
+  const zc=mkZClass(st);
   const el=document.createElement('div');
-  el.style.cursor='pointer';applyZClass(el,w?.status);
+  el.style.cursor='pointer';applyZClass(el,st);
   el.innerHTML=mkLaunchSVG(col,site,w);
   el.addEventListener('click',e=>onLaunchClick(site,e));
   if(useMapLibre&&mlMap){launchElMap[site.id]=el;const mk=new maplibregl.Marker({element:el,anchor:'bottom',draggable:false,opacityWhenCovered:'1'}).setLngLat([site.lon,site.lat]).addTo(mlMap);mk.on('dragend',()=>{const ll=mk.getLngLat();site.lat=ll.lat;site.lon=ll.lng;applyConnections();refreshMovedLaunch(site);});launchMarkerMap[site.id]=mk;}
@@ -3779,8 +3801,8 @@ async function loadWeather(){
   recolorMarkers();
 }
 function recolorMarkers(){
-  LAUNCHES.forEach(site=>{const ref=launchElMap[site.id];if(!ref)return;const w=siteWx[site.id];const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[w?.status||'caution'];const svg=mkLaunchSVG(col,site,w);const zc=mkZClass(w?.status);
-    if(useMapLibre){ref.innerHTML=svg;applyZClass(ref,w?.status);}
+  LAUNCHES.forEach(site=>{const ref=launchElMap[site.id];if(!ref)return;const w=siteWx[site.id];const st=launchStatus(site);const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[st];const svg=mkLaunchSVG(col,site,w);const zc=mkZClass(st);
+    if(useMapLibre){ref.innerHTML=svg;applyZClass(ref,st);}
     else if(ref.setIcon)ref.setIcon(L.divIcon({html:svg,iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:zc}));
   });
   cullGhostMarkers();
