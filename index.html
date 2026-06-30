@@ -236,6 +236,7 @@ body.dark .pp-fc-model{background-color:#1e3a8a;color:#dbeafe;border-color:#3b82
 .ppinfo{font-size:11.5px;color:#334155;margin:4px 0;line-height:1.4;}
 .ppinfo-k{font-weight:700;color:#475569;}
 .ppinfo-warn,.ppinfo-warn .ppinfo-k{color:#b91c1c;}
+.tfr-flag{display:inline-flex;align-items:center;margin-left:8px;padding:2px 8px;border-radius:9px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;vertical-align:middle;box-shadow:0 1px 3px rgba(0,0,0,.25);}
 .ppnotes{margin-top:8px;}
 .ppnotes summary{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#64748b;cursor:pointer;list-style:none;}
 .ppnotes summary::-webkit-details-marker{display:none;}
@@ -1464,7 +1465,7 @@ function aqiLabel(v){for(const b of AQI_BANDS)if(v<=b[0])return b[2];return 'Haz
 function aqiPopupHTML(p){const v=Math.round(+p.aqi);return '<div class="oa-pop"><div style="font-weight:800;">🫧 AQI '+v+' — '+aqiLabel(v)+'</div>'+(p.name?'<div>'+p.name+'</div>':'')+'<div style="margin-top:3px;font-size:11px;opacity:.75;">US EPA AQI · Open-Meteo</div></div>';}
 // SVG badge — text centred by glyph geometry (text-anchor:middle + dominant-baseline:central)
 // so the number sits dead-centre and never touches the white ring, whatever the digit count.
-function aqiBadgeSVG(v){const n=Math.round(+v);return '<svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg"><circle cx="17" cy="17" r="14.5" fill="'+aqiColor(n)+'" stroke="#fff" stroke-width="3"/><text x="18.5" y="15.5" text-anchor="middle" dominant-baseline="central" fill="#fff" font-family="system-ui,Segoe UI,Roboto,sans-serif" font-weight="800" font-size="12">'+n+'</text></svg>';}
+function aqiBadgeSVG(v){const n=Math.round(+v);return '<svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg"><circle cx="17" cy="17" r="14.5" fill="'+aqiColor(n)+'" stroke="#fff" stroke-width="3"/><text x="18.5" y="15.5" text-anchor="middle" dominant-baseline="central" fill="#fff" font-family="system-ui,Segoe UI,Roboto,sans-serif" font-weight="800" font-size="11">'+n+'</text></svg>';}
 let aqiData=null, lfAQI=null, aqiMarkers=[];
 async function fetchAQI(){
   const lats=LAUNCHES.map(s=>s.lat.toFixed(4)).join(','),lons=LAUNCHES.map(s=>s.lon.toFixed(4)).join(',');
@@ -1986,7 +1987,6 @@ function siteBioHTML(site){
   if(site.bestWindow)info+=`<div class="ppinfo"><span class="ppinfo-k">🕑 Best window:</span> ${site.bestWindow}</div>`;
   if(site.access)info+=`<div class="ppinfo"><span class="ppinfo-k">🚙 Access:</span> ${site.access}</div>`;
   if(site.airspace)info+=`<div class="ppinfo ppinfo-warn"><span class="ppinfo-k">✈ Airspace:</span> ${site.airspace}</div>`;
-  if(site.inTFR){const r=site.tfrInfo?tfrReason(site.tfrInfo):null;info+=`<div class="ppinfo ppinfo-warn"><span class="ppinfo-k">⛔ NO FLY — active TFR:</span> ${r?r.icon+' '+r.label:'Inside a temporary flight restriction'}</div>`;}
   const haz=(site.hazards&&site.hazards.length)?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:'';
   const notes=site.desc?`<details class="ppnotes"><summary>📋 Notes</summary><p>${site.desc}</p></details>`:'';
   return`<div class="ppbio"><div class="ppbio-h">▲ Launch details</div>${factGrid}${info}${haz}${notes}</div>`;
@@ -2074,18 +2074,25 @@ function setGlideRatio(id,v){
 // Weather-model selector that sits next to the in-sidebar "2-Week Forecast" heading.
 // The whole 2-week section is mobile-only (hidden ≥769px), so this dropdown only appears on mobile.
 function fcModelSelectHTML(){return`<select class="pp-fc-model" title="Weather model" onchange="siteMenuModel(this.value,this)">${WX_MODELS.map(([v,l])=>`<option value="${v}"${v===currentModel?' selected':''}>${l}</option>`).join('')}<option value="__compare__">⚖ Compare models</option></select>`;}
+// Red "NO FLY" pill shown beside a site name when it sits inside an active TFR.
+function tfrFlagHTML(site){
+  if(!site||!site.inTFR)return '';
+  const r=site.tfrInfo?tfrReason(site.tfrInfo):null;
+  const tip=(r?r.icon+' '+r.label:'Inside an active temporary flight restriction').replace(/"/g,'');
+  return `<span class="tfr-flag" title="${tip}">⛔ NO FLY · TFR</span>`;
+}
 function launchPop(site,w){
   const s=w?flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir):'caution';
   const dir=`<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to trailhead</a>`;
   const bio=siteBioHTML(site);
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
   const bioHTML=lzBio?`<div class="ppbio"><div class="ppbio-h">📋 About this LZ</div><p>${lzBio}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · Landing Zone</div>${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${shareBtnHTML(site.id)}${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}${tfrFlagHTML(site)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · Landing Zone</div>${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${shareBtnHTML(site.id)}${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
 }
 
 // ── 3D mini-map thumbnail (popup) ─────────────────────────────────────────────
