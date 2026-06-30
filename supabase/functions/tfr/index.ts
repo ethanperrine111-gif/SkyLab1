@@ -23,8 +23,9 @@ const cache: Record<string, { t: number; gj: unknown }> = {};
 const TTL = 10 * 60 * 1000; // 10 minutes
 
 const LIST_URL = "https://tfr.faa.gov/tfrapi/exportTfrList";
+// Geometry lives at /download/ (the old /save_pages/ path 404s). Coords are decimal degrees.
 const DETAIL = (id: string) =>
-  `https://tfr.faa.gov/save_pages/detail_${id.replace(/\//g, "_")}.xml`;
+  `https://tfr.faa.gov/download/detail_${id.replace(/\//g, "_")}.xml`;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
