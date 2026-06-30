@@ -646,6 +646,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="checkbox" id="ov-radar" onchange="toggleOverlay('radar',this.checked)"/> 🌧 Radar (precip)</label>
         <label class="lp-row"><input type="checkbox" id="ov-satellite" onchange="toggleOverlay('satellite',this.checked)"/> ☁ Satellite (clouds)</label>
         <label class="lp-row"><input type="checkbox" id="ov-airspace" onchange="toggleOverlay('airspace',this.checked)"/> 🚫 Airspace (OpenAIP)</label>
+        <label class="lp-row"><input type="checkbox" id="ov-tfr" onchange="toggleTFR(this.checked)"/> ⛔ TFRs (FAA security)</label>
         <label class="lp-row"><input type="checkbox" id="ov-thermals" onchange="toggleOverlay('thermals',this.checked)"/> 🔥 Thermal hotspots</label>
         <label class="lp-row"><input type="checkbox" id="ov-skyways" onchange="toggleOverlay('skyways',this.checked)"/> 🛤 Skyways (glide lines)</label>
         <label class="lp-row"><input type="checkbox" id="ov-obstacles" onchange="toggleFeatureLayer('obstacles',this.checked)"/> 🗼 Obstacles</label>
@@ -1307,6 +1308,54 @@ async function toggleFeatureLayer(name,on){
   const needRender=(useMapLibre&&mlMap&&!mlMap.getSource('oa-'+name))||(!useMapLibre&&lfMap&&!lfFeatureGroups[name]);
   if(needRender)renderFeatures(name,oaData[name]);
   setFeatureVisible(name,true);
+}
+// ── TFRs (Temporary Flight Restrictions) ──────────────────────────────────────
+// Official FAA ArcGIS feature service (CORS-enabled, GeoJSON polygons, refreshed on the 28-day
+// AIRAC cycle). NOTE: this set is the long-term, fixed-boundary SECURITY TFRs (CFR 99.7 / 91.141 /
+// 91.139). Dynamic TFRs (wildfire, VIP movement, sporting events) live at tfr.faa.gov, which sends
+// no CORS headers, so we can't fetch those from a static page — the popup links out to the live map.
+const TFR_URL='https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/National_Defense_Airspace_TFR_Areas/FeatureServer/0/query?where=1%3D1&geometry=-120,31,-104,46&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=NAME,LOCAL_TYPE,WKHR_RMK,CITY,STATE&outSR=4326&f=geojson';
+let tfrLoaded=false, lfTFR=null;
+function tfrPopupHTML(p){
+  p=p||{};
+  const name=p.NAME||p.LOCAL_TYPE||'Temporary Flight Restriction';
+  const loc=[p.CITY,p.STATE].filter(Boolean).join(', ');
+  return '<div class="oa-pop"><div style="font-weight:800;margin-bottom:3px;">⛔ '+name+'</div>'
+    +(p.LOCAL_TYPE&&p.LOCAL_TYPE!==name?'<div>'+p.LOCAL_TYPE+'</div>':'')
+    +(loc?'<div>'+loc+'</div>':'')
+    +(p.WKHR_RMK?'<div style="margin-top:3px;">'+p.WKHR_RMK+'</div>':'')
+    +'<div style="margin-top:5px;"><a href="https://tfr.faa.gov/tfr3/" target="_blank" rel="noopener">Live wildfire / VIP TFRs → tfr.faa.gov</a></div></div>';
+}
+function renderTFR(gj){
+  if(useMapLibre&&mlMap){
+    if(mlMap.getSource('tfr')){mlMap.getSource('tfr').setData(gj);return;}
+    mlMap.addSource('tfr',{type:'geojson',data:gj});
+    mlMap.addLayer({id:'tfr-fill',type:'fill',source:'tfr',paint:{'fill-color':'#dc2626','fill-opacity':0.2}});
+    mlMap.addLayer({id:'tfr-line',type:'line',source:'tfr',paint:{'line-color':'#dc2626','line-width':2,'line-dasharray':[2,1.5]}});
+    mlMap.on('click','tfr-fill',e=>{const f=e.features&&e.features[0];if(!f)return;new maplibregl.Popup({closeButton:true}).setLngLat(e.lngLat).setHTML(tfrPopupHTML(f.properties)).addTo(mlMap);});
+    mlMap.on('mouseenter','tfr-fill',()=>mlMap.getCanvas().style.cursor='pointer');
+    mlMap.on('mouseleave','tfr-fill',()=>mlMap.getCanvas().style.cursor='');
+  }else if(lfMap){
+    if(lfTFR){try{lfMap.removeLayer(lfTFR);}catch(e){}}
+    lfTFR=L.geoJSON(gj,{style:{color:'#dc2626',weight:2,dashArray:'4,3',fillColor:'#dc2626',fillOpacity:0.2},onEachFeature:(f,l)=>l.bindPopup(tfrPopupHTML(f.properties))}).addTo(lfMap);
+  }
+}
+function setTFRVisible(on){
+  if(useMapLibre&&mlMap){['tfr-fill','tfr-line'].forEach(id=>{if(mlMap.getLayer(id)){try{mlMap.setLayoutProperty(id,'visibility',on?'visible':'none');}catch(e){}}});}
+  else if(lfMap&&lfTFR){if(on)lfTFR.addTo(lfMap);else{try{lfMap.removeLayer(lfTFR);}catch(e){}}}
+}
+async function toggleTFR(on){
+  if(!on){setTFRVisible(false);return;}
+  if(!tfrLoaded){
+    setBadge('Loading TFRs…');
+    let gj=null;
+    try{const r=await fetch(TFR_URL);if(r.ok)gj=await r.json();}catch(e){}
+    setBadge('');
+    if(!gj||!gj.features){uncheck('tfr');setBadge('⚠ TFR data unavailable right now. Try again shortly, or check tfr.faa.gov.');return;}
+    renderTFR(gj);tfrLoaded=true;
+    if(!gj.features.length)setBadge('No standing security TFRs near Utah. For live wildfire/VIP TFRs see tfr.faa.gov.');
+  }
+  setTFRVisible(true);
 }
 // Import Utah paragliding / hang-gliding sites from ParaglidingEarth (OpenAIP has no
 // PG-site dataset). De-duped against existing launches by name and ~1.5 km proximity.
