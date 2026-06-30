@@ -272,6 +272,14 @@ body.dark .ppwind-note{color:#94a3b8;}
 @keyframes locpulse{0%{transform:scale(1);opacity:.8}70%{transform:scale(2.4);opacity:0}100%{transform:scale(2.4);opacity:0}}
 .leaflet-div-icon.myloc-dot{background:none!important;border:none!important;}
 .maplibregl-popup-content{padding:12px;border-radius:10px;max-height:80vh;overflow-y:auto;}
+/* Bigger, cleaner popup close button (MapLibre + Leaflet). */
+.maplibregl-popup-close-button,.leaflet-popup-close-button{
+  width:28px;height:28px;top:7px;right:7px;padding:0;border:none;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;line-height:1;
+  color:#fff;background:rgba(15,23,42,.55);transition:background .15s;}
+.maplibregl-popup-close-button:hover,.leaflet-popup-close-button:hover{background:rgba(15,23,42,.92);color:#fff;}
+.leaflet-popup-close-button{box-sizing:border-box;}
+.maplibregl-popup-content,.leaflet-popup-content-wrapper{padding-right:42px;}
 /* Hide the map attribution control */
 .maplibregl-ctrl-attrib,.leaflet-control-attribution{display:none!important;}
 /* Hide the +/- zoom buttons */
@@ -306,6 +314,8 @@ body.dark .ppwind-note{color:#94a3b8;}
 .lp-sec:first-child{margin-top:0;}
 .lp-row{display:flex;align-items:center;gap:10px;padding:9px 4px;cursor:pointer;user-select:none;font-size:13px;}
 .lp-row input{cursor:pointer;margin:0;accent-color:#38bdf8;width:20px;height:20px;flex-shrink:0;}
+.lp-ico{flex-shrink:0;width:20px;text-align:center;font-size:15px;line-height:1;}
+.lp-lbl{flex:1;}
 .lp-div{height:1px;background:rgba(255,255,255,.12);margin:7px 0 3px;}
 /* 3D popup thumbnail */
 .pp-sat{position:relative;overflow:hidden;}
@@ -645,23 +655,23 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="radio" name="baselayer" value="topo" onchange="setBaseLayer('topo')"/> Topo</label>
         <div class="lp-div"></div>
         <div class="lp-sec">Sites</div>
-        <label class="lp-row"><input type="checkbox" id="ov-takeoffs" checked onchange="toggleTakeoffs(this.checked)"/> 🛫 Takeoffs (launches)</label>
-        <label class="lp-row"><input type="checkbox" id="ov-lzs" checked onchange="toggleLZs(this.checked)"/> 🛬 Landing zones (LZ)</label>
+        <label class="lp-row"><input type="checkbox" id="ov-takeoffs" checked onchange="toggleTakeoffs(this.checked)"/><span class="lp-ico">🛫</span><span class="lp-lbl">Takeoffs (launches)</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-lzs" checked onchange="toggleLZs(this.checked)"/><span class="lp-ico">🛬</span><span class="lp-lbl">Landing zones (LZ)</span></label>
         <div class="lp-div"></div>
         <div class="lp-sec">Overlay</div>
-        <label class="lp-row"><input type="checkbox" id="ov-wind" onchange="toggleWindAnim(this.checked)"/> 🌬 Wind animation</label>
-        <label class="lp-row"><input type="checkbox" id="ov-radar" onchange="toggleOverlay('radar',this.checked)"/> 🌧 Radar (precip)</label>
-        <label class="lp-row"><input type="checkbox" id="ov-satellite" onchange="toggleOverlay('satellite',this.checked)"/> ☁ Satellite (clouds)</label>
-        <label class="lp-row"><input type="checkbox" id="ov-airspace" onchange="toggleOverlay('airspace',this.checked)"/> 🚫 Airspace (OpenAIP)</label>
-        <label class="lp-row"><input type="checkbox" id="ov-tfr" onchange="toggleTFR(this.checked)"/> ⛔ TFRs (live)</label>
-        <label class="lp-row"><input type="checkbox" id="ov-aqi" onchange="toggleAQI(this.checked)"/> 🫧 Air quality (AQI)</label>
-        <label class="lp-row"><input type="checkbox" id="ov-thermals" onchange="toggleOverlay('thermals',this.checked)"/> 🔥 Thermal hotspots</label>
-        <label class="lp-row"><input type="checkbox" id="ov-skyways" onchange="toggleOverlay('skyways',this.checked)"/> 🛤 Skyways (glide lines)</label>
-        <label class="lp-row"><input type="checkbox" id="ov-obstacles" onchange="toggleFeatureLayer('obstacles',this.checked)"/> 🗼 Obstacles</label>
-        <label class="lp-row"><input type="checkbox" id="ov-airports" onchange="toggleFeatureLayer('airports',this.checked)"/> 🛩 Airports</label>
-        <label class="lp-row"><input type="checkbox" id="ov-wx" onchange="toggleFeatureLayer('wx',this.checked)"/> 🌡 Weather stations</label>
-        <label class="lp-row"><input type="checkbox" id="ov-relief" onchange="toggleOverlay('relief',this.checked)"/> ⛰ Hillshade (terrain)</label>
-        <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/> 🥾 Hiking trails</label>
+        <label class="lp-row"><input type="checkbox" id="ov-wind" onchange="toggleWindAnim(this.checked)"/><span class="lp-ico">🌬️</span><span class="lp-lbl">Wind animation</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-radar" onchange="toggleOverlay('radar',this.checked)"/><span class="lp-ico">🌧️</span><span class="lp-lbl">Precip Radar</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-satellite" onchange="toggleOverlay('satellite',this.checked)"/><span class="lp-ico">☁️</span><span class="lp-lbl">Satellite clouds</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-airspace" onchange="toggleOverlay('airspace',this.checked)"/><span class="lp-ico">🚫</span><span class="lp-lbl">Airspace</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-tfr" onchange="toggleTFR(this.checked)"/><span class="lp-ico">⛔</span><span class="lp-lbl">TFRs</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-aqi" onchange="toggleAQI(this.checked)"/><span class="lp-ico">🫧</span><span class="lp-lbl">Air quality (AQI)</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-thermals" onchange="toggleOverlay('thermals',this.checked)"/><span class="lp-ico">🔥</span><span class="lp-lbl">Thermal hotspots</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-skyways" onchange="toggleOverlay('skyways',this.checked)"/><span class="lp-ico">🛤️</span><span class="lp-lbl">Skyways</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-obstacles" onchange="toggleFeatureLayer('obstacles',this.checked)"/><span class="lp-ico">🗼</span><span class="lp-lbl">Obstacles</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-airports" onchange="toggleFeatureLayer('airports',this.checked)"/><span class="lp-ico">🛩️</span><span class="lp-lbl">Airports</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-wx" onchange="toggleFeatureLayer('wx',this.checked)"/><span class="lp-ico">🌡️</span><span class="lp-lbl">Weather stations</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-relief" onchange="toggleOverlay('relief',this.checked)"/><span class="lp-ico">⛰️</span><span class="lp-lbl">Terrain</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/><span class="lp-ico">🥾</span><span class="lp-lbl">Hiking trails</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-power" onchange="toggleOverlay('power',this.checked)"/> ⚡ Power lines</label>
       </div>
     </div>
