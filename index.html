@@ -646,7 +646,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="checkbox" id="ov-radar" onchange="toggleOverlay('radar',this.checked)"/> 🌧 Radar (precip)</label>
         <label class="lp-row"><input type="checkbox" id="ov-satellite" onchange="toggleOverlay('satellite',this.checked)"/> ☁ Satellite (clouds)</label>
         <label class="lp-row"><input type="checkbox" id="ov-airspace" onchange="toggleOverlay('airspace',this.checked)"/> 🚫 Airspace (OpenAIP)</label>
-        <label class="lp-row"><input type="checkbox" id="ov-tfr" onchange="toggleTFR(this.checked)"/> ⛔ TFRs (FAA security)</label>
+        <label class="lp-row"><input type="checkbox" id="ov-tfr" onchange="toggleTFR(this.checked)"/> ⛔ TFRs (live)</label>
+        <label class="lp-row"><input type="checkbox" id="ov-aqi" onchange="toggleAQI(this.checked)"/> 🫧 Air quality (AQI)</label>
         <label class="lp-row"><input type="checkbox" id="ov-thermals" onchange="toggleOverlay('thermals',this.checked)"/> 🔥 Thermal hotspots</label>
         <label class="lp-row"><input type="checkbox" id="ov-skyways" onchange="toggleOverlay('skyways',this.checked)"/> 🛤 Skyways (glide lines)</label>
         <label class="lp-row"><input type="checkbox" id="ov-obstacles" onchange="toggleFeatureLayer('obstacles',this.checked)"/> 🗼 Obstacles</label>
@@ -1310,21 +1311,39 @@ async function toggleFeatureLayer(name,on){
   setFeatureVisible(name,true);
 }
 // ── TFRs (Temporary Flight Restrictions) ──────────────────────────────────────
-// Official FAA ArcGIS feature service (CORS-enabled, GeoJSON polygons, refreshed on the 28-day
-// AIRAC cycle). NOTE: this set is the long-term, fixed-boundary SECURITY TFRs (CFR 99.7 / 91.141 /
-// 91.139). Dynamic TFRs (wildfire, VIP movement, sporting events) live at tfr.faa.gov, which sends
-// no CORS headers, so we can't fetch those from a static page — the popup links out to the live map.
-const TFR_URL='https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/National_Defense_Airspace_TFR_Areas/FeatureServer/0/query?where=1%3D1&geometry=-120,31,-104,46&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=NAME,LOCAL_TYPE,WKHR_RMK,CITY,STATE&outSR=4326&f=geojson';
+// LIVE feed: our Supabase Edge Function proxies tfr.faa.gov (which sends no CORS headers) and
+// returns ALL active TFRs in the region — wildfire, VIP/Presidential, sporting, security — as
+// GeoJSON polygons. See supabase/functions/tfr/index.ts. If the proxy isn't deployed/reachable we
+// fall back to the FAA ArcGIS service, which carries only the long-term fixed-boundary security TFRs.
+const TFR_LIVE_URL=SUPABASE_URL+'/functions/v1/tfr?states=UT,ID,WY,NV,AZ,CO,NM';
+const TFR_FALLBACK_URL='https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/National_Defense_Airspace_TFR_Areas/FeatureServer/0/query?where=1%3D1&geometry=-120,31,-104,46&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=NAME,LOCAL_TYPE,WKHR_RMK,CITY,STATE&outSR=4326&f=geojson';
 let tfrLoaded=false, lfTFR=null;
+async function fetchTFR(){
+  // Prefer the live FAA proxy (all active TFRs). apikey header lets it work whether or not the
+  // function was deployed with --no-verify-jwt.
+  try{
+    const r=await fetch(TFR_LIVE_URL,{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    if(r.ok){const gj=await r.json();if(gj&&Array.isArray(gj.features))return gj;}
+  }catch(e){}
+  // Fallback: FAA ArcGIS security-TFR layer.
+  try{const r=await fetch(TFR_FALLBACK_URL);if(r.ok){const gj=await r.json();if(gj&&gj.features)return gj;}}catch(e){}
+  return null;
+}
 function tfrPopupHTML(p){
   p=p||{};
-  const name=p.NAME||p.LOCAL_TYPE||'Temporary Flight Restriction';
-  const loc=[p.CITY,p.STATE].filter(Boolean).join(', ');
+  // Handles both the live FAA feed (lowercase props) and the ArcGIS fallback (UPPERCASE props).
+  const name=p.name||p.NAME||p.LOCAL_TYPE||'Temporary Flight Restriction';
+  const type=p.type||p.LOCAL_TYPE||'';
+  const loc=[p.facility||p.CITY,p.state||p.STATE].filter(Boolean).join(', ');
+  const alt=(p.floor||p.ceiling)?((p.floor||'SFC')+' – '+(p.ceiling||'unlimited')):'';
+  const when=(p.effective||p.expires)?((p.effective||'')+(p.expires?' → '+p.expires:'')):'';
   return '<div class="oa-pop"><div style="font-weight:800;margin-bottom:3px;">⛔ '+name+'</div>'
-    +(p.LOCAL_TYPE&&p.LOCAL_TYPE!==name?'<div>'+p.LOCAL_TYPE+'</div>':'')
+    +(type&&type!==name?'<div>'+type+(p.notam?' · '+p.notam:'')+'</div>':(p.notam?'<div>'+p.notam+'</div>':''))
     +(loc?'<div>'+loc+'</div>':'')
+    +(alt?'<div style="margin-top:3px;">Altitude: '+alt+'</div>':'')
+    +(when?'<div style="font-size:11px;opacity:.8;">'+when+'</div>':'')
     +(p.WKHR_RMK?'<div style="margin-top:3px;">'+p.WKHR_RMK+'</div>':'')
-    +'<div style="margin-top:5px;"><a href="https://tfr.faa.gov/tfr3/" target="_blank" rel="noopener">Live wildfire / VIP TFRs → tfr.faa.gov</a></div></div>';
+    +'<div style="margin-top:5px;"><a href="https://tfr.faa.gov/tfr3/" target="_blank" rel="noopener">Full details → tfr.faa.gov</a></div></div>';
 }
 function renderTFR(gj){
   if(useMapLibre&&mlMap){
@@ -1348,14 +1367,59 @@ async function toggleTFR(on){
   if(!on){setTFRVisible(false);return;}
   if(!tfrLoaded){
     setBadge('Loading TFRs…');
-    let gj=null;
-    try{const r=await fetch(TFR_URL);if(r.ok)gj=await r.json();}catch(e){}
+    const gj=await fetchTFR();
     setBadge('');
-    if(!gj||!gj.features){uncheck('tfr');setBadge('⚠ TFR data unavailable right now. Try again shortly, or check tfr.faa.gov.');return;}
+    if(!gj){uncheck('tfr');setBadge('⚠ TFR data unavailable right now. Try again shortly, or check tfr.faa.gov.');return;}
     renderTFR(gj);tfrLoaded=true;
-    if(!gj.features.length)setBadge('No standing security TFRs near Utah. For live wildfire/VIP TFRs see tfr.faa.gov.');
+    if(!gj.features.length)setBadge('No active TFRs near Utah right now.');
   }
   setTFRVisible(true);
+}
+// ── Air quality (US EPA AQI) ──────────────────────────────────────────────────
+// Open-Meteo's air-quality API (no key, CORS-enabled) gives current US AQI for many points in one
+// request, so we fetch every launch site at once and drop a coloured AQI chip on each. Smoke from
+// regional wildfires is the usual culprit in Utah summers — and ties directly to the TFR layer.
+const AQI_BANDS=[[50,'#22c55e','Good'],[100,'#eab308','Moderate'],[150,'#f97316','Unhealthy for sensitive groups'],[200,'#ef4444','Unhealthy'],[300,'#a21caf','Very unhealthy'],[1e9,'#7f1d1d','Hazardous']];
+function aqiColor(v){for(const b of AQI_BANDS)if(v<=b[0])return b[1];return '#7f1d1d';}
+function aqiLabel(v){for(const b of AQI_BANDS)if(v<=b[0])return b[2];return 'Hazardous';}
+function aqiPopupHTML(p){const v=Math.round(+p.aqi);return '<div class="oa-pop"><div style="font-weight:800;">🫧 AQI '+v+' — '+aqiLabel(v)+'</div>'+(p.name?'<div>'+p.name+'</div>':'')+'<div style="margin-top:3px;font-size:11px;opacity:.75;">US EPA AQI · Open-Meteo</div></div>';}
+let aqiData=null, lfAQI=null;
+async function fetchAQI(){
+  const lats=LAUNCHES.map(s=>s.lat.toFixed(4)).join(','),lons=LAUNCHES.map(s=>s.lon.toFixed(4)).join(',');
+  try{
+    const r=await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lats}&longitude=${lons}&current=us_aqi&timezone=auto`);
+    if(!r.ok)return null;
+    const j=await r.json();const arr=Array.isArray(j)?j:[j];
+    return LAUNCHES.map((s,i)=>{const c=arr[i]&&arr[i].current;return (c&&c.us_aqi!=null)?{lat:s.lat,lon:s.lon,name:s.name,aqi:c.us_aqi}:null;}).filter(Boolean);
+  }catch(e){return null;}
+}
+function renderAQI(pts){
+  if(useMapLibre&&mlMap){
+    const fc={type:'FeatureCollection',features:pts.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{aqi:p.aqi,name:p.name,color:aqiColor(p.aqi)}}))};
+    if(mlMap.getSource('aqi')){mlMap.getSource('aqi').setData(fc);return;}
+    mlMap.addSource('aqi',{type:'geojson',data:fc});
+    mlMap.addLayer({id:'aqi-c',type:'circle',source:'aqi',paint:{'circle-radius':11,'circle-color':['get','color'],'circle-stroke-color':'#fff','circle-stroke-width':2,'circle-opacity':0.92}});
+    mlMap.addLayer({id:'aqi-t',type:'symbol',source:'aqi',layout:{'text-field':['to-string',['get','aqi']],'text-size':11,'text-allow-overlap':true},paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.4)','text-halo-width':1}});
+    mlMap.on('click','aqi-c',e=>{const f=e.features&&e.features[0];if(!f)return;new maplibregl.Popup({offset:13,closeButton:true}).setLngLat(f.geometry.coordinates.slice()).setHTML(aqiPopupHTML(f.properties)).addTo(mlMap);});
+    mlMap.on('mouseenter','aqi-c',()=>mlMap.getCanvas().style.cursor='pointer');
+    mlMap.on('mouseleave','aqi-c',()=>mlMap.getCanvas().style.cursor='');
+  }else if(lfMap){
+    if(lfAQI){try{lfMap.removeLayer(lfAQI);}catch(e){}}
+    lfAQI=L.layerGroup(pts.map(p=>{const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div style="width:24px;height:24px;border-radius:50%;background:${aqiColor(p.aqi)};border:2px solid #fff;color:#fff;font:700 11px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.4);">${Math.round(p.aqi)}</div>`,iconSize:[24,24],iconAnchor:[12,12]})});mk.bindPopup(aqiPopupHTML(p));return mk;})).addTo(lfMap);
+  }
+}
+function setAQIVisible(on){
+  if(useMapLibre&&mlMap){['aqi-c','aqi-t'].forEach(id=>{if(mlMap.getLayer(id)){try{mlMap.setLayoutProperty(id,'visibility',on?'visible':'none');}catch(e){}}});}
+  else if(lfMap&&lfAQI){if(on)lfAQI.addTo(lfMap);else{try{lfMap.removeLayer(lfAQI);}catch(e){}}}
+}
+async function toggleAQI(on){
+  if(!on){setAQIVisible(false);return;}
+  if(!aqiData){
+    setBadge('Loading air quality…');aqiData=await fetchAQI();setBadge('');
+    if(!aqiData||!aqiData.length){uncheck('aqi');setBadge('⚠ Air quality data unavailable right now. Try again shortly.');aqiData=null;return;}
+    renderAQI(aqiData);
+  }
+  setAQIVisible(true);
 }
 // Import Utah paragliding / hang-gliding sites from ParaglidingEarth (OpenAIP has no
 // PG-site dataset). De-duped against existing launches by name and ~1.5 km proximity.
@@ -2659,8 +2723,8 @@ function buildForecast(container,series,labels){
     ['fc-r-wind',windAlt>0?`Wind ${windAlt/1000}k`:`Wind ${windU()}`,windRow,rowGrad(windVals)],
     ['fc-r-gust','Gusts',gustRow,rowGrad(gustVals)],
     ['fc-r-dir',labels.dir,dirRow],
-    ['fc-r-therm','Therm <span class="fc-help" title="Thermal strength (climb punch, not ceiling): blends mixing-layer depth, airmass instability (lifted index / CAPE) and time of day. Taller bar = stronger thermals, peaking mid-afternoon. No bar = no thermals (night or overcast).">?</span>',thermRow],
-    ['fc-r-fly','Fly <span class="fc-help" title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature.">?</span>',flyRow,colGrad(flyCols)]
+    ['fc-r-therm','<span title="Thermal strength (climb punch, not ceiling): blends mixing-layer depth, airmass instability (lifted index / CAPE) and time of day. Taller bar = stronger thermals, peaking mid-afternoon. No bar = no thermals (night or overcast)." style="cursor:help;">Thermals</span>',thermRow],
+    ['fc-r-fly','<span title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature." style="cursor:help;text-transform:none;font-size:8.5px;letter-spacing:0;">Fly / No-Fly</span>',flyRow,colGrad(flyCols)]
   ];
   let labelsHTML='',dataHTML='';
   rows.forEach(([cls,lbl,cells,rowStyle])=>{
