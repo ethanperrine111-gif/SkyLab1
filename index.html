@@ -556,7 +556,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #mode-badge{display:none;}
   /* Use the real SkyLab paraglider logo at the bottom (instead of the plain text chip) */
   #mobile-logo{display:none;}
-  #logo-overlay{display:flex;bottom:calc(66px + env(safe-area-inset-bottom,0px));padding:4px 12px 4px 6px;}  /* lift above the browser's bottom search bar */
+  #logo-overlay{display:flex;bottom:calc(44px + env(safe-area-inset-bottom,0px));padding:4px 12px 4px 6px;}  /* sit lower (nearly its own height down) while still clearing the browser's bottom bar */
   /* Bigger tap targets for thumbs */
   .cbtn{padding:9px 13px;font-size:13px;border-radius:11px;}
   .icon-btn{padding:9px;}
@@ -568,8 +568,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #compass{top:calc(8px + env(safe-area-inset-top,0px));}
   /* Floating panels: never overflow the viewport, scroll if tall */
   #menu-panel{left:12px;right:12px;max-width:none;max-height:58vh;overflow-y:auto;}
-  /* Keep the standalone Compare button on mobile (the dropdown no longer carries a Compare option). */
-  #fc-compare{padding:4px 7px;font-size:11px;}
+  /* On mobile, fold Compare into the Weather Models dropdown (bottom option) to free up the top bar for the location. */
+  #fc-compare,.nb-compare{display:none;}
   #model-compare{max-height:50vh;}
   #layer-panel{width:210px;max-height:calc(100dvh - 72px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:16px;}  /* fit within the viewport from its anchor so all rows are reachable by scrolling */
   /* Detail sidebar takes the full screen on a phone */
@@ -580,11 +580,19 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #sb-close{width:32px;height:32px;font-size:17px;}
   /* Keep the legend tucked into the corner */
   #legend{bottom:calc(8px + env(safe-area-inset-bottom,0px));left:calc(8px + env(safe-area-inset-left,0px));}
-  /* Lift the My-location pin clear of the phone browser's bottom toolbar */
-  #br-controls{bottom:calc(58px + env(safe-area-inset-bottom,0px));}
+  /* My-location pin sits lower (dropped nearly its own height) while still clearing the phone browser's bottom toolbar */
+  #br-controls{bottom:calc(32px + env(safe-area-inset-bottom,0px));}
   /* Remove the +/- zoom buttons on phones (pinch-zoom is used instead); keep attribution */
   .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group{display:none;}
 }
+/* Pin stacking order — launches ALWAYS sit on top of LZ badges, and among launches the
+   green (flyable) takeoffs sit above yellow (caution) above red (no-fly). !important so it
+   beats the inline z-index MapLibre/Leaflet assign per frame from screen position. */
+.mk-lz{z-index:100 !important;}
+.mk-launch{z-index:400 !important;}
+.mk-red{z-index:410 !important;}
+.mk-yellow{z-index:420 !important;}
+.mk-green{z-index:430 !important;}
 </style>
 </head>
 <body class="probe-off">
@@ -605,6 +613,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <option value="gfs_seamless">GFS</option>
         <option value="meteofrance_seamless">MeteoFr</option>
         <option value="best_match">Best match</option>
+        <option value="__compare__">⚖ Compare models</option>
       </select>
       <button id="fc-toggle" onclick="toggleForecast()" title="Show/hide forecast" aria-label="Toggle forecast">▴</button>
     </div>
@@ -811,7 +820,21 @@ const ALL_LZS=[...LZS,...EXTRA_LZS];
 
 let wxCache={}, siteWx={}, slcWx=null;
 let flightLayer=null, flightRAF=null, lfFlight=[], siteRatio={};
-let flightSite=null, flightPlan=null, flightRatio=null;
+let flightSite=null, flightPlan=null, flightRatio=null, fadedLZId=null;
+// During a flight sim, dim the destination LZ badge so the landing zone (and the glider touching
+// down) shows through it. We fade the inner <svg> so MapLibre's own marker-opacity handling (which
+// owns the marker root's style.opacity) doesn't fight us.
+function setLZFade(site,on){
+  if(!on){
+    if(fadedLZId){const r=lzElMap[fadedLZId]||(lzMarkerMap[fadedLZId]&&lzMarkerMap[fadedLZId]._icon);const s=r&&r.querySelector&&r.querySelector('svg');if(s)s.style.opacity='';fadedLZId=null;}
+    return;
+  }
+  const lz=(typeof lzStore!=='undefined'&&lzStore.find)?lzStore.find(z=>(z.launchIds||[]).includes(site.id)):null;
+  if(!lz)return;
+  const root=lzElMap[lz.id]||(lzMarkerMap[lz.id]&&lzMarkerMap[lz.id]._icon);
+  const svg=root&&root.querySelector&&root.querySelector('svg');
+  if(svg){svg.style.opacity='0.35';fadedLZId=lz.id;}
+}
 const FINAL_CF=0.78;
 let useMapLibre=false, mlMap=null, lfMap=null, openPopup=null, lzElMap={};
 let currentLaunchId=null, miniMap=null;
@@ -1560,19 +1583,80 @@ function buildFlightPath3(site,startR,lzR,vScale,plan,ratio){
   pts[0]={lng:site.lon,lat:site.lat,alt:startR};
   pts[pts.length-1]={lng:site.lzLon,lat:site.lzLat,alt:lzR};
   pts.forEach(p=>p.alt+=lift);
-  return pts;
+  return densifyPath(pts,600);   // many evenly-spaced points so the rendered line is a solid stroke, not beads
 }
+// Resample a path to `target` evenly-spaced points (by ground distance) via linear interpolation.
+// The flight line is drawn as a row of overlapping round points, so a dense path makes it read as one
+// continuous solid stroke instead of a dotted string of beads.
+function densifyPath(pts,target){
+  if(!pts||pts.length<2||pts.length>=target)return pts;
+  const seg=[];let total=0;
+  for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i];const d=Math.hypot(b.lng-a.lng,b.lat-a.lat)||1e-9;seg.push(d);total+=d;}
+  const out=[pts[0]];let idx=0,acc=0;
+  for(let k=1;k<target-1;k++){
+    const td=total*k/(target-1);
+    while(idx<seg.length-1&&acc+seg[idx]<td){acc+=seg[idx];idx++;}
+    const t=Math.min(1,Math.max(0,(td-acc)/(seg[idx]||1e-9)));
+    const a=pts[idx],b=pts[idx+1];
+    out.push({lng:a.lng+(b.lng-a.lng)*t,lat:a.lat+(b.lat-a.lat)*t,alt:a.alt+(b.alt-a.alt)*t});
+  }
+  out.push(pts[pts.length-1]);
+  return out;
+}
+// Per-point bank angle (radians): ~0 along the straight glide, ramping to a hard bank through the
+// tight spiral so the paraglider visibly "pitches in" as it corkscrews down over the LZ.
+function computeRoll(path){
+  const n=path.length,raw=new Float32Array(n),W=Math.max(2,Math.round(n/40));
+  const hdg=i=>{const a=path[Math.max(0,i-1)],b=path[Math.min(n-1,i+1)];return Math.atan2((b.lng-a.lng)*Math.cos(b.lat*Math.PI/180),(b.lat-a.lat));};
+  for(let i=0;i<n;i++){
+    let d=hdg(Math.min(n-1,i+W))-hdg(Math.max(0,i-W));
+    while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;
+    raw[i]=Math.max(-0.6,Math.min(0.6,d*1.7));
+  }
+  const out=new Float32Array(n);
+  for(let i=0;i<n;i++){let s=0,c=0;for(let j=-4;j<=4;j++){const k=i+j;if(k>=0&&k<n){s+=raw[k];c++;}}out[i]=s/c;}
+  return out;
+}
+// A little side-view paraglider drawn to an offscreen canvas, used as a point-sprite texture for
+// the moving marker. Canvas top = sprite top (no Y-flip), so the canopy sits above the pilot.
+function makeGliderCanvas(){
+  const cv=document.createElement('canvas');cv.width=64;cv.height=64;const x=cv.getContext('2d');
+  x.clearRect(0,0,64,64);
+  x.lineCap='round';x.lineJoin='round';
+  // canopy (wing) — a shallow arc across the top
+  x.lineWidth=7;x.strokeStyle='#ef4444';
+  x.beginPath();x.moveTo(7,23);x.quadraticCurveTo(32,5,57,23);x.stroke();
+  x.lineWidth=2.4;x.strokeStyle='#fecaca';
+  x.beginPath();x.moveTo(10,22);x.quadraticCurveTo(32,8,54,22);x.stroke();
+  // suspension lines down to the pilot
+  x.lineWidth=1.3;x.strokeStyle='rgba(255,255,255,0.95)';
+  [11,23,41,53].forEach(px=>{x.beginPath();x.moveTo(px,25);x.lineTo(32,47);x.stroke();});
+  // pilot harness + helmet
+  x.fillStyle='#1f2937';x.beginPath();x.ellipse(32,50,5,7.5,0,0,Math.PI*2);x.fill();
+  x.fillStyle='#fbbf24';x.beginPath();x.arc(32,45,3.4,0,Math.PI*2);x.fill();
+  return cv;
+}
+// Same paraglider as an inline SVG for the Leaflet (2D fallback) marker. The inner .pg-rot wrapper
+// is what we rotate each frame to bank the glider through the spiral.
+function gliderIconHTML(){return`<div class="pg-rot" style="width:30px;height:30px;transition:transform .12s linear;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));"><svg width="30" height="30" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M7 23 Q32 5 57 23" fill="none" stroke="#ef4444" stroke-width="7" stroke-linecap="round"/><path d="M10 22 Q32 8 54 22" fill="none" stroke="#fecaca" stroke-width="2.4" stroke-linecap="round"/><g stroke="rgba(255,255,255,.95)" stroke-width="1.3"><line x1="11" y1="25" x2="32" y2="47"/><line x1="23" y1="25" x2="32" y2="47"/><line x1="41" y1="25" x2="32" y2="47"/><line x1="53" y1="25" x2="32" y2="47"/></g><ellipse cx="32" cy="50" rx="5" ry="7.5" fill="#1f2937"/><circle cx="32" cy="45" r="3.4" fill="#fbbf24"/></svg></div>`;}
 function makeFlightLayer(){
   return{
-    id:'flight3d',type:'custom',renderingMode:'3d',progress:0,count:0,
+    id:'flight3d',type:'custom',renderingMode:'3d',progress:0,count:0,roll:null,
     onAdd(map,gl){
       this.map=map;
       const vs=`uniform mat4 u_matrix;attribute vec3 a_pos;uniform float u_size;void main(){gl_Position=u_matrix*vec4(a_pos,1.0);gl_PointSize=u_size;}`;
-      const fs=`precision mediump float;uniform vec4 u_color;uniform float u_round;void main(){if(u_round>0.5){vec2 c=gl_PointCoord-vec2(0.5);if(dot(c,c)>0.25)discard;}gl_FragColor=u_color;}`;
+      // u_mode 1 = round white disc (the line), 2 = textured paraglider sprite rotated by u_rot (bank).
+      const fs=`precision mediump float;uniform vec4 u_color;uniform float u_mode;uniform float u_rot;uniform sampler2D u_tex;void main(){
+        if(u_mode>1.5){vec2 p=gl_PointCoord-vec2(0.5);float s=sin(u_rot),c=cos(u_rot);vec2 r=vec2(c*p.x-s*p.y,s*p.x+c*p.y)+vec2(0.5);if(r.x<0.0||r.x>1.0||r.y<0.0||r.y>1.0)discard;vec4 t=texture2D(u_tex,r);if(t.a<0.04)discard;gl_FragColor=vec4(t.rgb,t.a);}
+        else{vec2 cc=gl_PointCoord-vec2(0.5);if(dot(cc,cc)>0.25)discard;gl_FragColor=u_color;}}`;
       const mk=(t,s)=>{const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);return x;};
       this.p=gl.createProgram();gl.attachShader(this.p,mk(gl.VERTEX_SHADER,vs));gl.attachShader(this.p,mk(gl.FRAGMENT_SHADER,fs));gl.linkProgram(this.p);
-      this.aPos=gl.getAttribLocation(this.p,'a_pos');this.uMat=gl.getUniformLocation(this.p,'u_matrix');this.uCol=gl.getUniformLocation(this.p,'u_color');this.uSize=gl.getUniformLocation(this.p,'u_size');this.uRound=gl.getUniformLocation(this.p,'u_round');
+      this.aPos=gl.getAttribLocation(this.p,'a_pos');this.uMat=gl.getUniformLocation(this.p,'u_matrix');this.uCol=gl.getUniformLocation(this.p,'u_color');this.uSize=gl.getUniformLocation(this.p,'u_size');this.uMode=gl.getUniformLocation(this.p,'u_mode');this.uRot=gl.getUniformLocation(this.p,'u_rot');this.uTex=gl.getUniformLocation(this.p,'u_tex');
       this.buf=gl.createBuffer();
+      this.tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.tex);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,makeGliderCanvas());
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
     },
     setData(verts){const gl=this.map.painter.context.gl;this.count=verts.length/3;gl.bindBuffer(gl.ARRAY_BUFFER,this.buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(verts),gl.STATIC_DRAW);},
     render(gl,matrix){
@@ -1584,16 +1668,16 @@ function makeFlightLayer(){
       gl.disable(gl.DEPTH_TEST);
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
       const n=Math.max(2,Math.floor(this.count*this.progress));
-      // Solid WHITE flight path, REVEALED progressively by the moving marker — we draw only the
-      // flown 0..n vertices, not the whole path, so the line grows behind the dot instead of
-      // appearing all at once. WebGL line width is capped at ~1px on most platforms, so we lay
-      // overlapping round points along every flown vertex to form a thick, continuous (non-dotted)
-      // white line.
-      gl.uniform1f(this.uRound,0.0);
-      gl.uniform4f(this.uCol,1.0,1.0,1.0,1.0);gl.drawArrays(gl.LINE_STRIP,0,n);
-      gl.uniform1f(this.uRound,1.0);
-      gl.uniform1f(this.uSize,8.5);gl.uniform4f(this.uCol,1.0,1.0,1.0,1.0);gl.drawArrays(gl.POINTS,0,n);
-      gl.uniform1f(this.uSize,16.0);gl.uniform4f(this.uCol,1.0,0.80,0.12,1.0);gl.drawArrays(gl.POINTS,Math.max(0,n-1),1);
+      // Solid WHITE flight path, REVEALED progressively behind the glider. The path is densified to
+      // ~600 points, so these overlapping round discs merge into one continuous solid stroke (no
+      // dots, no thin guide-line — just a single clean line).
+      gl.uniform1f(this.uMode,1.0);
+      gl.uniform1f(this.uSize,7.0);gl.uniform4f(this.uCol,1.0,1.0,1.0,1.0);gl.drawArrays(gl.POINTS,0,n);
+      // The paraglider sprite at the leading point, banked by the precomputed roll for this point.
+      const rot=(this.roll&&this.roll.length)?this.roll[Math.min(this.roll.length-1,Math.max(0,n-1))]:0;
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.tex);gl.uniform1i(this.uTex,0);
+      gl.uniform1f(this.uMode,2.0);gl.uniform1f(this.uRot,rot);gl.uniform1f(this.uSize,34.0);
+      gl.drawArrays(gl.POINTS,Math.max(0,n-1),1);
     }
   };
 }
@@ -1609,10 +1693,12 @@ function reprojectFlight(){
   const path=buildFlightPath3(site,startR,lzR,vScale,flightPlan,flightRatio);
   const verts=[];path.forEach(p=>{const mc=maplibregl.MercatorCoordinate.fromLngLat([p.lng,p.lat],p.alt);verts.push(mc.x,mc.y,mc.z);});
   flightLayer.setData(verts);
+  flightLayer.roll=computeRoll(path);
   mlMap.triggerRepaint();
 }
 function clearFlight(){
   if(flightRAF){cancelAnimationFrame(flightRAF);flightRAF=null;}
+  setLZFade(null,false);   // restore the LZ badge opacity
   flightSite=null;flightPlan=null;flightRatio=null;
   if(useMapLibre&&mlMap){try{if(mlMap.getLayer('flight3d'))mlMap.removeLayer('flight3d');}catch(e){}flightLayer=null;}
   if(lfMap){lfFlight.forEach(l=>{try{lfMap.removeLayer(l);}catch(e){}});lfFlight=[];}
@@ -1652,22 +1738,26 @@ async function simulateFlight(sid){
     flightLayer=makeFlightLayer();
     mlMap.addLayer(flightLayer);
     flightLayer.setData(verts);
+    flightLayer.roll=computeRoll(path);
     flightLayer.progress=0;
+    setLZFade(site,true);   // fade the destination LZ badge so you can watch the glider touch down
     const t0=performance.now(),DUR=8000;
     const step=now=>{const e=Math.min(1,(now-t0)/DUR);flightLayer.progress=e;mlMap.triggerRepaint();if(e<1)flightRAF=requestAnimationFrame(step);else if(btn){btn.disabled=false;btn.textContent='🪂 Replay flight → LZ';}};
     flightRAF=requestAnimationFrame(step);
   }else if(lfMap){
     const path=buildFlightPath3(site,site.alt*M,(site.lzAlt||4500)*M,1,plan,ratio);
     const latlngs=path.map(p=>[p.lat,p.lng]);
-    // No faint full-path preview — the path is revealed only as the dot flies it. A dark casing
+    const roll=computeRoll(path);
+    // No faint full-path preview — the path is revealed only as the glider flies it. A dark casing
     // sits under the solid white line so it stays visible on light map tiles.
     const flownCase=L.polyline([],{color:'#1e293b',weight:6,opacity:0.5}).addTo(lfMap);
     const flown=L.polyline([],{color:'#ffffff',weight:3,opacity:1}).addTo(lfMap);
-    const dot=L.circleMarker(latlngs[0],{radius:6,color:'#d97706',fillColor:'#fbbf24',fillOpacity:1,weight:2}).addTo(lfMap);
-    lfFlight.push(flownCase,flown,dot);
+    const glider=L.marker(latlngs[0],{icon:L.divIcon({html:gliderIconHTML(),iconSize:[30,30],iconAnchor:[15,15],className:''}),interactive:false,keyboard:false}).addTo(lfMap);
+    lfFlight.push(flownCase,flown,glider);
+    setLZFade(site,true);
     try{const lb=L.latLngBounds(latlngs);if(lb.isValid())lfMap.fitBounds(lb,{padding:[30,30],maxZoom:15});}catch(e){}
     const t0=performance.now(),DUR=7000;
-    const step=now=>{const e=Math.min(1,(now-t0)/DUR);const n=Math.max(1,Math.floor(latlngs.length*e));const seg=latlngs.slice(0,n);flownCase.setLatLngs(seg);flown.setLatLngs(seg);dot.setLatLng(latlngs[n-1]);if(e<1)flightRAF=requestAnimationFrame(step);else if(btn){btn.disabled=false;btn.textContent='🪂 Replay flight → LZ';}};
+    const step=now=>{const e=Math.min(1,(now-t0)/DUR);const n=Math.max(1,Math.floor(latlngs.length*e));const seg=latlngs.slice(0,n);flownCase.setLatLngs(seg);flown.setLatLngs(seg);glider.setLatLng(latlngs[n-1]);const rot=glider._icon&&glider._icon.querySelector('.pg-rot');if(rot)rot.style.transform='rotate('+(roll[Math.min(roll.length-1,n-1)]*180/Math.PI).toFixed(1)+'deg)';if(e<1)flightRAF=requestAnimationFrame(step);else if(btn){btn.disabled=false;btn.textContent='🪂 Replay flight → LZ';}};
     flightRAF=requestAnimationFrame(step);
   }
 }
@@ -2648,14 +2738,17 @@ function placeMyLoc(lat,lon,fast,recenter){
       el.addEventListener('click',e=>{stopEvt(e);onClick();});
       myLocMarker=new maplibregl.Marker({element:el,anchor:'center',opacityWhenCovered:'1'}).setLngLat([lon,lat]).addTo(mlMap);
     }
-    if(recenter)mlMap.flyTo({center:[lon,lat],zoom:13.5,bearing:0,pitch:45,duration:fast?800:550,curve:1.3,essential:true});
+    // On phones, fly in flatter (pitch 0 so the dot lands dead-centre, not low on a tilted frame) and
+    // not as tight (13.5 was too far in for orienting yourself), so opening the app actually centres on you.
+    const mob=window.innerWidth<=768;
+    if(recenter)mlMap.flyTo({center:[lon,lat],zoom:mob?11.5:13.5,bearing:0,pitch:mob?0:45,duration:fast?800:550,curve:1.3,essential:true});
   }else if(lfMap){
     if(myLocMarker){try{myLocMarker.setLatLng([lat,lon]);}catch(e){}}
     else{
       const icon=L.divIcon({html:blueDotSVG(),iconSize:[24,24],iconAnchor:[12,12],className:'myloc-dot'});
       myLocMarker=L.marker([lat,lon],{icon}).addTo(lfMap).on('click',onClick);
     }
-    if(recenter)lfMap.setView([lat,lon],13);
+    if(recenter)lfMap.setView([lat,lon],window.innerWidth<=768?11:13);
   }
 }
 // Live tracking: once permission is granted, keep the dot glued to your real position as you move.
@@ -2833,7 +2926,7 @@ function closeFlyPrompt(){if(flyPromptPopup){try{useMapLibre?flyPromptPopup.remo
 // Repaint an LZ marker in either its normal (blue) or highlighted (gold) colour.
 function paintLZMarker(id,gold){
   if(useMapLibre){const el=lzElMap[id];if(el){el.innerHTML=mkLZSVG(gold);el.classList.toggle('lz-hl',gold);}}
-  else{const mk=lzMarkerMap[id];if(mk&&mk.setIcon){mk.setIcon(L.divIcon({html:mkLZSVG(gold),iconSize:[36,22],iconAnchor:[18,11],popupAnchor:[0,-12],className:''}));if(mk._icon)mk._icon.classList.toggle('lz-hl',gold);}}
+  else{const mk=lzMarkerMap[id];if(mk&&mk.setIcon){mk.setIcon(L.divIcon({html:mkLZSVG(gold),iconSize:[36,22],iconAnchor:[18,11],popupAnchor:[0,-12],className:'mk-lz'}));if(mk._icon)mk._icon.classList.toggle('lz-hl',gold);}}
 }
 function clearLZHighlight(){
   if(!highlightedLZId)return;
@@ -3292,13 +3385,13 @@ function buildLZMarkers(){
   lzStore.forEach(lz=>{
     if(!lz.lat||!lz.lon)return;
     if(useMapLibre&&mlMap){
-      const el=document.createElement('div');el.style.cursor='pointer';el.innerHTML=mkLZSVG(false);lzElMap[lz.id]=el;
+      const el=document.createElement('div');el.style.cursor='pointer';el.className='mk-lz';el.innerHTML=mkLZSVG(false);lzElMap[lz.id]=el;
       const mk=new maplibregl.Marker({element:el,anchor:'center',draggable:false,opacityWhenCovered:'1'}).setLngLat([lz.lon,lz.lat]).addTo(mlMap);  // locked until "Move pin"
       el.addEventListener('click',e=>onLZClick(lz,e));
       mk.on('dragend',()=>{const ll=mk.getLngLat();lz.lon=ll.lng;lz.lat=ll.lat;applyConnections();saveLZStore();});
       lzMarkerMap[lz.id]=mk;
     }else if(lfMap){
-      const icon=L.divIcon({html:mkLZSVG(false),iconSize:[36,22],iconAnchor:[18,11],popupAnchor:[0,-12],className:''});
+      const icon=L.divIcon({html:mkLZSVG(false),iconSize:[36,22],iconAnchor:[18,11],popupAnchor:[0,-12],className:'mk-lz'});
       const mk=L.marker([lz.lat,lz.lon],{icon,draggable:false}).addTo(lfMap);  // locked until "Move pin"
       mk.on('click',e=>onLZClick(lz,e));
       mk.on('dragend',()=>{const ll=mk.getLatLng();lz.lat=ll.lat;lz.lon=ll.lng;applyConnections();saveLZStore();});
@@ -3441,15 +3534,18 @@ function exportLZ(){const blob=new Blob([JSON.stringify(lzStore,null,2)],{type:'
 function resetLZ(){if(!confirm('Reset all LZ edits back to defaults?'))return;localStorage.removeItem(LZ_STORE_KEY);location.reload();}
 
 // ── Add markers to whatever map is active ─────────────────────────────────────
+// Stacking-order class for a launch pin: launches sit above LZs, green above yellow above red.
+function mkZClass(status){return 'mk-launch mk-'+({flyable:'green',caution:'yellow',no:'red'}[status||'caution']);}
 function createLaunchMarker(site){
   const w=siteWx[site.id];
   const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[w?.status||'caution'];
+  const zc=mkZClass(w?.status);
   const el=document.createElement('div');
-  el.style.cursor='pointer';
+  el.style.cursor='pointer';el.className=zc;
   el.innerHTML=mkLaunchSVG(col,site,w);
   el.addEventListener('click',e=>onLaunchClick(site,e));
   if(useMapLibre&&mlMap){launchElMap[site.id]=el;const mk=new maplibregl.Marker({element:el,anchor:'bottom',draggable:false,opacityWhenCovered:'1'}).setLngLat([site.lon,site.lat]).addTo(mlMap);mk.on('dragend',()=>{const ll=mk.getLngLat();site.lat=ll.lat;site.lon=ll.lng;applyConnections();refreshMovedLaunch(site);});launchMarkerMap[site.id]=mk;}
-  else if(lfMap){const icon=L.divIcon({html:mkLaunchSVG(col,site,w),iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:''});const mk=L.marker([site.lat,site.lon],{icon,draggable:false}).addTo(lfMap).on('click',e=>onLaunchClick(site,e));mk.on('dragend',()=>{const ll=mk.getLatLng();site.lat=ll.lat;site.lon=ll.lng;applyConnections();refreshMovedLaunch(site);});launchElMap[site.id]=mk;launchMarkerMap[site.id]=mk;}
+  else if(lfMap){const icon=L.divIcon({html:mkLaunchSVG(col,site,w),iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:zc});const mk=L.marker([site.lat,site.lon],{icon,draggable:false}).addTo(lfMap).on('click',e=>onLaunchClick(site,e));mk.on('dragend',()=>{const ll=mk.getLatLng();site.lat=ll.lat;site.lon=ll.lng;applyConnections();refreshMovedLaunch(site);});launchElMap[site.id]=mk;launchMarkerMap[site.id]=mk;}
 }
 function addMarkers(){
   drawLZZones();                                  // landing-field boundaries under the pins
@@ -3505,9 +3601,9 @@ async function loadWeather(){
   recolorMarkers();
 }
 function recolorMarkers(){
-  LAUNCHES.forEach(site=>{const ref=launchElMap[site.id];if(!ref)return;const w=siteWx[site.id];const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[w?.status||'caution'];const svg=mkLaunchSVG(col,site,w);
-    if(useMapLibre)ref.innerHTML=svg;
-    else if(ref.setIcon)ref.setIcon(L.divIcon({html:svg,iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:''}));
+  LAUNCHES.forEach(site=>{const ref=launchElMap[site.id];if(!ref)return;const w=siteWx[site.id];const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[w?.status||'caution'];const svg=mkLaunchSVG(col,site,w);const zc=mkZClass(w?.status);
+    if(useMapLibre){ref.innerHTML=svg;ref.className=zc;}
+    else if(ref.setIcon)ref.setIcon(L.divIcon({html:svg,iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:zc}));
   });
   cullGhostMarkers();
 }
