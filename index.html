@@ -1388,7 +1388,7 @@ const AQI_BANDS=[[50,'#22c55e','Good'],[100,'#eab308','Moderate'],[150,'#f97316'
 function aqiColor(v){for(const b of AQI_BANDS)if(v<=b[0])return b[1];return '#7f1d1d';}
 function aqiLabel(v){for(const b of AQI_BANDS)if(v<=b[0])return b[2];return 'Hazardous';}
 function aqiPopupHTML(p){const v=Math.round(+p.aqi);return '<div class="oa-pop"><div style="font-weight:800;">🫧 AQI '+v+' — '+aqiLabel(v)+'</div>'+(p.name?'<div>'+p.name+'</div>':'')+'<div style="margin-top:3px;font-size:11px;opacity:.75;">US EPA AQI · Open-Meteo</div></div>';}
-let aqiData=null, lfAQI=null;
+let aqiData=null, lfAQI=null, aqiMarkers=[];
 async function fetchAQI(){
   const lats=LAUNCHES.map(s=>s.lat.toFixed(4)).join(','),lons=LAUNCHES.map(s=>s.lon.toFixed(4)).join(',');
   try{
@@ -1400,49 +1400,37 @@ async function fetchAQI(){
 }
 function renderAQI(pts){
   if(useMapLibre&&mlMap){
-    const fc={type:'FeatureCollection',features:pts.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{aqi:p.aqi,name:p.name,color:aqiColor(p.aqi)}}))};
-    if(mlMap.getSource('aqi')){mlMap.getSource('aqi').setData(fc);return;}
-    mlMap.addSource('aqi',{type:'geojson',data:fc});
-    mlMap.addLayer({id:'aqi-c',type:'circle',source:'aqi',paint:{'circle-radius':14,'circle-color':['get','color'],'circle-stroke-color':'#fff','circle-stroke-width':3,'circle-opacity':1,'circle-translate':[20,-34]}});
-    mlMap.addLayer({id:'aqi-t',type:'symbol',source:'aqi',layout:{'text-field':['to-string',['get','aqi']],'text-size':13,'text-font':['Open Sans Bold','Arial Unicode MS Bold'],'text-allow-overlap':true,'text-ignore-placement':true},paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.55)','text-halo-width':1.4,'text-translate':[20,-34]}});
-    mlMap.on('click','aqi-c',e=>{const f=e.features&&e.features[0];if(!f)return;new maplibregl.Popup({offset:13,closeButton:true}).setLngLat(f.geometry.coordinates.slice()).setHTML(aqiPopupHTML(f.properties)).addTo(mlMap);});
-    mlMap.on('mouseenter','aqi-c',()=>mlMap.getCanvas().style.cursor='pointer');
-    mlMap.on('mouseleave','aqi-c',()=>mlMap.getCanvas().style.cursor='');
+    // Render AQI as HTML markers (the same mechanism the launch pins use, which paint
+    // reliably) rather than a canvas circle layer — that layer was being added without
+    // error yet never painting on some GPUs. Offset to the upper-right of each pin.
+    aqiMarkers.forEach(m=>{try{m.remove();}catch(e){}});aqiMarkers=[];
+    pts.forEach(p=>{
+      const el=document.createElement('div');
+      el.style.cssText='width:30px;height:30px;border-radius:50%;background:'+aqiColor(p.aqi)+';border:3px solid #fff;color:#fff;font:800 13px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 6px rgba(0,0,0,.55);text-shadow:0 1px 2px rgba(0,0,0,.5);cursor:pointer;';
+      el.textContent=Math.round(p.aqi);
+      const mk=new maplibregl.Marker({element:el,anchor:'center',offset:[20,-32]}).setLngLat([p.lon,p.lat]).addTo(mlMap);
+      el.addEventListener('click',ev=>{ev.stopPropagation();new maplibregl.Popup({offset:16,closeButton:true}).setLngLat([p.lon,p.lat]).setHTML(aqiPopupHTML(p)).addTo(mlMap);});
+      aqiMarkers.push(mk);
+    });
   }else if(lfMap){
     if(lfAQI){try{lfMap.removeLayer(lfAQI);}catch(e){}}
     lfAQI=L.layerGroup(pts.map(p=>{const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div style="width:28px;height:28px;border-radius:50%;background:${aqiColor(p.aqi)};border:3px solid #fff;color:#fff;font:800 12px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);">${Math.round(p.aqi)}</div>`,iconSize:[28,28],iconAnchor:[-8,42]})});mk.bindPopup(aqiPopupHTML(p));return mk;})).addTo(lfMap);
   }
 }
 function setAQIVisible(on){
-  if(useMapLibre&&mlMap){['aqi-c','aqi-t'].forEach(id=>{if(mlMap.getLayer(id)){try{mlMap.setLayoutProperty(id,'visibility',on?'visible':'none');}catch(e){}}});}
+  if(useMapLibre&&mlMap){aqiMarkers.forEach(m=>{try{m.getElement().style.display=on?'':'none';}catch(e){}});}
   else if(lfMap&&lfAQI){if(on)lfAQI.addTo(lfMap);else{try{lfMap.removeLayer(lfAQI);}catch(e){}}}
 }
 async function toggleAQI(on){
   if(!on){setAQIVisible(false);return;}
-  let firstLoad=false;
   if(!aqiData){
     setBadge('Loading air quality…');aqiData=await fetchAQI();setBadge('');
     if(!aqiData||!aqiData.length){uncheck('aqi');setBadge('⚠ Air quality data unavailable right now. Try again shortly.');aqiData=null;return;}
     try{renderAQI(aqiData);}
     catch(e){uncheck('aqi');setBadge('⚠ AQI render error: '+(e&&e.message||e));aqiData=null;return;}
-    firstLoad=true;
   }
   setAQIVisible(true);
-  // Confirm to the user the layer is on, and on first load pan to the sites so the
-  // badges can never be off-screen — turns a silent "nothing happened" into a clear signal.
-  setBadge('🫧 Air quality on · '+aqiData.length+' sites');setTimeout(()=>setBadge(''),2800);
-  if(firstLoad)fitToAQI();
-}
-function fitToAQI(){
-  if(!aqiData||!aqiData.length)return;
-  try{
-    if(useMapLibre&&mlMap){
-      const b=new maplibregl.LngLatBounds();aqiData.forEach(p=>b.extend([p.lon,p.lat]));
-      mlMap.fitBounds(b,{padding:70,maxZoom:9,duration:800});
-    }else if(lfMap){
-      lfMap.fitBounds(aqiData.map(p=>[p.lat,p.lon]),{padding:[60,60],maxZoom:9});
-    }
-  }catch(e){}
+  setBadge('🫧 Air quality on · '+aqiData.length+' sites');setTimeout(()=>setBadge(''),2600);
 }
 // Import Utah paragliding / hang-gliding sites from ParaglidingEarth (OpenAIP has no
 // PG-site dataset). De-duped against existing launches by name and ~1.5 km proximity.
