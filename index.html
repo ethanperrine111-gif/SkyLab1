@@ -3536,12 +3536,20 @@ function resetLZ(){if(!confirm('Reset all LZ edits back to defaults?'))return;lo
 // ── Add markers to whatever map is active ─────────────────────────────────────
 // Stacking-order class for a launch pin: launches sit above LZs, green above yellow above red.
 function mkZClass(status){return 'mk-launch mk-'+({flyable:'green',caution:'yellow',no:'red'}[status||'caution']);}
+// Set ONLY our z-order classes via classList so we never clobber the framework's own marker class
+// (maplibregl-marker / leaflet-marker-icon), which carries the positioning CSS — overwriting
+// className with `=` dropped that class and made pins drift on zoom.
+function applyZClass(el,status){
+  if(!el||!el.classList)return;
+  el.classList.remove('mk-green','mk-yellow','mk-red');
+  el.classList.add('mk-launch','mk-'+({flyable:'green',caution:'yellow',no:'red'}[status||'caution']));
+}
 function createLaunchMarker(site){
   const w=siteWx[site.id];
   const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[w?.status||'caution'];
   const zc=mkZClass(w?.status);
   const el=document.createElement('div');
-  el.style.cursor='pointer';el.className=zc;
+  el.style.cursor='pointer';applyZClass(el,w?.status);
   el.innerHTML=mkLaunchSVG(col,site,w);
   el.addEventListener('click',e=>onLaunchClick(site,e));
   if(useMapLibre&&mlMap){launchElMap[site.id]=el;const mk=new maplibregl.Marker({element:el,anchor:'bottom',draggable:false,opacityWhenCovered:'1'}).setLngLat([site.lon,site.lat]).addTo(mlMap);mk.on('dragend',()=>{const ll=mk.getLngLat();site.lat=ll.lat;site.lon=ll.lng;applyConnections();refreshMovedLaunch(site);});launchMarkerMap[site.id]=mk;}
@@ -3602,7 +3610,7 @@ async function loadWeather(){
 }
 function recolorMarkers(){
   LAUNCHES.forEach(site=>{const ref=launchElMap[site.id];if(!ref)return;const w=siteWx[site.id];const col={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[w?.status||'caution'];const svg=mkLaunchSVG(col,site,w);const zc=mkZClass(w?.status);
-    if(useMapLibre){ref.innerHTML=svg;ref.className=zc;}
+    if(useMapLibre){ref.innerHTML=svg;applyZClass(ref,w?.status);}
     else if(ref.setIcon)ref.setIcon(L.divIcon({html:svg,iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:zc}));
   });
   cullGhostMarkers();
