@@ -1352,7 +1352,7 @@ function tfrReason(p){
   const t=(p.type||p.LOCAL_TYPE||'').toUpperCase();
   const blob=((p.name||p.NAME||'')+' '+(p.description||'')+' '+(p.notam||'')+' '+(p.WKHR_RMK||'')).toLowerCase();
   if(/\bfire\b|wildfire|firefight/.test(blob))   return {icon:'🔥',label:'Wildfire — firefighting aircraft likely operating'};
-  if(t==='HAZARDS')                              return {icon:'⚠️',label:'Hazard area (most often wildfire firefighting)'};
+  if(t==='HAZARDS')                              return {icon:'⚠️',label:'Hazard area (most likely firefighting)'};
   if(t==='SECURITY'||/national defense|security/.test(blob)) return {icon:'🛡',label:'Security / national-defense restriction'};
   if(t==='VIP'||/presidential|\bvip\b/.test(blob))          return {icon:'🎖',label:'VIP / Presidential movement'};
   if(t==='SPACE OPERATIONS'||/space op|launch|rocket/.test(blob)) return {icon:'🚀',label:'Space launch / recovery operations'};
@@ -1438,13 +1438,13 @@ function renderAQI(pts){
       const el=document.createElement('div');
       el.style.cssText='width:30px;height:30px;border-radius:50%;background:'+aqiColor(p.aqi)+';border:3px solid #fff;color:#fff;font:800 13px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 6px rgba(0,0,0,.55);text-shadow:0 1px 2px rgba(0,0,0,.5);cursor:pointer;';
       el.textContent=Math.round(p.aqi);
-      const mk=new maplibregl.Marker({element:el,anchor:'center',offset:[14,-40]}).setLngLat([p.lon,p.lat]).addTo(mlMap);
+      const mk=new maplibregl.Marker({element:el,anchor:'center',offset:[23,-55]}).setLngLat([p.lon,p.lat]).addTo(mlMap);
       el.addEventListener('click',ev=>{ev.stopPropagation();new maplibregl.Popup({offset:16,closeButton:true}).setLngLat([p.lon,p.lat]).setHTML(aqiPopupHTML(p)).addTo(mlMap);});
       aqiMarkers.push(mk);
     });
   }else if(lfMap){
     if(lfAQI){try{lfMap.removeLayer(lfAQI);}catch(e){}}
-    lfAQI=L.layerGroup(pts.map(p=>{const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div style="width:28px;height:28px;border-radius:50%;background:${aqiColor(p.aqi)};border:3px solid #fff;color:#fff;font:800 12px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);">${Math.round(p.aqi)}</div>`,iconSize:[28,28],iconAnchor:[0,54]})});mk.bindPopup(aqiPopupHTML(p));return mk;})).addTo(lfMap);
+    lfAQI=L.layerGroup(pts.map(p=>{const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div style="width:28px;height:28px;border-radius:50%;background:${aqiColor(p.aqi)};border:3px solid #fff;color:#fff;font:800 12px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);">${Math.round(p.aqi)}</div>`,iconSize:[28,28],iconAnchor:[-9,69]})});mk.bindPopup(aqiPopupHTML(p));return mk;})).addTo(lfMap);
   }
 }
 function setAQIVisible(on){
