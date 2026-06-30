@@ -1403,14 +1403,14 @@ function renderAQI(pts){
     const fc={type:'FeatureCollection',features:pts.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{aqi:p.aqi,name:p.name,color:aqiColor(p.aqi)}}))};
     if(mlMap.getSource('aqi')){mlMap.getSource('aqi').setData(fc);return;}
     mlMap.addSource('aqi',{type:'geojson',data:fc});
-    mlMap.addLayer({id:'aqi-c',type:'circle',source:'aqi',paint:{'circle-radius':11,'circle-color':['get','color'],'circle-stroke-color':'#fff','circle-stroke-width':2,'circle-opacity':0.92,'circle-translate':[14,8]}});
-    mlMap.addLayer({id:'aqi-t',type:'symbol',source:'aqi',layout:{'text-field':['to-string',['get','aqi']],'text-size':11,'text-allow-overlap':true},paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.4)','text-halo-width':1,'text-translate':[14,8]}});
+    mlMap.addLayer({id:'aqi-c',type:'circle',source:'aqi',paint:{'circle-radius':14,'circle-color':['get','color'],'circle-stroke-color':'#fff','circle-stroke-width':3,'circle-opacity':1,'circle-translate':[20,-34]}});
+    mlMap.addLayer({id:'aqi-t',type:'symbol',source:'aqi',layout:{'text-field':['to-string',['get','aqi']],'text-size':13,'text-font':['Open Sans Bold','Arial Unicode MS Bold'],'text-allow-overlap':true,'text-ignore-placement':true},paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.55)','text-halo-width':1.4,'text-translate':[20,-34]}});
     mlMap.on('click','aqi-c',e=>{const f=e.features&&e.features[0];if(!f)return;new maplibregl.Popup({offset:13,closeButton:true}).setLngLat(f.geometry.coordinates.slice()).setHTML(aqiPopupHTML(f.properties)).addTo(mlMap);});
     mlMap.on('mouseenter','aqi-c',()=>mlMap.getCanvas().style.cursor='pointer');
     mlMap.on('mouseleave','aqi-c',()=>mlMap.getCanvas().style.cursor='');
   }else if(lfMap){
     if(lfAQI){try{lfMap.removeLayer(lfAQI);}catch(e){}}
-    lfAQI=L.layerGroup(pts.map(p=>{const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div style="width:24px;height:24px;border-radius:50%;background:${aqiColor(p.aqi)};border:2px solid #fff;color:#fff;font:700 11px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.4);">${Math.round(p.aqi)}</div>`,iconSize:[24,24],iconAnchor:[-2,4]})});mk.bindPopup(aqiPopupHTML(p));return mk;})).addTo(lfMap);
+    lfAQI=L.layerGroup(pts.map(p=>{const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div style="width:28px;height:28px;border-radius:50%;background:${aqiColor(p.aqi)};border:3px solid #fff;color:#fff;font:800 12px system-ui;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);">${Math.round(p.aqi)}</div>`,iconSize:[28,28],iconAnchor:[-8,42]})});mk.bindPopup(aqiPopupHTML(p));return mk;})).addTo(lfMap);
   }
 }
 function setAQIVisible(on){
