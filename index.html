@@ -1419,12 +1419,30 @@ function setAQIVisible(on){
 }
 async function toggleAQI(on){
   if(!on){setAQIVisible(false);return;}
+  let firstLoad=false;
   if(!aqiData){
     setBadge('Loading air quality…');aqiData=await fetchAQI();setBadge('');
     if(!aqiData||!aqiData.length){uncheck('aqi');setBadge('⚠ Air quality data unavailable right now. Try again shortly.');aqiData=null;return;}
-    renderAQI(aqiData);
+    try{renderAQI(aqiData);}
+    catch(e){uncheck('aqi');setBadge('⚠ AQI render error: '+(e&&e.message||e));aqiData=null;return;}
+    firstLoad=true;
   }
   setAQIVisible(true);
+  // Confirm to the user the layer is on, and on first load pan to the sites so the
+  // badges can never be off-screen — turns a silent "nothing happened" into a clear signal.
+  setBadge('🫧 Air quality on · '+aqiData.length+' sites');setTimeout(()=>setBadge(''),2800);
+  if(firstLoad)fitToAQI();
+}
+function fitToAQI(){
+  if(!aqiData||!aqiData.length)return;
+  try{
+    if(useMapLibre&&mlMap){
+      const b=new maplibregl.LngLatBounds();aqiData.forEach(p=>b.extend([p.lon,p.lat]));
+      mlMap.fitBounds(b,{padding:70,maxZoom:9,duration:800});
+    }else if(lfMap){
+      lfMap.fitBounds(aqiData.map(p=>[p.lat,p.lon]),{padding:[60,60],maxZoom:9});
+    }
+  }catch(e){}
 }
 // Import Utah paragliding / hang-gliding sites from ParaglidingEarth (OpenAIP has no
 // PG-site dataset). De-duped against existing launches by name and ~1.5 km proximity.
