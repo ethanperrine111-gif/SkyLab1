@@ -1831,7 +1831,7 @@ function buildFlightPath3(site,startR,lzR,vScale,plan,ratio){
   if(willSpiral){
     const cen=dest(site.lzLat,site.lzLon,(appBrg+90)%360,Rloop);   // loop centre, one radius to the side
     const startAng=bearingTo(cen[0],cen[1],site.lzLat,site.lzLon); // LZ sits on the loop at this bearing
-    const drop=handAlt-spiralFloor,turns=Math.min(6,Math.max(2,drop/(50*vScale)));
+    const drop=handAlt-spiralFloor,turns=Math.min(6,Math.max(2,Math.round(drop/(50*vScale)))); // whole turns → loop ends back at the LZ (no leftover spoke)
     const NS=Math.max(180,Math.round(turns*80));
     for(let i=1;i<=NS;i++){const t=i/NS;const ang=(startAng+t*turns*360)%360;
       const[la,lo]=dest(cen[0],cen[1],ang,Rloop);
