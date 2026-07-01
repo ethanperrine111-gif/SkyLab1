@@ -676,8 +676,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="radio" name="baselayer" value="topo" onchange="setBaseLayer('topo')"/> Topo</label>
         <div class="lp-div"></div>
         <div class="lp-sec">Sites</div>
-        <label class="lp-row"><input type="checkbox" id="ov-takeoffs" checked onchange="toggleTakeoffs(this.checked)"/><span class="lp-ico">🛫</span><span class="lp-lbl">Takeoffs (launches)</span></label>
-        <label class="lp-row"><input type="checkbox" id="ov-lzs" checked onchange="toggleLZs(this.checked)"/><span class="lp-ico">🛬</span><span class="lp-lbl">Landing zones (LZ)</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-takeoffs" checked onchange="toggleTakeoffs(this.checked)"/><span class="lp-ico">🛫</span><span class="lp-lbl">Launches</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-lzs" checked onchange="toggleLZs(this.checked)"/><span class="lp-ico">🛬</span><span class="lp-lbl">Landing zones</span></label>
         <div class="lp-div"></div>
         <div class="lp-sec">Overlay</div>
         <label class="lp-row"><input type="checkbox" id="ov-wind" onchange="toggleWindAnim(this.checked)"/><span class="lp-ico">🌬️</span><span class="lp-lbl">Wind animation</span></label>
@@ -1009,15 +1009,36 @@ function openFavorites(){
   bindFavSwipe();
   document.getElementById('fav-overlay').classList.add('open');
 }
-function closeFavorites(){document.getElementById('fav-overlay').classList.remove('open');}
-// Swipe left anywhere on the favorites overlay to close it (mobile gesture). Bound on first open so
-// it's reliably attached (an early parse-time bind could miss if the element wasn't ready).
+function closeFavorites(){const ov=document.getElementById('fav-overlay');ov.classList.remove('open');ov.style.transform='';ov.style.opacity='';ov.style.transition='';}
+// Drag the favorites overlay LEFT-TO-RIGHT to dismiss it (mobile gesture). The panel follows your
+// finger in real time and, on release, either eases the rest of the way off to the right (if pulled
+// far enough) or springs smoothly back — so it never jumps straight to the map behind it.
 function bindFavSwipe(){
   const ov=document.getElementById('fav-overlay');if(!ov||ov._swipeBound)return;ov._swipeBound=true;
-  let sx=0,sy=0,tracking=false;
-  ov.addEventListener('touchstart',e=>{const t=e.changedTouches[0];sx=t.clientX;sy=t.clientY;tracking=true;},{passive:true});
-  ov.addEventListener('touchend',e=>{if(!tracking)return;tracking=false;const t=e.changedTouches[0];const dx=t.clientX-sx,dy=t.clientY-sy;
-    if(dx<-50&&Math.abs(dx)>Math.abs(dy)*1.3)closeFavorites();},{passive:true});   // clear left swipe
+  let sx=0,sy=0,W=0,tracking=false,dragging=false;
+  const SPRING='transform .3s cubic-bezier(.22,.61,.36,1), opacity .3s ease';
+  ov.addEventListener('touchstart',e=>{const t=e.changedTouches[0];sx=t.clientX;sy=t.clientY;W=ov.offsetWidth||window.innerWidth;tracking=true;dragging=false;ov.style.transition='none';},{passive:true});
+  ov.addEventListener('touchmove',e=>{
+    if(!tracking)return;const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+    if(!dragging){
+      if(dx>8&&dx>Math.abs(dy)*1.2)dragging=true;              // committed to a rightward drag
+      else if(Math.abs(dy)>10||dx<-8){tracking=false;return;}  // let vertical scroll win
+    }
+    if(dragging){const x=Math.max(0,dx);ov.style.transform='translateX('+x+'px)';ov.style.opacity=String(Math.max(0.35,1-x/W*0.55));}
+  },{passive:true});
+  const finish=e=>{
+    if(!tracking){return;}tracking=false;const t=e.changedTouches[0],dx=t.clientX-sx;ov.style.transition=SPRING;
+    if(dragging&&dx>W*0.3){                                    // pulled far enough → glide off to the right
+      ov.style.transform='translateX('+W+'px)';ov.style.opacity='0';
+      setTimeout(closeFavorites,300);
+    }else{                                                     // spring back into place
+      ov.style.transform='translateX(0)';ov.style.opacity='1';
+      setTimeout(()=>{if(ov.classList.contains('open')){ov.style.transition='';ov.style.transform='';ov.style.opacity='';}},300);
+    }
+    dragging=false;
+  };
+  ov.addEventListener('touchend',finish,{passive:true});
+  ov.addEventListener('touchcancel',finish,{passive:true});
 }
 function openModelsInfo(){document.getElementById('models-overlay').classList.add('open');}
 function closeModelsInfo(){document.getElementById('models-overlay').classList.remove('open');}
@@ -1163,14 +1184,21 @@ function oaPt(it,name){const c=(it.geometry&&it.geometry.coordinates)||[];return
 const OBST_TYPES={0:'Obstacle',1:'Antenna',2:'Tower',3:'Wind turbine',4:'Building',5:'Chimney',6:'Mast',7:'Power line',8:'Crane',9:'Bridge',10:'Cable car',11:'Refinery',12:'Silo',13:'Cooling tower',14:'Dam',15:'Lighthouse',16:'Wind-turbine farm'};
 // Height comes back as {value, unit} (unit 0 = m, 1 = ft) or a bare number (metres).
 // Always report in feet (paragliding clearances are in ft).
-function fmtHeight(h){if(h==null)return'';const v=typeof h==='number'?h:(h&&h.value);if(v==null)return'';const ft=(h&&typeof h==='object'&&h.unit===1)?v:v*3.28084;return Math.round(ft)+' ft';}
-// Obstacles: OpenAIP gives a type (antenna / mast / tower / wind turbine / building…) and a height.
+function fmtHeight(h){if(h==null)return'';const v=typeof h==='number'?h:(h&&h.value);if(v==null)return'';const ft=(h&&typeof h==='object'&&h.unit===1)?v:v*3.28084;return Math.round(ft).toLocaleString()+' ft';}
+// Obstacles: OpenAIP gives a type (antenna / mast / tower / wind turbine / building…) plus, per obstacle:
+//   height    = true height ABOVE GROUND (referenceDatum 0) — the real "X ft tall" figure, often absent
+//   elevation = MSL elevation of the obstacle TOP (referenceDatum 1) — NOT the height
+// Older code fell back to `elevation` and mislabeled it "tall", so obstacles with no height showed
+// their ~4,000–8,000 ft MSL elevation as if they were that tall. Use the AGL height when present;
+// otherwise report the top's MSL elevation, clearly labeled.
 async function fetchObstacles(){
   const items=await oaFetchRaw('obstacles');if(!items)return null;
   return items.map(it=>{
     const kind=(it.name&&it.name.trim())||(typeof it.type==='string'?it.type:(OBST_TYPES[it.type]||(it.type!=null?('Obstacle (type '+it.type+')'):'Obstacle')));
-    const h=fmtHeight(it.height!=null?it.height:it.elevation);
-    return oaPt(it,`${kind}${h?' · '+h+' tall':''}`);
+    let tag='';
+    if(it.height!=null){const h=fmtHeight(it.height);if(h)tag=' · '+h+' tall';}
+    else if(it.elevation!=null){const e=fmtHeight(it.elevation);if(e)tag=' · top '+e+' MSL';}
+    return oaPt(it,`${kind}${tag}`);
   }).filter(p=>typeof p.lon==='number');
 }
 async function fetchAirports(){
