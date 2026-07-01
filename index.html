@@ -1811,15 +1811,19 @@ function buildFlightPath3(site,startR,lzR,vScale,plan,ratio){
   const appBrg=bearingTo(hand.la,hand.lo,site.lzLat,site.lzLon); // direction of travel into the LZ
   // Glide points up to the hand-off.
   for(let i=0;i<=handIdx;i++){const alt=Math.max(startR-(samp[i].s/ratio)*vScale,spiralFloor);pts.push({lng:samp[i].lo,lat:samp[i].la,alt});}
-  // Bezier the last stretch from the hand-off straight onto the LZ, leaving the glide
-  // tangentially (control point ahead along the glide heading) so there's no kink.
+  // Cubic bezier for the last stretch onto the LZ, tangent at BOTH ends: it leaves
+  // along the glide heading and ARRIVES already lined up with the loop's entry
+  // heading (appBrg), so the path flows in smoothly with no overshoot/kink no matter
+  // what direction the glide is coming from (e.g. after curving around terrain).
   const gi=Math.max(0,handIdx-2);
-  const glB=bearingTo(samp[gi].la,samp[gi].lo,hand.la,hand.lo);
+  const glB=bearingTo(samp[gi].la,samp[gi].lo,hand.la,hand.lo);   // heading the glide arrives on
   const legMi=hav(hand.la,hand.lo,site.lzLat,site.lzLon);
-  const[cLa,cLo]=dest(hand.la,hand.lo,glB,legMi*0.5);
+  const[p1La,p1Lo]=dest(hand.la,hand.lo,glB,legMi*0.35);                       // depart tangent to the glide
+  const[p2La,p2Lo]=dest(site.lzLat,site.lzLon,(appBrg+180)%360,legMi*0.35);    // arrive tangent to the loop
   const endAlt=willSpiral?handAlt:lzR;
-  const NB=24;for(let i=1;i<=NB;i++){const t=i/NB,v=1-t;
-    const la=v*v*hand.la+2*v*t*cLa+t*t*site.lzLat,lo=v*v*hand.lo+2*v*t*cLo+t*t*site.lzLon;
+  const NB=28;for(let i=1;i<=NB;i++){const t=i/NB,v=1-t;
+    const la=v*v*v*hand.la+3*v*v*t*p1La+3*v*t*t*p2La+t*t*t*site.lzLat,
+          lo=v*v*v*hand.lo+3*v*v*t*p1Lo+3*v*t*t*p2Lo+t*t*t*site.lzLon;
     pts.push({lng:lo,lat:la,alt:handAlt+(endAlt-handAlt)*t});}
   // Corkscrew to bleed excess altitude: a loop TANGENT to the approach right at the
   // LZ — centred one radius to the side so the straight glide flows into the circle
