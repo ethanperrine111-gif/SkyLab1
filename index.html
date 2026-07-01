@@ -1805,7 +1805,7 @@ function buildFlightPath3(site,startR,lzR,vScale,plan,ratio){
   // the spiral on its edge and curls around — like joining a roundabout.
   let handIdx=samp.length-1;
   for(let i=0;i<samp.length;i++){
-    if(hav(samp[i].la,samp[i].lo,site.lzLat,site.lzLon)<=3*Rloop){handIdx=i;break;}
+    if(hav(samp[i].la,samp[i].lo,site.lzLat,site.lzLon)<=5*Rloop){handIdx=i;break;}
   }
   const hand=samp[handIdx];
   const appBrg=bearingTo(hand.la,hand.lo,site.lzLat,site.lzLon); // approach direction
@@ -1813,8 +1813,16 @@ function buildFlightPath3(site,startR,lzR,vScale,plan,ratio){
   const[eLa,eLo]=dest(site.lzLat,site.lzLon,startAng,Rloop);
   for(let i=0;i<=handIdx;i++){const alt=Math.max(startR-(samp[i].s/ratio)*vScale,spiralFloor);pts.push({lng:samp[i].lo,lat:samp[i].la,alt});}
   const handAlt=Math.max(startR-(hand.s/ratio)*vScale,spiralFloor);
-  // Straight bridge from the glide onto the tangent entry point.
-  const NB=12;for(let i=1;i<=NB;i++){const t=i/NB;pts.push({lng:hand.lo+(eLo-hand.lo)*t,lat:hand.la+(eLa-hand.la)*t,alt:handAlt});}
+  // Curved bridge (quadratic bezier) from the glide onto the tangent entry point.
+  // The control point extends the incoming glide heading, so the path peels off the
+  // straight glide tangentially and sweeps into the roundabout instead of kinking.
+  const gi=Math.max(0,handIdx-2);
+  const glB=bearingTo(samp[gi].la,samp[gi].lo,hand.la,hand.lo); // heading of the glide as it arrives
+  const bridgeMi=hav(hand.la,hand.lo,eLa,eLo);
+  const[cLa,cLo]=dest(hand.la,hand.lo,glB,bridgeMi*0.6);        // control point ahead along the glide
+  const NB=24;for(let i=1;i<=NB;i++){const t=i/NB,v=1-t;
+    const la=v*v*hand.la+2*v*t*cLa+t*t*eLa,lo=v*v*hand.lo+2*v*t*cLo+t*t*eLo;
+    pts.push({lng:lo,lat:la,alt:handAlt});}
   const entryAlt=handAlt;
   // Only spiral if there's still excess altitude to bleed off over the LZ.
   if(entryAlt>spiralFloor+8*vScale){
