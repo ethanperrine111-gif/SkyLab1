@@ -1919,11 +1919,11 @@ function makeFlightLayer(){
       // Solid BLUE flight path, REVEALED progressively behind the marker. The path is densified to
       // ~1800 points, so these overlapping round discs merge into one continuous solid stroke.
       gl.uniform1f(this.uMode,1.0);
-      gl.uniform1f(this.uSize,9.0);gl.uniform4f(this.uCol,0.145,0.388,0.922,1.0);gl.drawArrays(gl.POINTS,0,n); // #2563eb line
-      // Leading position marker: a plain white-ringed blue dot (no paraglider sprite).
+      gl.uniform1f(this.uSize,9.0);gl.uniform4f(this.uCol,0.376,0.647,0.980,1.0);gl.drawArrays(gl.POINTS,0,n); // #60a5fa light-blue line
+      // Leading position marker: a plain white-ringed dark-blue dot (no paraglider sprite).
       const lead=Math.max(0,n-1);
       gl.uniform1f(this.uSize,20.0);gl.uniform4f(this.uCol,1.0,1.0,1.0,1.0);gl.drawArrays(gl.POINTS,lead,1);       // white ring
-      gl.uniform1f(this.uSize,13.0);gl.uniform4f(this.uCol,0.118,0.227,0.541,1.0);gl.drawArrays(gl.POINTS,lead,1); // #1e3a8a dot
+      gl.uniform1f(this.uSize,13.0);gl.uniform4f(this.uCol,0.090,0.145,0.329,1.0);gl.drawArrays(gl.POINTS,lead,1); // #172554 dark-blue dot
     }
   };
 }
@@ -1987,7 +1987,7 @@ async function simulateFlight(sid){
     flightLayer.bank=computeBank(path);
     flightLayer.progress=0;
     setLZFade(site,true);   // fade the destination LZ badge so you can watch the glider touch down
-    const t0=performance.now(),DUR=10500;
+    const t0=performance.now(),DUR=8800;
     const step=now=>{const e=Math.min(1,(now-t0)/DUR);flightLayer.progress=e;mlMap.triggerRepaint();if(e<1)flightRAF=requestAnimationFrame(step);else if(btn){btn.disabled=false;btn.textContent='🪂 Replay flight → LZ';}};
     flightRAF=requestAnimationFrame(step);
   }else if(lfMap){
@@ -1997,12 +1997,12 @@ async function simulateFlight(sid){
     // No faint full-path preview — the path is revealed only as the glider flies it. A dark casing
     // sits under the solid white line so it stays visible on light map tiles.
     const flownCase=L.polyline([],{color:'#1e293b',weight:7,opacity:0.5}).addTo(lfMap);
-    const flown=L.polyline([],{color:'#2563eb',weight:4,opacity:1}).addTo(lfMap);   // solid blue line
-    const glider=L.circleMarker(latlngs[0],{radius:7,color:'#ffffff',weight:2,fillColor:'#1e3a8a',fillOpacity:1,interactive:false}).addTo(lfMap);   // plain dot
+    const flown=L.polyline([],{color:'#60a5fa',weight:4,opacity:1}).addTo(lfMap);   // solid light-blue line
+    const glider=L.circleMarker(latlngs[0],{radius:7,color:'#ffffff',weight:2,fillColor:'#172554',fillOpacity:1,interactive:false}).addTo(lfMap);   // dark-blue dot
     lfFlight.push(flownCase,flown,glider);
     setLZFade(site,true);
     try{const lb=L.latLngBounds(latlngs);if(lb.isValid())lfMap.fitBounds(lb,{padding:[30,30],maxZoom:15});}catch(e){}
-    const t0=performance.now(),DUR=9200;
+    const t0=performance.now(),DUR=7800;
     const step=now=>{const e=Math.min(1,(now-t0)/DUR);const n=Math.max(1,Math.floor(latlngs.length*e));const seg=latlngs.slice(0,n);flownCase.setLatLngs(seg);flown.setLatLngs(seg);glider.setLatLng(latlngs[n-1]);if(e<1)flightRAF=requestAnimationFrame(step);else if(btn){btn.disabled=false;btn.textContent='🪂 Replay flight → LZ';}};
     flightRAF=requestAnimationFrame(step);
   }
