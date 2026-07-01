@@ -1800,38 +1800,38 @@ function buildFlightPath3(site,startR,lzR,vScale,plan,ratio){
   const routeMi=samp[samp.length-1].s/M2;
   const Rloop=Math.min(0.06,Math.max(0.03,routeMi*0.30));
   let pts=[];
-  // Glide along the route until ~3 radii out, then aim the final glide at a
-  // TANGENT point on the SIDE of the loop (not the LZ centre) so the path meets
-  // the spiral on its edge and curls around — like joining a roundabout.
+  // Glide straight in along the route to within a few loop-radii of the LZ.
   let handIdx=samp.length-1;
   for(let i=0;i<samp.length;i++){
     if(hav(samp[i].la,samp[i].lo,site.lzLat,site.lzLon)<=5*Rloop){handIdx=i;break;}
   }
   const hand=samp[handIdx];
-  const appBrg=bearingTo(hand.la,hand.lo,site.lzLat,site.lzLon); // approach direction
-  const startAng=(appBrg-90+360)%360;                           // tangent entry on the near side
-  const[eLa,eLo]=dest(site.lzLat,site.lzLon,startAng,Rloop);
-  for(let i=0;i<=handIdx;i++){const alt=Math.max(startR-(samp[i].s/ratio)*vScale,spiralFloor);pts.push({lng:samp[i].lo,lat:samp[i].la,alt});}
   const handAlt=Math.max(startR-(hand.s/ratio)*vScale,spiralFloor);
-  // Curved bridge (quadratic bezier) from the glide onto the tangent entry point.
-  // The control point extends the incoming glide heading, so the path peels off the
-  // straight glide tangentially and sweeps into the roundabout instead of kinking.
+  const willSpiral=handAlt>spiralFloor+8*vScale;                 // still height to bleed off over the LZ
+  const appBrg=bearingTo(hand.la,hand.lo,site.lzLat,site.lzLon); // direction of travel into the LZ
+  // Glide points up to the hand-off.
+  for(let i=0;i<=handIdx;i++){const alt=Math.max(startR-(samp[i].s/ratio)*vScale,spiralFloor);pts.push({lng:samp[i].lo,lat:samp[i].la,alt});}
+  // Bezier the last stretch from the hand-off straight onto the LZ, leaving the glide
+  // tangentially (control point ahead along the glide heading) so there's no kink.
   const gi=Math.max(0,handIdx-2);
-  const glB=bearingTo(samp[gi].la,samp[gi].lo,hand.la,hand.lo); // heading of the glide as it arrives
-  const bridgeMi=hav(hand.la,hand.lo,eLa,eLo);
-  const[cLa,cLo]=dest(hand.la,hand.lo,glB,bridgeMi*0.6);        // control point ahead along the glide
+  const glB=bearingTo(samp[gi].la,samp[gi].lo,hand.la,hand.lo);
+  const legMi=hav(hand.la,hand.lo,site.lzLat,site.lzLon);
+  const[cLa,cLo]=dest(hand.la,hand.lo,glB,legMi*0.5);
+  const endAlt=willSpiral?handAlt:lzR;
   const NB=24;for(let i=1;i<=NB;i++){const t=i/NB,v=1-t;
-    const la=v*v*hand.la+2*v*t*cLa+t*t*eLa,lo=v*v*hand.lo+2*v*t*cLo+t*t*eLo;
-    pts.push({lng:lo,lat:la,alt:handAlt});}
-  const entryAlt=handAlt;
-  // Only spiral if there's still excess altitude to bleed off over the LZ.
-  if(entryAlt>spiralFloor+8*vScale){
-    const drop=entryAlt-spiralFloor,turns=Math.min(6,Math.max(2,drop/(50*vScale)));
+    const la=v*v*hand.la+2*v*t*cLa+t*t*site.lzLat,lo=v*v*hand.lo+2*v*t*cLo+t*t*site.lzLon;
+    pts.push({lng:lo,lat:la,alt:handAlt+(endAlt-handAlt)*t});}
+  // Corkscrew to bleed excess altitude: a loop TANGENT to the approach right at the
+  // LZ — centred one radius to the side so the straight glide flows into the circle
+  // with no hook, curls down through the turns, and comes back out at the LZ.
+  if(willSpiral){
+    const cen=dest(site.lzLat,site.lzLon,(appBrg+90)%360,Rloop);   // loop centre, one radius to the side
+    const startAng=bearingTo(cen[0],cen[1],site.lzLat,site.lzLon); // LZ sits on the loop at this bearing
+    const drop=handAlt-spiralFloor,turns=Math.min(6,Math.max(2,drop/(50*vScale)));
     const NS=Math.max(180,Math.round(turns*80));
-    // Spin so the first motion continues the approach direction (tangential entry).
     for(let i=1;i<=NS;i++){const t=i/NS;const ang=(startAng+t*turns*360)%360;
-      const[la,lo]=dest(site.lzLat,site.lzLon,ang,Rloop);
-      pts.push({lng:lo,lat:la,alt:entryAlt+(spiralFloor-entryAlt)*t});}
+      const[la,lo]=dest(cen[0],cen[1],ang,Rloop);
+      pts.push({lng:lo,lat:la,alt:handAlt+(spiralFloor-handAlt)*t});}
   }
   const sp=pts[pts.length-1],NF=34;
   for(let i=1;i<=NF;i++){const t=i/NF;const la=sp.lat+(site.lzLat-sp.lat)*t,lo=sp.lng+(site.lzLon-sp.lng)*t;
