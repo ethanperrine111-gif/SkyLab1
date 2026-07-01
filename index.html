@@ -72,6 +72,9 @@ body.fc-collapsed #forecast{display:none;}
 .fc-row{display:flex;align-items:stretch;}
 .fc-cell{width:var(--fcw);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-right:1px solid #eef1f5;}
 .fc-cell.now{background:rgba(37,99,235,.08);box-shadow:inset 2px 0 0 #2563eb,inset -2px 0 0 #2563eb;}
+/* Purple day-divider, drawn as a full-height line in .fc-data (see buildForecast) so it
+   runs from the very top (Day/Model header rows) to the bottom of the grid. */
+.fc-dayline{position:absolute;top:0;bottom:0;width:2px;background:#a855f7;pointer-events:none;z-index:3;}
 .fc-data .fc-cell{cursor:pointer;}
 .fc-cell.wt-sel{box-shadow:inset 2px 0 0 #0ea5e9,inset -2px 0 0 #0ea5e9;}
 .fc-r-hr .fc-cell.wt-sel{color:#0ea5e9;font-weight:800;}
@@ -134,7 +137,9 @@ body.dark .nb-compare{color:#93c5fd;background:rgba(59,130,246,.16);border-color
 #model-compare.open{display:flex;}
 body.compare-open #forecast{display:none;}   /* the compare table takes the forecast's spot so the map stays visible */
 body.dark #model-compare{background:#0f172a;color:#e2e8f0;border-color:#1e293b;}
-#cmp-bar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 12px;background:#0f172a;color:#fff;font-weight:800;font-size:13px;}
+/* Full-screen compare: the top control bar (title / hide-pin / close) is removed —
+   close the comparison by picking a normal model from the dropdown instead. */
+#cmp-bar{display:none;}
 .cmp-actions{display:flex;gap:8px;}
 #rocket-btn{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer;}
 #rocket-btn.active{background:#2563eb;border-color:#2563eb;}
@@ -144,7 +149,9 @@ body.compare-open #fc-compare{background:rgba(255,255,255,.32);border-color:rgba
 #cmp-body{flex:1;overflow:auto;padding:8px;}
 .cmp-load{padding:30px;text-align:center;color:#64748b;font-size:14px;}
 .cmp-scroll{overflow-x:auto;}
-.cmp-grid{display:inline-block;min-width:100%;}
+.cmp-grid{display:inline-block;min-width:100%;position:relative;}
+.cmp-nowline{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;pointer-events:none;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,.7);}
+.cmp-nowline::before{content:'';position:absolute;top:-1px;left:-3px;width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 1.5px #fff;}
 .cmp-row{display:flex;}
 .cmp-lbl{flex:0 0 70px;position:sticky;left:0;background:#fff;z-index:2;display:flex;align-items:center;font-size:12px;font-weight:800;padding:0 6px;border-right:1px solid #e2e8f0;}
 body.dark .cmp-lbl{background:rgba(15,23,42,.98);border-color:#1e293b;}
@@ -158,8 +165,10 @@ body.dark .cmp-head .cmp-c{background:#0b1220;color:#94a3b8;}
 body.dark .cmp-head .cmp-lbl{background:#0b1220;}
 .cmp-newday{box-shadow:inset 2px 0 0 #2563eb;}
 .cmp-c{cursor:pointer;}
-.cmp-c.cmp-tsel{box-shadow:inset 0 0 0 2px #0ea5e9;background:rgba(14,165,233,.12);}
+.cmp-c.cmp-tsel{background:rgba(14,165,233,.12);}
 .cmp-head .cmp-c.cmp-tsel{background:rgba(14,165,233,.18);color:#0369a1;}
+/* One continuous rounded rectangle over the selected time column (instead of per-cell outlines) */
+.cmp-selbar{position:absolute;top:0;bottom:0;width:40px;box-sizing:border-box;border:2px solid #0ea5e9;border-radius:7px;pointer-events:none;z-index:2;}
 .cmp-foot{padding:8px 12px;font-size:11px;color:#64748b;}
 #rocket{position:absolute;z-index:6;display:none;transform:translate(-50%,-100%);pointer-events:none;}
 .rk-fan{display:flex;gap:4px;align-items:flex-end;padding-bottom:2px;}
@@ -219,6 +228,8 @@ body.dark .pp-fc-model{background-color:#1e3a8a;color:#dbeafe;border-color:#3b82
 .pp-fc-wrap.pp-cmp .cmp-foot{padding:6px 8px;}
 .pp-fc-wrap .fc-scroll{scrollbar-width:none;}
 .pp-fc-wrap .fc-scroll::-webkit-scrollbar{height:0;display:none;}
+.pp-walt{margin:8px 0 2px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;font-size:12px;color:#334155;}
+body.dark .pp-walt{background:#0f172a;border-color:#1e293b;color:#e2e8f0;}
 .ppg{display:none;}
 @media(min-width:769px){.pp-fc-title{display:none;}.pp-fc-wrap{display:none;}}
 @media(max-width:768px){body.popup-open #forecast{display:none;}body.popup-open #fc-head{display:none;}}
@@ -308,7 +319,7 @@ body.dark .ppwind-note{color:#94a3b8;}
   #legend{font-size:10px;padding:6px 8px;}
 }
 /* layer panel */
-#layer-panel{width:100%;background:rgba(17,24,39,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 9px;color:#fff;font-size:11px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.45);max-height:calc(100dvh - 230px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none;}
+#layer-panel{width:210px;background:rgba(17,24,39,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 9px;color:#fff;font-size:11px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.45);max-height:calc(100dvh - 230px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none;}
 #layer-panel::-webkit-scrollbar{display:none;}
 #layer-panel.open{display:block;}
 .lp-sec{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.45);margin:8px 0 3px;}
@@ -348,7 +359,19 @@ body.dark .ppwind-note{color:#94a3b8;}
 #sb-close{position:absolute;top:9px;right:11px;z-index:3;border:none;background:rgba(0,0,0,.4);color:#fff;width:27px;height:27px;border-radius:50%;font-size:15px;cursor:pointer;line-height:1;}
 #sb-close:hover{background:rgba(0,0,0,.6);}
 /* Mobile-only pill to bring the detail panel back after it's stashed to reveal the map */
-#sb-reopen{position:absolute;top:62px;right:10px;z-index:701;display:none;align-items:center;gap:6px;background:rgba(37,99,235,.96);color:#fff;border:none;border-radius:18px;padding:9px 14px;font-size:13px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,.35);cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+/* Default "Details" pill lives in the bottom-right corner (used when the panel is stashed for
+   the flight sim, moving a pin, etc.). In glide-range mode it becomes a compact square docked
+   just above the vertical glide-ratio scroller (positioned in JS). */
+#sb-reopen{position:absolute;bottom:calc(40px + env(safe-area-inset-bottom,0px));right:calc(12px + env(safe-area-inset-right,0px));z-index:701;display:none;align-items:center;gap:6px;background:rgba(37,99,235,.96);color:#fff;border:none;border-radius:18px;padding:9px 14px;font-size:13px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,.35);cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+#sb-reopen .sr-ico{line-height:1;}
+#sb-reopen.reopen-glide{gap:0;padding:0;width:48px;height:48px;justify-content:center;border-radius:14px;}
+#sb-reopen.reopen-glide .sr-txt{display:none;}
+#sb-reopen.reopen-glide .sr-ico{font-size:20px;}
+/* Floating glide-ratio scroller — a vertical slider docked on the right edge of the map */
+#glide-mobile{position:absolute;right:10px;top:50%;transform:translateY(-50%);z-index:702;display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(15,23,42,.92);color:#e2e8f0;border-radius:22px;padding:14px 10px;box-shadow:0 3px 14px rgba(0,0,0,.42);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-size:13px;font-weight:700;}
+#glide-mobile .gm-lbl{white-space:nowrap;}
+#glide-mobile .gm-range{writing-mode:vertical-lr;direction:rtl;width:26px;height:170px;accent-color:#22c55e;}
+#glide-mobile .gm-done{border:none;background:#22c55e;color:#fff;border-radius:14px;padding:7px 12px;font-weight:800;cursor:pointer;}
 #sb-body{padding:13px;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 #sb-body::-webkit-scrollbar{display:none;}
 #sidebar .pp{min-width:0;max-width:none;}
@@ -398,6 +421,13 @@ body.dark .ppwa-body,body.dark .ppsun-body{background:#0f172a;border-color:#1e29
 .wa-cap{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin-bottom:3px;}
 .wa-sub{font-size:10px;color:#94a3b8;margin-top:3px;line-height:1.35;}
 body.dark .wa-cap{color:#94a3b8;}
+/* "How to read the wind-aloft charts" info button (top-right of the open dropdown) + panel */
+.ppwa-body{position:relative;}
+.wa-info-btn{position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;font-weight:800;font-style:italic;font-family:Georgia,'Times New Roman',serif;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;}
+.wa-info-btn:hover{background:#dbeafe;}
+body.dark .wa-info-btn{background:#13243f;border-color:#1e3a8a;color:#bfdbfe;}
+.wa-info{margin:0 0 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:10px 34px 10px 12px;font-size:11.5px;line-height:1.5;color:#1e40af;}
+body.dark .wa-info{background:#13243f;border-color:#1e3a8a;color:#bfdbfe;}
 .sun-row{display:flex;gap:8px;margin-bottom:8px;}
 .sun-stat{flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;text-align:center;}
 body.dark .sun-stat{background:#1e293b;border-color:#334155;}
@@ -417,6 +447,26 @@ body.dark .sun-note{color:#94a3b8;}
 #fav-overlay,#models-overlay{position:fixed;inset:0;z-index:1200;background:#f1f5f9;display:none;flex-direction:column;}
 #fav-overlay.open,#models-overlay.open{display:flex;}
 body.dark #fav-overlay,body.dark #models-overlay{background:#0b1220;}
+/* Guided tour / new-user orientation modal */
+#tour-overlay{position:fixed;inset:0;z-index:1400;background:rgba(15,23,42,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;padding:18px;}
+#tour-overlay.open{display:flex;}
+#tour-card{position:relative;width:min(420px,100%);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.35);padding:24px 22px 18px;text-align:center;}
+body.dark #tour-card{background:#0f172a;color:#e2e8f0;}
+#tour-x{position:absolute;top:10px;right:12px;background:none;border:none;font-size:18px;color:#94a3b8;cursor:pointer;line-height:1;}
+#tour-emoji{font-size:42px;line-height:1;margin:4px 0 12px;}
+#tour-title{font-size:18px;font-weight:800;color:#0f172a;margin-bottom:9px;}
+body.dark #tour-title{color:#f1f5f9;}
+#tour-body{font-size:13.5px;line-height:1.6;color:#475569;min-height:88px;}
+body.dark #tour-body{color:#cbd5e1;}
+#tour-dots{display:flex;gap:6px;justify-content:center;margin:18px 0 14px;}
+.tour-dot{width:7px;height:7px;border-radius:50%;background:#cbd5e1;transition:background .2s,width .2s;}
+.tour-dot.on{background:#2563eb;width:18px;border-radius:4px;}
+#tour-nav{display:flex;gap:10px;justify-content:center;}
+#tour-nav button{flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;}
+#tour-nav #tour-next{background:#2563eb;border-color:#2563eb;color:#fff;}
+#tour-nav button:disabled{opacity:.4;cursor:default;}
+body.dark #tour-nav button{background:#1e293b;border-color:#334155;color:#cbd5e1;}
+body.dark #tour-nav #tour-next{background:#2563eb;border-color:#2563eb;color:#fff;}
 #fav-bar,#mi-bar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#0f172a;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.25);}
 #fav-title,#mi-title{font-size:17px;font-weight:800;letter-spacing:.01em;}
 #fav-close,#mi-close{background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:8px;width:34px;height:34px;font-size:16px;cursor:pointer;}
@@ -487,19 +537,30 @@ body.dark .uvbtn.active{background:#0ea5e9;color:#fff;border-color:#0ea5e9;}
 .edbtn.save:hover{background:#bbf7d0;}
 .edbtn.saved-ok{background:#16a34a;border-color:#15803d;color:#fff;}
 .edrow{display:flex;gap:6px;margin-top:5px;}.edrow .edbtn{flex:1;margin-top:0;}
-.edl{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#888;margin:9px 0 3px;}
-.edi{width:100%;border:1px solid #ccc;border-radius:7px;padding:7px 8px;font-size:13px;font-family:inherit;}
+.edl{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:#64748b;margin:11px 0 4px;}
+.edi{width:100%;box-sizing:border-box;border:1.5px solid #d8dee9;border-radius:9px;padding:9px 10px;font-size:13px;font-family:inherit;color:#0f172a;background:#fff;transition:border-color .15s,box-shadow .15s;}
+.edi:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.16);}
+.edi::placeholder{color:#94a3b8;}
+body.dark .edl{color:#94a3b8;}
+body.dark .edi{background:#0b1220;border-color:#334155;color:#e2e8f0;}
+body.dark .edi:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.25);}
 /* In-popup LZ editor section */
 .lzedit{margin-top:10px;padding-top:9px;border-top:1px dashed #d6d6cf;}
 .lzedit-t{font-size:13px;font-weight:800;color:#1d4ed8;margin-bottom:2px;}
 .lzedit .edbtn{width:100%;}.lzedit .edrow .edbtn{width:auto;}
 /* LZ editor as a collapsible dropdown box */
-.lzedit{background:#f8fafc;border:1px solid #dbeafe;border-radius:9px;padding:0;overflow:hidden;}
-.lzedit>summary{cursor:pointer;list-style:none;outline:none;display:flex;align-items:center;justify-content:space-between;padding:9px 11px;user-select:none;background:#eff6ff;}
+.lzedit{background:#fff;border:1px solid #dbeafe;border-radius:12px;padding:0;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.06);}
+.lzedit>summary{cursor:pointer;list-style:none;outline:none;display:flex;align-items:center;justify-content:space-between;padding:11px 13px;user-select:none;background:#eff6ff;font-size:13px;font-weight:800;color:#1d4ed8;transition:background .15s;}
+.lzedit>summary:hover{background:#dbeafe;}
 .lzedit>summary::-webkit-details-marker{display:none;}
-.lzedit>summary::after{content:"▾";color:#1d4ed8;font-size:12px;transition:transform .2s;}
+.lzedit>summary::after{content:"▾";color:#1d4ed8;font-size:13px;transition:transform .2s;}
+.lzedit[open]>summary{border-bottom:1px solid #e2e8f0;}
 .lzedit[open]>summary::after{transform:rotate(180deg);}
-.lzedit-body{padding:4px 11px 11px;}
+.lzedit-body{padding:6px 13px 14px;}
+body.dark .lzedit{background:#0f172a;border-color:#1e3a8a;}
+body.dark .lzedit>summary{background:#13243f;color:#bfdbfe;}
+body.dark .lzedit>summary:hover{background:#1e3a8a;}
+body.dark .lzedit[open]>summary{border-bottom-color:#1e293b;}
 .lzedit select[multiple]{height:auto;padding:4px;}
 /* "Fly from here?" map-click prompt */
 .flyprompt{padding:1px 0;}
@@ -518,15 +579,16 @@ body.dark .uvbtn.active{background:#0ea5e9;color:#fff;border-color:#0ea5e9;}
 /* Weather rate-limit / stale-data notice */
 #wx-banner{position:fixed;bottom:52px;left:50%;transform:translateX(-50%);z-index:1200;display:none;background:#b45309;color:#fff;font-size:12px;font-weight:600;padding:7px 13px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.4);cursor:pointer;max-width:92%;text-align:center;line-height:1.35;}
 /* weather-model selector that lives inside the now-bar */
-.nb-model{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:3px 6px;font-size:11px;font-weight:700;cursor:pointer;align-self:flex-start;}
+.nb-model{font-size:12px;font-weight:800;color:#1d4ed8;background:#eff6ff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232563eb' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;border:1.5px solid #2563eb;border-radius:8px;padding:5px 26px 5px 9px;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 2px rgba(37,99,235,.15);align-self:flex-start;}
+.nb-model:hover{background-color:#dbeafe;}
 .nb-model option{color:#111;}
 /* Weather-model switcher inside the launch detail panel */
 .pp-model-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;color:#475569;margin:9px 0 3px;}
-.pp-model-row select.nb-model{align-self:auto;background:#fff;color:#2563eb;border:1px solid rgba(37,99,235,.4);padding:6px 9px;font-size:13px;}
+.pp-model-row select.nb-model{align-self:auto;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232563eb' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;color:#2563eb;border:1.5px solid rgba(37,99,235,.5);padding:6px 28px 6px 10px;font-size:13px;}
 .pp-now-btn{flex-shrink:0;background:#2563eb;color:#fff;border:none;border-radius:9px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;line-height:1;white-space:nowrap;}
 .pp-now-btn:hover{background:#1d4ed8;}
 body.dark .pp-model-row{color:#94a3b8;}
-body.dark .pp-model-row select.nb-model{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25);}
+body.dark .pp-model-row select.nb-model{background:rgba(255,255,255,.12) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23dbeafe' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;color:#fff;border-color:rgba(255,255,255,.3);}
 textarea.edi{resize:vertical;line-height:1.4;min-height:54px;}
 /* ── Dark mode ─────────────────────────────────────────────────────────────── */
 body.dark #forecast{background:#0f172a;border-color:#1e293b;}
@@ -585,7 +647,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #mode-badge{display:none;}
   /* Use the real SkyLab paraglider logo at the bottom (instead of the plain text chip) */
   #mobile-logo{display:none;}
-  #logo-overlay{display:flex;bottom:calc(44px + env(safe-area-inset-bottom,0px));padding:4px 12px 4px 6px;}  /* sit lower (nearly its own height down) while still clearing the browser's bottom bar */
+  #logo-overlay{display:flex;bottom:calc(32px + env(safe-area-inset-bottom,0px));padding:4px 12px 4px 6px;}  /* bottom edge lines up with the My-location pin on the left */
   /* Bigger tap targets for thumbs */
   .cbtn{padding:9px 13px;font-size:13px;border-radius:11px;}
   .icon-btn{padding:9px;}
@@ -593,10 +655,10 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   .flybtn,.dirbtn{padding:12px;font-size:14px;}
   /* Drop the Favorites/Models header below the status bar / notch so it isn't jammed at the top */
   #fav-bar,#mi-bar{padding-top:calc(14px + env(safe-area-inset-top,0px));}
-  /* Compass respects the notch too, so the Details pill (just below it) clears it cleanly */
-  #compass{top:calc(8px + env(safe-area-inset-top,0px));}
+  /* Compass sits at the same height as the Layers button on the opposite side (map area already clears the notch) */
+  #compass{top:8px;}
   /* Floating panels: never overflow the viewport, scroll if tall */
-  #menu-panel{left:12px;right:12px;max-width:none;max-height:58vh;overflow-y:auto;}
+  #menu-panel{left:12px;right:12px;max-width:none;max-height:calc(100% - 40px);overflow-y:auto;}  /* grow down until its bottom reaches the My-location pin */
   /* On mobile, fold Compare into the Weather Models dropdown (bottom option) to free up the top bar for the location. */
   #fc-compare,.nb-compare{display:none;}
   #model-compare{max-height:50vh;}
@@ -605,7 +667,6 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #sidebar{width:100%;max-width:100%;}
   #sb-body{padding:calc(15px + env(safe-area-inset-top,0px)) 15px calc(96px + env(safe-area-inset-bottom,0px));}  /* extra bottom space so content clears the phone browser's bottom bar */
   #sb-close{top:calc(9px + env(safe-area-inset-top,0px));}
-  #sb-reopen{top:calc(62px + env(safe-area-inset-top,0px));}
   #sb-close{width:32px;height:32px;font-size:17px;}
   /* Keep the legend tucked into the corner */
   #legend{bottom:calc(8px + env(safe-area-inset-bottom,0px));left:calc(8px + env(safe-area-inset-left,0px));}
@@ -654,6 +715,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   </div>
   <div id="forecast"><div class="nb-load">Loading forecast…</div></div>
   <div id="model-compare">
+    <div id="cmp-bar"><span id="cmp-title">⚖ Compare models</span><div class="cmp-actions"><button id="rocket-btn" onclick="toggleRocket()" title="Show/hide the wind pin on the map">📍 Hide map pin</button><button id="cmp-back" onclick="closeModelCompare()" title="Close comparison" aria-label="Close comparison">✕ Close</button></div></div>
     <div id="cmp-body"><div class="cmp-load">Loading models…</div></div>
   </div>
   <div id="map-wrap">
@@ -674,6 +736,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="radio" name="baselayer" value="streets" checked onchange="setBaseLayer('streets')"/> Streets</label>
         <label class="lp-row"><input type="radio" name="baselayer" value="sat" onchange="setBaseLayer('sat')"/> Satellite</label>
         <label class="lp-row"><input type="radio" name="baselayer" value="topo" onchange="setBaseLayer('topo')"/> Topo</label>
+        <label class="lp-row"><input type="radio" name="baselayer" value="terrainbase" onchange="setBaseLayer('terrainbase')"/> Terrain</label>
         <div class="lp-div"></div>
         <div class="lp-sec">Sites</div>
         <label class="lp-row"><input type="checkbox" id="ov-takeoffs" checked onchange="toggleTakeoffs(this.checked)"/><span class="lp-ico">🛫</span><span class="lp-lbl">Launches</span></label>
@@ -689,9 +752,9 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="checkbox" id="ov-thermals" onchange="toggleOverlay('thermals',this.checked)"/><span class="lp-ico">🔥</span><span class="lp-lbl">Thermal hotspots</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-skyways" onchange="toggleOverlay('skyways',this.checked)"/><span class="lp-ico">🛤️</span><span class="lp-lbl">Skyways</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-obstacles" onchange="toggleFeatureLayer('obstacles',this.checked)"/><span class="lp-ico">🗼</span><span class="lp-lbl">Obstacles</span></label>
-        <label class="lp-row"><input type="checkbox" id="ov-airports" onchange="toggleFeatureLayer('airports',this.checked)"/><span class="lp-ico">🛩️</span><span class="lp-lbl">Airports</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-airports" onchange="toggleFeatureLayer('airports',this.checked)"/><span class="lp-ico">✈️</span><span class="lp-lbl">Airports</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-wx" onchange="toggleFeatureLayer('wx',this.checked)"/><span class="lp-ico">🌡️</span><span class="lp-lbl">Weather stations</span></label>
-        <label class="lp-row"><input type="checkbox" id="ov-relief" onchange="toggleOverlay('relief',this.checked)"/><span class="lp-ico">⛰️</span><span class="lp-lbl">Terrain</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-relief" onchange="toggleOverlay('relief',this.checked)"/><span class="lp-ico">⛰️</span><span class="lp-lbl">Hillshade</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/><span class="lp-ico">🥾</span><span class="lp-lbl">Hiking trails</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-power" onchange="toggleOverlay('power',this.checked)"/> ⚡ Power lines</label>
       </div>
@@ -743,12 +806,12 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
       <div class="wv-probe" id="wvprobe">↖ hover map for wind</div>
     </div>
     <div id="menu-panel">
+      <button class="edbtn" style="background:#2563eb;color:#fff;border-color:#2563eb;font-weight:700;" onclick="openTour();toggleMenu();">🧭 Take the tour</button>
+      <div class="lp-div"></div>
       <div class="lp-sec">Display</div>
       <button class="edbtn" id="probe-btn" onclick="toggleProbe()">🌬 Cursor wind: off</button>
       <button class="edbtn" id="dark-btn" onclick="toggleDark()">🌙 Dark mode</button>
-      <button class="edbtn active" id="exbtn" onclick="toggleExag()">⛰ Exaggeration 1.5×</button>
-      <div class="lr" style="margin-top:7px;justify-content:space-between;">🌬 Wind altitude<b id="walt-val" style="color:#0369a1;">Surface</b></div>
-      <input type="range" id="walt-slider" min="0" max="18000" step="1000" value="0" oninput="setWindAlt(this.value)" style="width:100%;margin:2px 0 0;accent-color:#0369a1;"/>
+      <button class="edbtn" id="exbtn" onclick="toggleExag()">⛰ Exaggeration 1×</button>
       <div class="lp-div"></div>
       <div class="lp-sec">Units</div>
       <div id="unit-sec">
@@ -788,7 +851,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
       <span>⛰ Sampling terrain...</span>
       <div id="tprog"><div id="tfill"></div></div>
     </div>
-    <button id="sb-reopen" onclick="reopenSidebar()" title="Show details">▤ Details</button>
+    <button id="sb-reopen" onclick="reopenSidebar()" title="Show details"><span class="sr-ico">▤</span><span class="sr-txt">Details</span></button>
     <div id="sidebar">
       <button id="sb-close" onclick="closeSidebar()">✕</button>
       <div id="sb-body"></div>
@@ -812,6 +875,19 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
     <div class="mi-card"><div class="mi-h"><span class="mi-rank">5</span><span class="mi-n">GFS</span><span class="mi-g">~16 mi grid</span></div><p>The American global model — free, dependable, and what extends this app's 2-week forecast. Verifies a notch below ECMWF, especially for the <b>timing and strength</b> of systems. Fine for the broad picture.</p></div>
     <div class="mi-card mi-blend"><div class="mi-h"><span class="mi-n">Best match</span><span class="mi-g">blend</span></div><p>Open-Meteo automatically stitches the best-available model for each location and range. Convenient, but it hides <b>which</b> model is talking — so you lose the ability to judge agreement.</p></div>
     <div class="mi-tip"><b>💡 The pro habit:</b> open <b>⚖ Compare</b> and watch for agreement. When HRRR, ECMWF and ICON line up, confidence is high; when they diverge, treat the day as uncertain. And remember — <i>every</i> model smooths the terrain, so none truly capture a specific launch's rotor, venturi, or thermal trigger. That gap is what local knowledge and an on-site wind check fill.</div>
+  </div>
+</div>
+<div id="tour-overlay" onclick="if(event.target===this)closeTour()">
+  <div id="tour-card">
+    <button id="tour-x" onclick="closeTour()" title="Close" aria-label="Close">✕</button>
+    <div id="tour-emoji"></div>
+    <div id="tour-title"></div>
+    <div id="tour-body"></div>
+    <div id="tour-dots"></div>
+    <div id="tour-nav">
+      <button id="tour-back" onclick="tourStep(-1)">Back</button>
+      <button id="tour-next" onclick="tourStep(1)">Next</button>
+    </div>
   </div>
 </div>
 <script>
@@ -1013,8 +1089,9 @@ function closeFavorites(){const ov=document.getElementById('fav-overlay');ov.cla
 // Drag the favorites overlay LEFT-TO-RIGHT to dismiss it (mobile gesture). The panel follows your
 // finger in real time and, on release, either eases the rest of the way off to the right (if pulled
 // far enough) or springs smoothly back — so it never jumps straight to the map behind it.
-function bindFavSwipe(){
-  const ov=document.getElementById('fav-overlay');if(!ov||ov._swipeBound)return;ov._swipeBound=true;
+function bindFavSwipe(){bindOverlaySwipe(document.getElementById('fav-overlay'),closeFavorites);}
+function bindOverlaySwipe(ov,closeFn){
+  if(!ov||ov._swipeBound)return;ov._swipeBound=true;
   let sx=0,sy=0,W=0,tracking=false,dragging=false;
   const SPRING='transform .3s cubic-bezier(.22,.61,.36,1), opacity .3s ease';
   ov.addEventListener('touchstart',e=>{const t=e.changedTouches[0];sx=t.clientX;sy=t.clientY;W=ov.offsetWidth||window.innerWidth;tracking=true;dragging=false;ov.style.transition='none';},{passive:true});
@@ -1030,7 +1107,7 @@ function bindFavSwipe(){
     if(!tracking){return;}tracking=false;const t=e.changedTouches[0],dx=t.clientX-sx;ov.style.transition=SPRING;
     if(dragging&&dx>W*0.3){                                    // pulled far enough → glide off to the right
       ov.style.transform='translateX('+W+'px)';ov.style.opacity='0';
-      setTimeout(closeFavorites,300);
+      setTimeout(closeFn,300);
     }else{                                                     // spring back into place
       ov.style.transform='translateX(0)';ov.style.opacity='1';
       setTimeout(()=>{if(ov.classList.contains('open')){ov.style.transition='';ov.style.transform='';ov.style.opacity='';}},300);
@@ -1040,8 +1117,38 @@ function bindFavSwipe(){
   ov.addEventListener('touchend',finish,{passive:true});
   ov.addEventListener('touchcancel',finish,{passive:true});
 }
-function openModelsInfo(){document.getElementById('models-overlay').classList.add('open');}
-function closeModelsInfo(){document.getElementById('models-overlay').classList.remove('open');}
+function openModelsInfo(){bindOverlaySwipe(document.getElementById('models-overlay'),closeModelsInfo);document.getElementById('models-overlay').classList.add('open');}
+function closeModelsInfo(){const ov=document.getElementById('models-overlay');ov.classList.remove('open');ov.style.transform='';ov.style.opacity='';ov.style.transition='';
+  // Bring the main menu back so you land where you opened this from (it was closed on open).
+  const mp=document.getElementById('menu-panel');if(mp)mp.classList.add('open');}
+// ── Guided tour / new-user orientation ────────────────────────────────────────
+const TOUR_STEPS=[
+  {emoji:'👋',title:'Welcome to SkyLab',body:'Utah’s paragliding weather &amp; site map. Here’s a quick tour of what everything does — tap <b>Next</b> to start (or ✕ to skip).'},
+  {emoji:'🗺️',title:'The map & pins',body:'Coloured teardrop pins are <b>launch sites</b>, and the colour is right-now flyability: <b style="color:#16a34a">green</b> = flyable, <b style="color:#ca8a04">yellow</b> = caution, <b style="color:#dc2626">red</b> = no-go. Blue boxes are <b>landing zones</b> (LZs).'},
+  {emoji:'🧭',title:'The dial on each pin',body:'Every launch pin has a compass inside: the coloured <b>wedge</b> is the wind window you can safely launch in, and the <b>arrow</b> is the current wind. Tap any pin to open its full details.'},
+  {emoji:'📊',title:'The forecast strip',body:'Tap a site to load a <b>2-week, hour-by-hour</b> forecast. Scroll it sideways — the red line marks <b>right now</b>. The <b>Fly / No-Fly</b> row is the quick verdict for that launch.'},
+  {emoji:'⚖️',title:'Compare the models',body:'Hit <b>⚖ Compare</b> to see the top weather models side by side (HRRR, ECMWF, ICON…). When they <b>agree</b>, confidence is high; when they scatter, treat the day as uncertain.'},
+  {emoji:'🗂️',title:'Winds aloft & layers',body:'Open a site’s <b>🌀 Wind aloft &amp; rose</b> for wind at altitude — tap the <i>i</i> there to learn the charts. Use the <b>Layers</b> button for satellite, radar, airspace, TFRs and thermals.'},
+  {emoji:'📍',title:'You & the flight sim',body:'The <b>📍</b> button finds you on the map. On a launch, tap <b>🪂 Replay flight → LZ</b> to watch a simulated glide down to the landing zone. That’s it — fly safe! 🪂'}
+];
+let tourIdx=0;
+function openTour(){tourIdx=0;document.getElementById('tour-overlay').classList.add('open');renderTour();}
+function closeTour(){document.getElementById('tour-overlay').classList.remove('open');}
+function tourStep(d){
+  if(d>0&&tourIdx===TOUR_STEPS.length-1){closeTour();return;}   // "Done" on the last card
+  tourIdx=Math.max(0,Math.min(TOUR_STEPS.length-1,tourIdx+d));
+  renderTour();
+}
+function renderTour(){
+  const s=TOUR_STEPS[tourIdx];
+  document.getElementById('tour-emoji').textContent=s.emoji;
+  document.getElementById('tour-title').textContent=s.title;
+  document.getElementById('tour-body').innerHTML=s.body;
+  document.getElementById('tour-dots').innerHTML=TOUR_STEPS.map((_,i)=>`<div class="tour-dot${i===tourIdx?' on':''}"></div>`).join('');
+  const back=document.getElementById('tour-back'),next=document.getElementById('tour-next');
+  back.disabled=tourIdx===0;
+  next.textContent=tourIdx===TOUR_STEPS.length-1?'Done ✓':'Next';
+}
 function removeFav(id){
   const i=FAVS.indexOf(id);if(i>=0)FAVS.splice(i,1);
   saveFavs();updateFavBtnCount();
@@ -1125,6 +1232,7 @@ const MODEL_LABELS={gfs_hrrr:'HRRR',gfs_seamless:'GFS',ecmwf_ifs025:'ECMWF',icon
 const TILES={
   sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   topo:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
+  terrainbase:['https://a.tile.opentopomap.org/{z}/{x}/{y}.png','https://b.tile.opentopomap.org/{z}/{x}/{y}.png','https://c.tile.opentopomap.org/{z}/{x}/{y}.png'],   // free OpenTopoMap terrain base (CC-BY-SA)
   sectional:'https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Sectional/MapServer/tile/{z}/{y}/{x}',
   hiking:'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png',   // free Waymarked Trails hiking overlay (CC-BY-SA, OSM data)
   relief:'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',   // free Esri World Hillshade (slope/aspect relief)
@@ -1287,9 +1395,47 @@ function obsHTML(name,o,id){
 }
 const FEATURE_LAYERS={
   obstacles:{color:'#ef4444',marker:'tower',fetch:fetchObstacles},
-  airports:{color:'#2563eb',marker:'runway',fetch:fetchAirports},
-  wx:{color:'#0891b2',marker:'vane',fetch:fetchWxStations}
+  airports:{color:'#2563eb',marker:'plane',fetch:fetchAirports},
+  wx:{color:'#0891b2',marker:'windsock',fetch:fetchWxStations}
 };
+// Windsock icons for weather stations: a cone that streams DOWNWIND (rotated to wind direction)
+// and grows with wind speed — grey nub = calm, short green = light, long red = strong. 'sock-na'
+// is the neutral placeholder shown before live wind loads.
+function makeSock(id,color,len){
+  if(!mlMap||(mlMap.hasImage&&mlMap.hasImage(id)))return;
+  const w=18,h=32,bx=w/2,by=h-3,cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');
+  const tipY=by-len;
+  x.beginPath();x.moveTo(bx-4.5,by);x.lineTo(bx-1.4,tipY);x.lineTo(bx+1.4,tipY);x.lineTo(bx+4.5,by);x.closePath();
+  x.fillStyle=color;x.fill();x.lineWidth=1.4;x.strokeStyle='#fff';x.stroke();
+  x.beginPath();x.arc(bx,by,2.6,0,Math.PI*2);x.fillStyle='#0f172a';x.fill();x.lineWidth=1.3;x.strokeStyle='#fff';x.stroke();
+  try{mlMap.addImage(id,{width:w,height:h,data:x.getImageData(0,0,w,h).data});}catch(e){}
+}
+function ensureSockIcons(){makeSock('sock-na','#64748b',8);makeSock('sock-calm','#94a3b8',4);makeSock('sock-lo','#22c55e',11);makeSock('sock-mid','#f59e0b',18);makeSock('sock-hi','#ef4444',25);}
+const WX_SOCK_LAYOUT={'icon-image':['step',['coalesce',['get','spd'],-1],'sock-na',0,'sock-calm',1,'sock-lo',8,'sock-mid',16,'sock-hi'],'icon-rotate':['coalesce',['get','dir'],0],'icon-rotation-alignment':'map','icon-anchor':'bottom','icon-allow-overlap':true};
+// Fetch model wind for the weather stations currently in view (capped) and restyle each windsock.
+let wxWindTimer=null;
+async function enrichWxWind(){
+  if(!(useMapLibre&&mlMap))return;
+  const src=mlMap.getSource('oa-wx');if(!src)return;
+  const all=oaData['wx']||[];if(!all.length)return;
+  const b=mapBounds();if(!b)return;
+  const cx=(b.w+b.e)/2,cy=(b.s+b.n)/2;
+  const pick=all.filter(p=>p.lat>=b.s&&p.lat<=b.n&&p.lon>=b.w&&p.lon<=b.e)
+    .sort((p,q)=>((p.lat-cy)**2+(p.lon-cx)**2)-((q.lat-cy)**2+(q.lon-cx)**2)).slice(0,70);
+  if(!pick.length)return;
+  const key=p=>p.id||(p.lat+','+p.lon);
+  try{
+    const lats=pick.map(p=>p.lat.toFixed(4)).join(','),lons=pick.map(p=>p.lon.toFixed(4)).join(',');
+    const j=await(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=mph&timezone=America%2FDenver`)).json();
+    const arr=Array.isArray(j)?j:[j],wind={};
+    pick.forEach((p,i)=>{const c=arr[i]&&arr[i].current;if(c&&c.wind_speed_10m!=null)wind[key(p)]={spd:Math.round(c.wind_speed_10m),dir:Math.round(((c.wind_direction_10m||0)+180)%360)};});
+    src.setData({type:'FeatureCollection',features:all.map(p=>{const wv=wind[key(p)],props={label:p.name||'',sid:p.id||''};if(wv){props.spd=wv.spd;props.dir=wv.dir;}return{type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:props};})});
+  }catch(e){}
+}
+function bindWxRefresh(){
+  if(!mlMap||mlMap.__wxBound)return;mlMap.__wxBound=true;
+  mlMap.on('moveend',()=>{const cb=document.getElementById('ov-wx');if(!cb||!cb.checked)return;clearTimeout(wxWindTimer);wxWindTimer=setTimeout(enrichWxWind,500);});
+}
 // Windsock graphic for weather stations (pole + striped orange/white sock).
 const VANE_SVG='<svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><line x1="5" y1="3" x2="5" y2="23" stroke="#475569" stroke-width="2" stroke-linecap="round"/><polygon points="5,4 22,7 22,10 5,12" fill="#f97316"/><polygon points="10,5 13,5.5 13,11 10,11.5" fill="#fff"/><polygon points="17,6 19.5,6.4 19.5,10.3 17,10.7" fill="#fff"/></svg>';
 function ensureVaneIcon(){
@@ -1304,6 +1450,15 @@ function ensureVaneIcon(){
   try{mlMap.addImage('vane',{width:s,height:s,data:x.getImageData(0,0,s,s).data});}catch(e){}
 }
 const RUNWAY_SVG='<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(45 11 11)"><rect x="8" y="2" width="6" height="18" rx="2" fill="#334155" stroke="#fff" stroke-width="1.5"/><line x1="11" y1="4" x2="11" y2="18" stroke="#fff" stroke-width="1" stroke-dasharray="2 2"/></g></svg>';
+// Airplane icon (emoji rendered to a canvas) for the Airports layer.
+const PLANE_SVG='<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 1.4px rgba(0,0,0,.5));"><text x="12" y="12" font-size="18" text-anchor="middle" dominant-baseline="central">✈️</text></svg>';
+function ensurePlaneIcon(){
+  if(!mlMap||(mlMap.hasImage&&mlMap.hasImage('plane')))return;
+  const s=26,cv=document.createElement('canvas');cv.width=cv.height=s;const x=cv.getContext('2d');
+  x.font='19px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';x.textAlign='center';x.textBaseline='middle';
+  x.fillText('✈️',s/2,s/2+1);
+  try{mlMap.addImage('plane',{width:s,height:s,data:x.getImageData(0,0,s,s).data});}catch(e){}
+}
 // Build a runway icon for MapLibre symbol layers (drawn synchronously on a canvas).
 function ensureRunwayIcon(){
   if(!mlMap||(mlMap.hasImage&&mlMap.hasImage('runway')))return;
@@ -1332,14 +1487,17 @@ const oaData={};   // name -> fetched points (cache)
 const lfFeatureGroups={};
 function renderFeatures(name,pts){
   const cfg=FEATURE_LAYERS[name];
-  const emoji=name==='obstacles'?'🗼 ':name==='airports'?'🛩 ':'🌡 ';
+  const emoji=name==='obstacles'?'🗼 ':name==='airports'?'✈ ':'🌡 ';
   if(useMapLibre&&mlMap){
     const fc={type:'FeatureCollection',features:pts.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{label:p.name||'',sid:p.id||''}}))};
     const src='oa-'+name;
     if(mlMap.getSource(src)){mlMap.getSource(src).setData(fc);return;}
     mlMap.addSource(src,{type:'geojson',data:fc});
-    if(cfg.marker==='runway'||cfg.marker==='vane'||cfg.marker==='tower'){
-      cfg.marker==='runway'?ensureRunwayIcon():cfg.marker==='vane'?ensureVaneIcon():ensureTowerIcon();
+    if(cfg.marker==='windsock'){
+      ensureSockIcons();
+      mlMap.addLayer({id:src+'-c',type:'symbol',source:src,layout:WX_SOCK_LAYOUT});
+    }else if(cfg.marker==='runway'||cfg.marker==='vane'||cfg.marker==='tower'||cfg.marker==='plane'){
+      cfg.marker==='runway'?ensureRunwayIcon():cfg.marker==='vane'?ensureVaneIcon():cfg.marker==='plane'?ensurePlaneIcon():ensureTowerIcon();
       const lay={'icon-image':cfg.marker,'icon-size':1,'icon-allow-overlap':true};
       if(cfg.marker==='tower')lay['icon-anchor']='bottom';   // the base dot sits on the location
       mlMap.addLayer({id:src+'-c',type:'symbol',source:src,layout:lay});
@@ -1363,7 +1521,8 @@ function renderFeatures(name,pts){
     lfFeatureGroups[name]=L.layerGroup(pts.map(p=>{
       let mk;
       if(cfg.marker==='runway')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:RUNWAY_SVG,className:'',iconSize:[22,22],iconAnchor:[11,11]})});
-      else if(cfg.marker==='vane')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[26,26],iconAnchor:[5,23],popupAnchor:[7,-26]})});
+      else if(cfg.marker==='plane')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:'<div style="font-size:18px;line-height:1;text-shadow:0 0 2px rgba(0,0,0,.5);">✈️</div>',className:'',iconSize:[22,22],iconAnchor:[11,11]})});
+      else if(cfg.marker==='vane'||cfg.marker==='windsock')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[26,26],iconAnchor:[5,23],popupAnchor:[7,-26]})});
       else if(cfg.marker==='tower')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:TOWER_SVG,className:'',iconSize:[24,28],iconAnchor:[12,27],popupAnchor:[0,-26]})});
       else mk=L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:1.5,fillColor:cfg.color,fillOpacity:0.9});
       if(name==='wx'){mk.bindPopup('<div class="wxpop"><div class="wxpop-h">🌡 '+(p.name||'Station')+'</div><div class="wxpop-na">Loading…</div></div>');mk.on('click',()=>fetchStationObs(p.id).then(o=>mk.setPopupContent(obsHTML(p.name||'Station',o,p.id))));}
@@ -1392,6 +1551,7 @@ async function toggleFeatureLayer(name,on){
   const needRender=(useMapLibre&&mlMap&&!mlMap.getSource('oa-'+name))||(!useMapLibre&&lfMap&&!lfFeatureGroups[name]);
   if(needRender)renderFeatures(name,oaData[name]);
   setFeatureVisible(name,true);
+  if(name==='wx'&&useMapLibre&&mlMap){bindWxRefresh();enrichWxWind();}   // live windsocks: sample model wind for in-view stations
 }
 // ── TFRs (Temporary Flight Restrictions) ──────────────────────────────────────
 // LIVE feed: our Supabase Edge Function proxies tfr.faa.gov (which sends no CORS headers) and
@@ -2143,20 +2303,37 @@ function toggleGlide(id,btn){
   const ctl=btn.parentNode.querySelector('.ppglide-ctl');
   if(glideState.id===id){glideState.id=null;clearGlide();hideGlideMobile();btn.textContent='🎯 Show glide range';if(ctl)ctl.style.display='none';return;}
   glideState.id=id;drawGlide(site);btn.textContent='🎯 Hide glide range';if(ctl)ctl.style.display='block';
-  // Mobile: slide the detail panel out of the way so the map (and cone) is visible, and float
-  // the glide-ratio slider over the map so it stays usable.
-  if(isMobileView()){stashSidebar();showGlideMobile(id);}
+  // Mobile: slide the detail panel out of the way so the map (and cone) is visible. stashSidebar
+  // floats the vertical glide-ratio scroller (since glideState.id is now set).
+  if(isMobileView())stashSidebar();
 }
-// Floating glide-ratio slider for mobile, shown while the detail panel is stashed.
+// Floating vertical glide-ratio scroller for mobile, docked on the right while the panel is stashed.
 function showGlideMobile(id){
   hideGlideMobile();
   const wrap=document.getElementById('map-wrap')||document.body;
   const d=document.createElement('div');d.id='glide-mobile';
-  d.style.cssText='position:absolute;bottom:92px;left:50%;transform:translateX(-50%);z-index:702;display:flex;align-items:center;gap:10px;background:rgba(15,23,42,.92);color:#e2e8f0;border-radius:22px;padding:10px 16px;box-shadow:0 3px 14px rgba(0,0,0,.42);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-size:13px;font-weight:700;max-width:92vw;';
-  d.innerHTML=`<span style="white-space:nowrap;">🎯 <b class="gr-val">${glideState.gr}</b>:1</span><input type="range" min="4" max="12" step="0.5" value="${glideState.gr}" oninput="setGlideRatio('${id}',this.value)" style="width:140px;"><button onclick="reopenSidebar();hideGlideMobile();" style="border:none;background:#22c55e;color:#fff;border-radius:14px;padding:6px 12px;font-weight:800;cursor:pointer;">✓ Done</button>`;
+  d.innerHTML=`<span class="gm-lbl">🎯 <b class="gr-val">${glideState.gr}</b>:1</span><input class="gm-range" type="range" min="4" max="12" step="0.5" value="${glideState.gr}" oninput="setGlideRatio('${id}',this.value)"><button class="gm-done" onclick="reopenSidebar()">✓</button>`;
   wrap.appendChild(d);
+  positionReopenBtn();
 }
 function hideGlideMobile(){const d=document.getElementById('glide-mobile');if(d)d.remove();}
+// Place the "Details" reopen button: a square just above the glide scroller when it's showing,
+// otherwise its default bottom-right corner (see CSS).
+function positionReopenBtn(){
+  const r=document.getElementById('sb-reopen');if(!r)return;
+  const g=document.getElementById('glide-mobile');
+  if(g){
+    const wrapEl=document.getElementById('map-wrap')||document.body;
+    const gr=g.getBoundingClientRect(),wr=wrapEl.getBoundingClientRect();
+    r.classList.add('reopen-glide');
+    r.style.left='auto';r.style.bottom='auto';
+    r.style.right=(wr.right-gr.right)+'px';
+    r.style.top=(gr.top-wr.top-56)+'px';   // 48px square + 8px gap above the scroller
+  }else{
+    r.classList.remove('reopen-glide');
+    r.style.top='';r.style.right='';r.style.bottom='';r.style.left='';
+  }
+}
 function setGlideRatio(id,v){
   glideState.gr=parseFloat(v);
   document.querySelectorAll('.gr-val').forEach(el=>el.textContent=glideState.gr);
@@ -2166,6 +2343,12 @@ function setGlideRatio(id,v){
 // Weather-model selector that sits next to the in-sidebar "2-Week Forecast" heading.
 // The whole 2-week section is mobile-only (hidden ≥769px), so this dropdown only appears on mobile.
 function fcModelSelectHTML(){return`<select class="pp-fc-model" title="Weather model" onchange="siteMenuModel(this.value,this)">${WX_MODELS.map(([v,l])=>`<option value="${v}"${v===currentModel?' selected':''}>${l}</option>`).join('')}<option value="__compare__">⚖ Compare models</option></select>`;}
+// Weather-altitude slider for a site popup: drives the global windAlt so the forecast Wind row
+// (and wind overlay) show winds aloft. Initialised to the current altitude so it reflects state.
+function windAltSliderHTML(){
+  const lbl=windAlt?windAlt.toLocaleString()+' ft':'Surface';
+  return`<div class="pp-walt"><div class="lr" style="justify-content:space-between;margin:0 0 3px;">🌬 Weather altitude<b id="walt-val" style="color:#0369a1;">${lbl}</b></div><input type="range" id="walt-slider" min="0" max="18000" step="1000" value="${windAlt}" oninput="setWindAlt(this.value)" style="width:100%;margin:0;accent-color:#0369a1;"/></div>`;
+}
 // Red "NO FLY" pill shown beside a site name when it sits inside an active TFR.
 function tfrFlagHTML(site){
   if(!site||!site.inTFR)return '';
@@ -2181,13 +2364,28 @@ const HODO_LVLS=[{v:'10m',lbl:'Sfc'},{v:'925hPa',lbl:'2.5k'},{v:'850hPa',lbl:'4.
 function windAloftHTML(site){
   return`<div class="ppwa"><button class="flybtn" id="wabtn-${site.id}" onclick="loadWindAloft('${site.id}',this)">🌀 Wind aloft &amp; rose</button><div class="ppwa-body" id="wabody-${site.id}" style="display:none;"></div></div>`;
 }
+function toggleWaInfo(id){const el=document.getElementById('wainfo-'+id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
+// The ⓘ button (top-right of the open dropdown) + the collapsible "how to read" panel.
+function waControlsHTML(id){
+  return`<button class="wa-info-btn" title="How to read these charts" aria-label="How to read these charts" onclick="toggleWaInfo('${id}')">i</button><div class="wa-info" id="wainfo-${id}" style="display:none;"><b>How to read these charts</b><br><br><b>🌀 Wind aloft (hodograph):</b> each dot is the wind at a different height above launch. Dots near the centre are light; farther out is stronger (dashed rings = 10&nbsp;mph steps), and a dot's position marks the direction that wind blows <i>from</i>. Dots in a straight line = steady wind all the way up; a curving line = the wind turns as you climb (shear &amp; drift — expect more bumps and cross-country push).<br><br><b>🧭 Wind rose:</b> which directions the daytime surface wind blew from today. Each spoke is a compass direction; a longer spoke = more hours from that way, and its colour = average speed. The ● dot marks this launch's facing — you want the wind arriving from near that dot.</div>`;
+}
+// Per-site cache of the last good wind-aloft result, so there's always something to show when the
+// weather API rate-limits us (out of free pulls) or a request fails.
+const WA_CACHE_KEY='skylab_wacache_v1';
+function waLoadCache(){try{return JSON.parse(localStorage.getItem(WA_CACHE_KEY)||'{}')||{};}catch(e){return{};}}
+function waSaveCache(id,levels,rose){try{const c=waLoadCache();c[id]={levels,rose,ts:Date.now()};localStorage.setItem(WA_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+function waChartsHTML(id,site,levels,rose,ts){
+  const stamp=ts?`<div class="wa-sub" style="text-align:center;margin-top:7px;opacity:.85;">📦 Saved data from ${ageStr(ts)} ago — live update unavailable right now (weather API limit).</div>`:'';
+  return waControlsHTML(id)+`<div class="wa-grid"><div class="wa-cell"><div class="wa-cap">Wind aloft now</div>${hodographSVG(levels)}<div class="wa-sub">Each dot = wind at that height. A curving line means direction shifts with altitude (drift &amp; shear).</div></div><div class="wa-cell"><div class="wa-cap">Today's wind rose</div>${windRoseSVG(rose,site)}<div class="wa-sub">Daytime surface wind by direction; longer = more hours, color = avg speed. ● = launch facing (${d2c(site.facing)}).</div></div></div>`+stamp;
+}
 async function loadWindAloft(id,btn){
   const site=LAUNCHES.find(s=>s.id===id);if(!site)return;
   const body=document.getElementById('wabody-'+id);if(!body)return;
   if(body.style.display!=='none'){body.style.display='none';btn.innerHTML='🌀 Wind aloft &amp; rose';return;}
   body.style.display='block';btn.innerHTML='🌀 Hide wind aloft';
   if(body.dataset.loaded)return;
-  body.innerHTML='<div class="nb-load" style="padding:8px;">Loading winds…</div>';
+  body.innerHTML=waControlsHTML(id)+'<div class="nb-load" style="padding:8px;">Loading winds…</div>';
+  const cached=waLoadCache()[id]||null;
   try{
     const cur=HODO_LVLS.map(l=>`wind_speed_${l.v},wind_direction_${l.v}`).join(',');
     // No &models → Open-Meteo best_match, so every pressure level is always available.
@@ -2199,9 +2397,18 @@ async function loadWindAloft(id,btn){
     const srH=sr?hourOf(sr):8, ssH=ss?hourOf(ss):19;
     const rose=Array.from({length:16},()=>({n:0,sum:0}));
     if(h.time)h.time.forEach((t,i)=>{const hr=+t.slice(11,13);if(hr<srH||hr>ssH)return;const sp=h.wind_speed_10m[i],dr=h.wind_direction_10m[i];if(sp==null||dr==null)return;const sec=Math.round(dr/22.5)%16;rose[sec].n++;rose[sec].sum+=sp;});
-    body.innerHTML=`<div class="wa-grid"><div class="wa-cell"><div class="wa-cap">Wind aloft now</div>${hodographSVG(levels)}<div class="wa-sub">Each dot = wind at that height. A curving line means direction shifts with altitude (drift &amp; shear).</div></div><div class="wa-cell"><div class="wa-cap">Today's wind rose</div>${windRoseSVG(rose,site)}<div class="wa-sub">Daytime surface wind by direction; longer = more hours, color = avg speed. ● = launch facing (${d2c(site.facing)}).</div></div></div>`;
+    if(!levels.length&&!rose.some(s=>s.n))throw new Error('no data');   // rate-limited / empty → fall back to cache
+    waSaveCache(id,levels,rose);
+    body.innerHTML=waChartsHTML(id,site,levels,rose,null);
     body.dataset.loaded='1';
-  }catch(e){body.innerHTML='<div class="wa-sub" style="text-align:center;padding:6px;">Couldn’t load winds aloft.</div>';}
+  }catch(e){
+    if(cached&&cached.levels){                        // show the last good result instead of an error
+      body.innerHTML=waChartsHTML(id,site,cached.levels,cached.rose,cached.ts);
+      body.dataset.loaded='1';
+    }else{
+      body.innerHTML=waControlsHTML(id)+'<div class="wa-sub" style="text-align:center;padding:6px;">Couldn’t load winds aloft — no saved data yet. Try again shortly (the weather API may be rate-limited).</div>';
+    }
+  }
 }
 function hodographSVG(levels){
   if(!levels.length)return'<div class="wa-sub">No data.</div>';
@@ -2250,6 +2457,35 @@ function tzOffMin(date){
 function denverUTC(y,mo,da,mins){const guess=Date.UTC(y,mo-1,da,0,mins);return new Date(guess-tzOffMin(new Date(guess))*60000);}
 function offsetLL(lat,lon,brgDeg,distM){const latR=lat*Math.PI/180,b=brgDeg*Math.PI/180;return[lat+(distM*Math.cos(b))/111320,lon+(distM*Math.sin(b))/(111320*Math.cos(latR))];}
 async function elevBatch(coords){const out=[];for(let i=0;i<coords.length;i+=90){const part=await getGroundElevs(coords.slice(i,i+90));if(!part||!part.length)return null;out.push(...part);}return out;}
+// Cache the per-site terrain horizon so sun/shade still works when the elevation API is
+// rate-limited. The horizon (ridge angles around the launch) never changes, so once we've
+// sampled it we can recompute the whole day's sun timing locally — no API needed.
+const SHADE_CACHE_KEY='skylab_shadecache_v1';
+function shadeLoadCache(){try{return JSON.parse(localStorage.getItem(SHADE_CACHE_KEY)||'{}')||{};}catch(e){return{};}}
+function shadeSaveCache(id,horizon){try{const c=shadeLoadCache();c[id]={horizon,ts:Date.now()};localStorage.setItem(SHADE_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+// Render the sun/shade panel for TODAY from a horizon profile (fresh or cached).
+function renderShade(body,site,horizon,AZ0,AZ1,STEP,cachedTs){
+  const dp=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).reduce((a,x)=>{a[x.type]=x.value;return a;},{});
+  const Y=+dp.year,MO=+dp.month,DA=+dp.day,nAz=horizon.length;
+  const horizonAt=az=>{if(az<AZ0||az>AZ1)return 0;const f=(az-AZ0)/STEP,i=Math.floor(f),t=f-i;return(horizon[i]||0)+((horizon[Math.min(nAz-1,i+1)]||0)-(horizon[i]||0))*t;};
+  const litAt=mins=>{const s=sunPos(denverUTC(Y,MO,DA,mins),site.lat,site.lon);return s.el>0.5&&s.el>horizonAt(s.az)+0.4;};
+  const elAt=mins=>sunPos(denverUTC(Y,MO,DA,mins),site.lat,site.lon).el;
+  let srise=null,sset=null;for(let m=240;m<=1300;m+=2){if(elAt(m)>0){if(srise==null)srise=m;sset=m;}}
+  const fmt=m=>{let h=Math.floor(m/60),mi=Math.round(m%60),ap=h<12?'a':'p',hh=h%12||12;return hh+':'+(mi<10?'0':'')+mi+ap;};
+  const stamp=cachedTs?`<div class="sun-note">📦 Using saved terrain data from ${ageStr(cachedTs)} ago — the elevation service is unavailable right now (sun timing is still exact).</div>`:'';
+  if(srise==null){body.innerHTML='<div class="sun-note">Sun stays below the horizon today.</div>'+stamp;body.dataset.loaded='1';return;}
+  let litS=null,litE=null,litMin=0;for(let m=srise;m<=sset;m+=4)if(litAt(m)){if(litS==null)litS=m;litE=m;litMin+=4;}
+  let bar='';const W=200,segs=120;for(let k=0;k<segs;k++){const m=srise+(sset-srise)*k/segs,x=(k/segs)*W;bar+=`<rect x="${x.toFixed(1)}" y="0" width="${(W/segs+0.6).toFixed(1)}" height="14" fill="${litAt(m)?'#fbbf24':'#475569'}"/>`;}
+  let stats;
+  if(litS==null){stats='<div class="sun-note">⛰ This launch sits in terrain shadow all day — surrounding ridges block direct sun, so expect weak or no thermals.</div>';}
+  else{
+    const allDay=litS<=srise+6&&litE>=sset-6,hrs=Math.floor(litMin/60),mns=litMin%60;
+    stats=`<div class="sun-row"><div class="sun-stat"><div class="sun-stat-l">☀ Sun hits</div><div class="sun-stat-v">${fmt(litS)}</div></div><div class="sun-stat"><div class="sun-stat-l">🌑 Shades over</div><div class="sun-stat-v">${fmt(litE)}</div></div><div class="sun-stat"><div class="sun-stat-l">Direct sun</div><div class="sun-stat-v">${hrs}h ${mns}m</div></div></div>`+
+      (allDay?'':`<div class="sun-note">${litS>srise+6?`Eastern terrain delays sun on launch ~${Math.round(litS-srise)} min past sunrise. `:''}${litE<sset-6?`Western ridges shade the launch ~${Math.round(sset-litE)} min before sunset.`:''}</div>`);
+  }
+  body.innerHTML=stats+`<svg viewBox="0 0 200 14" preserveAspectRatio="none" width="100%" height="14" style="border-radius:4px;margin-top:6px;display:block;">${bar}</svg><div class="sun-bar-lbl"><span>🌅 ${fmt(srise)}</span><span>🌇 ${fmt(sset)}</span></div><div class="sun-note">🔥 Thermals usually build ~1–2 h after the launch is lit and fade within ~30–60 min of it falling into shade.</div>`+stamp;
+  body.dataset.loaded='1';
+}
 async function loadShadeTiming(id,btn){
   const site=LAUNCHES.find(s=>s.id===id);if(!site)return;
   const body=document.getElementById('sunbody-'+id);if(!body)return;
@@ -2257,34 +2493,21 @@ async function loadShadeTiming(id,btn){
   body.style.display='block';btn.innerHTML='☀ Hide sun &amp; shade';
   if(body.dataset.loaded)return;
   body.innerHTML='<div class="nb-load" style="padding:8px;">Computing terrain shadows…</div>';
+  const AZ0=45,AZ1=315,STEP=6,DIST=[250,500,1000,2000,4000,7000];
   try{
-    const dp=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).reduce((a,x)=>{a[x.type]=x.value;return a;},{});
-    const Y=+dp.year,MO=+dp.month,DA=+dp.day;
-    const AZ0=45,AZ1=315,STEP=6,DIST=[250,500,1000,2000,4000,7000];
     const coords=[[site.lat,site.lon]],meta=[];
     for(let az=AZ0;az<=AZ1;az+=STEP)for(const dM of DIST){const[la,lo]=offsetLL(site.lat,site.lon,az,dM);coords.push([la,lo]);meta.push({az,dM});}
     const elev=await elevBatch(coords);
     if(!elev||!elev.length)throw 0;
     const launchE=elev[0],nAz=Math.round((AZ1-AZ0)/STEP)+1,horizon=new Array(nAz).fill(0);
     meta.forEach((m,i)=>{const e=elev[i+1];if(e==null)return;const ang=Math.atan2(e-launchE,m.dM)*180/Math.PI,idx=Math.round((m.az-AZ0)/STEP);if(ang>horizon[idx])horizon[idx]=ang;});
-    const horizonAt=az=>{if(az<AZ0||az>AZ1)return 0;const f=(az-AZ0)/STEP,i=Math.floor(f),t=f-i;return(horizon[i]||0)+((horizon[Math.min(nAz-1,i+1)]||0)-(horizon[i]||0))*t;};
-    const litAt=mins=>{const s=sunPos(denverUTC(Y,MO,DA,mins),site.lat,site.lon);return s.el>0.5&&s.el>horizonAt(s.az)+0.4;};
-    const elAt=mins=>sunPos(denverUTC(Y,MO,DA,mins),site.lat,site.lon).el;
-    let srise=null,sset=null;for(let m=240;m<=1300;m+=2){if(elAt(m)>0){if(srise==null)srise=m;sset=m;}}
-    const fmt=m=>{let h=Math.floor(m/60),mi=Math.round(m%60),ap=h<12?'a':'p',hh=h%12||12;return hh+':'+(mi<10?'0':'')+mi+ap;};
-    if(srise==null){body.innerHTML='<div class="sun-note">Sun stays below the horizon today.</div>';body.dataset.loaded='1';return;}
-    let litS=null,litE=null,litMin=0;for(let m=srise;m<=sset;m+=4)if(litAt(m)){if(litS==null)litS=m;litE=m;litMin+=4;}
-    let bar='';const W=200,segs=120;for(let k=0;k<segs;k++){const m=srise+(sset-srise)*k/segs,x=(k/segs)*W;bar+=`<rect x="${x.toFixed(1)}" y="0" width="${(W/segs+0.6).toFixed(1)}" height="14" fill="${litAt(m)?'#fbbf24':'#475569'}"/>`;}
-    let stats;
-    if(litS==null){stats='<div class="sun-note">⛰ This launch sits in terrain shadow all day — surrounding ridges block direct sun, so expect weak or no thermals.</div>';}
-    else{
-      const allDay=litS<=srise+6&&litE>=sset-6,hrs=Math.floor(litMin/60),mns=litMin%60;
-      stats=`<div class="sun-row"><div class="sun-stat"><div class="sun-stat-l">☀ Sun hits</div><div class="sun-stat-v">${fmt(litS)}</div></div><div class="sun-stat"><div class="sun-stat-l">🌑 Shades over</div><div class="sun-stat-v">${fmt(litE)}</div></div><div class="sun-stat"><div class="sun-stat-l">Direct sun</div><div class="sun-stat-v">${hrs}h ${mns}m</div></div></div>`+
-        (allDay?'':`<div class="sun-note">${litS>srise+6?`Eastern terrain delays sun on launch ~${Math.round(litS-srise)} min past sunrise. `:''}${litE<sset-6?`Western ridges shade the launch ~${Math.round(sset-litE)} min before sunset.`:''}</div>`);
-    }
-    body.innerHTML=stats+`<svg viewBox="0 0 200 14" preserveAspectRatio="none" width="100%" height="14" style="border-radius:4px;margin-top:6px;display:block;">${bar}</svg><div class="sun-bar-lbl"><span>🌅 ${fmt(srise)}</span><span>🌇 ${fmt(sset)}</span></div><div class="sun-note">🔥 Thermals usually build ~1–2 h after the launch is lit and fade within ~30–60 min of it falling into shade.</div>`;
-    body.dataset.loaded='1';
-  }catch(e){body.innerHTML='<div class="wa-sub" style="text-align:center;padding:6px;">Couldn’t compute shadows (terrain data unavailable).</div>';}
+    shadeSaveCache(id,horizon);
+    renderShade(body,site,horizon,AZ0,AZ1,STEP,null);
+  }catch(e){
+    const cached=shadeLoadCache()[id];
+    if(cached&&cached.horizon&&cached.horizon.length){renderShade(body,site,cached.horizon,AZ0,AZ1,STEP,cached.ts);}
+    else{body.innerHTML='<div class="wa-sub" style="text-align:center;padding:6px;">Couldn’t compute shadows — no saved data yet (terrain service may be rate-limited). Try again shortly.</div>';}
+  }
 }
 function launchPop(site,w){
   const s=w?flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir):'caution';
@@ -2292,12 +2515,12 @@ function launchPop(site,w){
   const bio=siteBioHTML(site);
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}${windAltSliderHTML()}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
   const bioHTML=lzBio?`<div class="ppbio"><div class="ppbio-h">📋 About this LZ</div><p>${lzBio}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}${tfrFlagHTML(site)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · Landing Zone</div>${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${shareBtnHTML(site.id)}${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}${tfrFlagHTML(site)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · Landing Zone</div>${wxG(w)}${windAltSliderHTML()}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${shareBtnHTML(site.id)}${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
 }
 
 // ── 3D mini-map thumbnail (popup) ─────────────────────────────────────────────
@@ -2384,7 +2607,7 @@ let currentBase='streets';   // active basemap — drives wind-line contrast (li
 function setBaseLayer(name){
   currentBase=name;
   if(useMapLibre&&mlMap){
-    ['sat','topo'].forEach(id=>{try{mlMap.setLayoutProperty(id,'visibility',name===id?'visible':'none');}catch(e){}});
+    ['sat','topo','terrainbase'].forEach(id=>{try{mlMap.setLayoutProperty(id,'visibility',name===id?'visible':'none');}catch(e){}});
   }else if(lfMap){
     Object.values(lfBaseLayers).forEach(l=>{try{lfMap.removeLayer(l);}catch(e){}});
     const l=lfBaseLayers[name]||lfBaseLayers.streets;if(l){l.addTo(lfMap);try{l.bringToBack();}catch(e){}}
@@ -2626,12 +2849,29 @@ async function openModelCompare(){
 }
 function renderModelCompare(){
   const body=document.getElementById('cmp-body');if(body)body.innerHTML=compareGridHTML();
+  positionCmpNowLines();positionCmpSelBar();
+}
+// Slide the single selection rectangle over the chosen column (one long box, not per-cell outlines).
+function positionCmpSelBar(){
+  const i=cmpAxis.indexOf(cmpSelT);const show=(cmpSelT!=null&&i>=0);
+  document.querySelectorAll('.cmp-selbar').forEach(bar=>{
+    if(!show){bar.style.display='none';return;}
+    bar.style.display='';bar.style.left=(70+i*40)+'px';
+  });
+}
+// Double-click the compare scroller → glide back to the current-time column.
+function compareNow(){
+  const sc=document.querySelector('#model-compare .cmp-scroll')||document.querySelector('.cmp-scroll');if(!sc)return;
+  const now=Date.now();let idx=cmpAxis.findIndex(t=>new Date(t).getTime()>=now-30*60*1000);
+  if(idx<0)idx=0;
+  sc.scrollTo({left:Math.max(0,idx*40),behavior:'smooth'});
 }
 // Click a time column → the map pin (and its blades) jump to that forecast hour.
 function pickCmpTime(t){
   cmpSelT=t;
-  document.querySelectorAll('#model-compare .cmp-c.cmp-tsel').forEach(c=>c.classList.remove('cmp-tsel'));
-  document.querySelectorAll('#model-compare .cmp-c[data-t="'+t+'"]').forEach(c=>c.classList.add('cmp-tsel'));
+  document.querySelectorAll('.cmp-c.cmp-tsel').forEach(c=>c.classList.remove('cmp-tsel'));
+  document.querySelectorAll('.cmp-c[data-t="'+t+'"]').forEach(c=>c.classList.add('cmp-tsel'));
+  positionCmpSelBar();
   if(!rocketOn){rocketOn=true;const rb=document.getElementById('rocket-btn');if(rb){rb.classList.add('active');rb.textContent='📍 Hide map pin';}}
   drawRocket();
   const d=new Date(t),hr=d.getHours(),ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
@@ -2641,9 +2881,9 @@ function pickCmpTime(t){
 function compareGridHTML(){
   if(!cmpAxis.length||!cmpData)return '<div class="cmp-load">No model data right now (rate-limited?). Try again shortly.</div>';
   let hdr='<div class="cmp-row cmp-head"><div class="cmp-lbl"></div>';
-  let lastDay='';
+  let lastDay='';const newDaySet=new Set();
   cmpAxis.forEach(t=>{const d=new Date(t),hr=d.getHours();const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
-    const dk=FC_DAYS[d.getDay()].slice(0,3)+' '+d.getDate();const nd=dk!==lastDay;lastDay=dk;
+    const dk=FC_DAYS[d.getDay()].slice(0,3)+' '+d.getDate();const nd=dk!==lastDay;lastDay=dk;if(nd)newDaySet.add(t);
     hdr+=`<div class="cmp-c cmp-h${nd?' cmp-newday':''}${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')">${nd?`<b>${dk}</b><br>`:''}${ap}</div>`;});
   hdr+='</div>';
   let rows='';
@@ -2656,14 +2896,20 @@ function compareGridHTML(){
     const grad=cmpAxis.map((t,i)=>{const e=r.byTime[t];const c=e?windColor(e.wind):last;last=c;return`${c} ${(((i+0.5)/n)*100).toFixed(2)}%`;}).join(',');
     const rowStyle=has?` style="background:linear-gradient(to right,${grad})"`:'';
     rows+=`<div class="cmp-row cmp-grad"${rowStyle}><div class="cmp-lbl">${r.label}${has?'':' <span style="opacity:.5">—</span>'}</div>`;
-    cmpAxis.forEach(t=>{const e=r.byTime[t];
-      if(!e){rows+=`<div class="cmp-c cmp-empty${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')"></div>`;return;}
-      rows+=`<div class="cmp-c${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')">${cmpDirCell(e,t)}<span class="cmp-w">${cvWind(e.wind)}</span><span class="cmp-g">${cvWind(e.gust)}</span></div>`;});
+    cmpAxis.forEach(t=>{const e=r.byTime[t];const nd=newDaySet.has(t)?' cmp-newday':'';
+      if(!e){rows+=`<div class="cmp-c cmp-empty${nd}${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')"></div>`;return;}
+      rows+=`<div class="cmp-c${nd}${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')">${cmpDirCell(e,t)}<span class="cmp-w">${cvWind(e.wind)}</span><span class="cmp-g">${cvWind(e.gust)}</span></div>`;});
     rows+='</div>';
   });
-  const hasWin=!!(fcTarget&&fcTarget.site&&fcTarget.site.facing!=null);
-  return '<div class="cmp-scroll"><div class="cmp-grid">'+hdr+rows+'</div></div>'+
-    `<div class="cmp-foot">Top number = wind, bottom = gust (${windU()}) · colour = speed · arrow points the way the wind blows${hasWin?' · wedge = this launch’s allowable wind window (green ok / yellow marginal / red no-go)':''}</div>`;
+  // Live "current time" bar, same idea as the forecast: a red vertical line placed at the exact
+  // minute. Columns are 40px wide and start at the .cmp-lbl (70px sticky) offset.
+  const t0=new Date(cmpAxis[0]).getTime();
+  const nowX=70+(((Date.now()-t0)/3600000)+0.5)*40;
+  const gridW=70+n*40;
+  const nowLine=`<div class="cmp-nowline" data-t0="${t0}" style="left:${nowX.toFixed(1)}px;${(nowX<70||nowX>gridW)?'display:none;':''}"></div>`;
+  const selI=cmpAxis.indexOf(cmpSelT);
+  const selBar=`<div class="cmp-selbar" style="left:${(70+(selI<0?0:selI)*40)}px;${selI<0?'display:none;':''}"></div>`;
+  return '<div class="cmp-scroll" ondblclick="compareNow()" title="Double-click to jump back to the current time"><div class="cmp-grid">'+hdr+rows+nowLine+selBar+'</div></div>';
 }
 // Render the comparison inline inside a site menu's 2-Week-Forecast slot (mobile).
 async function openSiteCompare(wrap){
@@ -2674,11 +2920,14 @@ async function openSiteCompare(wrap){
   // The menu may have been closed/replaced while fetching — re-check it's still in the DOM.
   if(!wrap.isConnected)return;
   wrap.innerHTML=compareGridHTML();
+  positionCmpNowLines();positionCmpSelBar();
 }
 // Model dropdown inside a site menu: real models reload the 2-week forecast; "Compare" renders inline.
 function siteMenuModel(m,sel){
   const wrap=sel.closest('.pp')&&sel.closest('.pp').querySelector('.pp-fc-wrap');
-  if(m==='__compare__'){openSiteCompare(wrap);return;}
+  // Keep the dropdown showing "⚖ Compare models" (and resize it to fit that word, so it doesn't
+  // stay clamped to the previous model's narrow width and squash the text into a vertical "H R R R").
+  if(m==='__compare__'){sel.value='__compare__';fitModelSelect(sel);openSiteCompare(wrap);return;}
   if(wrap)wrap.classList.remove('pp-cmp');
   setModel(m);
 }
@@ -2798,6 +3047,11 @@ function renderNow(w,label){
 let fcSeries=[];
 const FC_TARGET_H=14*24;   // aim for ~14 days of hours
 let fcTarget={lat:40.52,lon:-111.87,label:'Salt Lake City',site:null};   // which site the forecast bar is showing
+// True when the forecast is pointed at any site with an allowable-wind facing — real launches AND
+// ad-hoc "fly from here" pins both count. Only "My location" (site null, e.g. the boot-up current-
+// location forecast) fails this, so that's the one case where we drop the Fly/No-Fly verdict +
+// allowable-wind wedge and keep just the plain wind-direction arrow.
+function fcSiteHasWindow(){return !!(fcTarget&&fcTarget.site&&fcTarget.site.facing!=null);}
 function setForecastSite(lat,lon,label,site){
   fcTarget={lat,lon,label,site:site||null};
   // On mobile, expand the forecast strip so the user can see it.
@@ -2969,7 +3223,7 @@ function dirArrowCell(dir){
 // wind arrow) coloured by that hour's fly-status; otherwise fall back to the plain arrow. Cloud/
 // temp aren't part of the model comparison, so pass benign values and let wind/dir/night decide.
 function cmpDirCell(e,t){
-  if(!(fcTarget&&fcTarget.site&&fcTarget.site.facing!=null))return dirArrowCell(e.dir);
+  if(!fcSiteHasWindow())return dirArrowCell(e.dir);
   const hr=new Date(t).getHours();
   const fs=flyS(e.wind,e.gust,0,70,hr,fcTarget.site,e.dir);
   const dc={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[fs];
@@ -3000,9 +3254,10 @@ function buildForecast(container,series,labels){
   let modelRow='';
   mgroups.forEach((g,gi)=>{modelRow+=`<div class="fc-mseg${gi>0?' switch':''}" style="width:calc(var(--fcw) * ${g.count})">${gi>0?'→ ':''}${g.label}</div>`;});
   // data cells (no labels — those live in the static column)
-  const cell=(i,inner,style)=>`<div class="fc-cell${i===nowIdx?' now':''}${series[i].t===windState.time?' wt-sel':''}${series[i].model!==(series[i-1]||{}).model&&i>0?' mswitch':''}" data-t="${series[i].t}"${style?` style="${style}"`:''}>${inner}</div>`;
+  const cell=(i,inner,style)=>`<div class="fc-cell${i===nowIdx?' now':''}${series[i].t===windState.time?' wt-sel':''}${series[i].model!==(series[i-1]||{}).model&&i>0?' mswitch':''}${i>0&&dayCols[i]!==dayCols[i-1]?' fc-newday':''}" data-t="${series[i].t}"${style?` style="${style}"`:''}>${inner}</div>`;
   let hrRow='',skyRow='',tempRow='',rainRow='',windRow='',gustRow='',dirRow='',thermRow='',flyRow='';
   const windVals=[],gustVals=[],flyCols=[];
+  const siteHasWindow=fcSiteHasWindow();   // real flying site → show wedge + Fly/No-Fly; else just the arrow
   series.forEach((e,i)=>{
     const d=new Date(e.t),hr=d.getHours();
     const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
@@ -3018,7 +3273,7 @@ function buildForecast(container,series,labels){
     rainRow+=cell(i,e.pop>=10?e.pop:'');
     windRow+=cell(i,cvWind(wv));
     gustRow+=cell(i,cvWind(e.gust));
-    dirRow+=cell(i,(fcTarget.site&&fcTarget.site.facing!=null)?windDirCellSVG(dv,fcTarget.site,dc):dirArrowCell(dv));
+    dirRow+=cell(i,siteHasWindow?windDirCellSVG(dv,fcTarget.site,dc):dirArrowCell(dv));
     thermRow+=cell(i,thermalBar(e));                   // bar height shows strength
     flyRow+=cell(i,'');
     windVals.push(wv);gustVals.push(e.gust);flyCols.push(dc);
@@ -3038,9 +3293,10 @@ function buildForecast(container,series,labels){
     ['fc-r-wind',windAlt>0?`Wind ${windAlt/1000}k`:`Wind ${windU()}`,windRow,rowGrad(windVals)],
     ['fc-r-gust','Gusts',gustRow,rowGrad(gustVals)],
     ['fc-r-dir',labels.dir,dirRow],
-    ['fc-r-therm','<span title="Thermal strength (climb punch, not ceiling): blends mixing-layer depth, airmass instability (lifted index / CAPE) and time of day. Taller bar = stronger thermals, peaking mid-afternoon. No bar = no thermals (night or overcast)." style="cursor:help;">Thermals</span>',thermRow],
-    ['fc-r-fly','<span title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature." style="cursor:help;text-transform:none;font-size:8.5px;letter-spacing:0;">Fly / No-Fly</span>',flyRow,colGrad(flyCols)]
+    ['fc-r-therm','<span title="Thermal strength (climb punch, not ceiling): blends mixing-layer depth, airmass instability (lifted index / CAPE) and time of day. Taller bar = stronger thermals, peaking mid-afternoon. No bar = no thermals (night or overcast)." style="cursor:help;">Thermals</span>',thermRow]
   ];
+  // Fly / No-Fly only makes sense at a real launch — skip it entirely for "My location" / flat pins.
+  if(siteHasWindow)rows.push(['fc-r-fly','<span title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature." style="cursor:help;text-transform:none;font-size:8.5px;letter-spacing:0;">Fly / No-Fly</span>',flyRow,colGrad(flyCols)]);
   let labelsHTML='',dataHTML='';
   rows.forEach(([cls,lbl,cells,rowStyle])=>{
     labelsHTML+=`<div class="fc-row ${cls}"><div class="fc-lbl">${lbl}</div></div>`;
@@ -3055,6 +3311,14 @@ function buildForecast(container,series,labels){
     const nl=document.createElement('div');nl.className='fc-nowline';dataEl0.appendChild(nl);
     positionNowLine(dataEl0);
     if(!window._nowLineTimer)window._nowLineTimer=setInterval(updateNowLines,30000);
+    // Full-height purple day dividers: one line at each calendar-day boundary, spanning
+    // the whole grid (header rows included) so it reaches the very top of the forecast.
+    const _cw=dataEl0._fcColW;
+    for(let i=1;i<dayCols.length;i++){
+      if(dayCols[i]!==dayCols[i-1]){
+        const dl=document.createElement('div');dl.className='fc-dayline';dl.style.left=(i*_cw)+'px';dataEl0.appendChild(dl);
+      }
+    }
   }
   // wire scroll: keep the now-column near the left, and update the frozen Model name.
   const scroll=container.querySelector('.fc-scroll');
@@ -3088,6 +3352,17 @@ function positionNowLine(dataEl){
   nl.style.display='';nl.style.left=x+'px';
 }
 function updateNowLines(){document.querySelectorAll('.fc-data').forEach(positionNowLine);}
+// Glide the compare grid's "current time" bar (same cadence as the forecast now-line).
+function positionCmpNowLines(){
+  document.querySelectorAll('.cmp-nowline').forEach(nl=>{
+    const t0=parseFloat(nl.dataset.t0);if(!isFinite(t0))return;
+    const grid=nl.parentElement;const gw=grid?grid.scrollWidth:0;
+    const x=70+(((Date.now()-t0)/3600000)+0.5)*40;
+    if(x<70||(gw&&x>gw)){nl.style.display='none';return;}
+    nl.style.display='';nl.style.left=x.toFixed(1)+'px';
+  });
+  if(!window._cmpNowTimer)window._cmpNowTimer=setInterval(positionCmpNowLines,30000);
+}
 // Forecast column → wind overlay time. Re-clicking the active slot returns to live wind.
 // Only responds when the wind layer is already enabled — clicking a time slot should
 // re-time an existing overlay, not pop the wind animation up on its own.
@@ -3184,7 +3459,7 @@ function placeMyLoc(lat,lon,fast,recenter){
 function startLiveTracking(){
   if(geoWatchId!=null||!navigator.geolocation)return;
   geoWatchId=navigator.geolocation.watchPosition(
-    p=>{const la=p.coords.latitude,lo=p.coords.longitude;lastGeo={lat:la,lon:lo};placeMyLoc(la,lo,false,false);},
+    p=>{const la=p.coords.latitude,lo=p.coords.longitude;lastGeo={lat:la,lon:lo};saveLastGeo(la,lo);placeMyLoc(la,lo,false,false);},
     ()=>{},{enableHighAccuracy:true,timeout:20000,maximumAge:1000});
 }
 // Only ever PROMPTS once per session; after that reuse the cached fix (no repeat prompts).
@@ -3203,13 +3478,26 @@ function maybeSetGeoForecast(lat,lon){
 const GEO_ASKED_KEY='updraft_geo_asked_v1';
 function geoEverAsked(){try{return localStorage.getItem(GEO_ASKED_KEY)==='1';}catch(e){return false;}}
 function markGeoAsked(){try{localStorage.setItem(GEO_ASKED_KEY,'1');}catch(e){}}
+// Remember the last known position so repeat visits can jump straight to your area instantly,
+// instead of waiting on a fresh GPS fix before zooming in.
+const GEO_LAST_KEY='updraft_lastgeo_v1';
+function saveLastGeo(la,lo){try{localStorage.setItem(GEO_LAST_KEY,JSON.stringify({la,lo,t:Date.now()}));}catch(e){}}
+function loadLastGeo(){try{const o=JSON.parse(localStorage.getItem(GEO_LAST_KEY)||'null');return(o&&isFinite(o.la)&&isFinite(o.lo))?o:null;}catch(e){return null;}}
+// On boot, snap the map to your cached location the moment it's ready (no permission needed to
+// read a stored coord, so this never prompts). The permission-gated live locate then refines it.
+function seedMapFromCachedGeo(){
+  const g=loadLastGeo();if(!g)return;
+  const mob=window.innerWidth<=768;
+  if(useMapLibre&&mlMap){try{mlMap.jumpTo({center:[g.lo,g.la],zoom:mob?11.5:13.5,pitch:mob?0:45,bearing:0});}catch(e){}}
+  else if(lfMap){try{lfMap.setView([g.la,g.lo],mob?11:13);}catch(e){}}
+}
 function goToMyLocation(fast,force){
   if(lastGeo){placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);return;}
   if((geoAsked&&!force)||!navigator.geolocation)return;   // auto path asks once; the button may force a retry
   geoAsked=true;markGeoAsked();
   // Fast first: a low-accuracy / cached fix returns almost instantly, so the dot + zoom appear right away.
   navigator.geolocation.getCurrentPosition(
-    p=>{lastGeo={lat:p.coords.latitude,lon:p.coords.longitude};placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);},
+    p=>{lastGeo={lat:p.coords.latitude,lon:p.coords.longitude};saveLastGeo(lastGeo.lat,lastGeo.lon);placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);},
     ()=>{},{enableHighAccuracy:false,timeout:9000,maximumAge:600000});
   // Then start continuous high-accuracy tracking so the dot follows you live.
   startLiveTracking();
@@ -3235,7 +3523,7 @@ function directionsURL(lat,lon){
   const apple=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent||'');
   return apple?`https://maps.apple.com/?daddr=${lat},${lon}&dirflg=d`:`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
 }
-let exagOn=true;
+let exagOn=false;
 const DARK_KEY='updraft_dark_v1';
 function applyDark(on){document.body.classList.toggle('dark',on);const b=document.getElementById('dark-btn');if(b){b.textContent=on?'☀️ Light mode':'🌙 Dark mode';b.classList.toggle('active',on);}}
 function toggleDark(){const on=!document.body.classList.contains('dark');applyDark(on);try{localStorage.setItem(DARK_KEY,on?'1':'0');}catch(e){}}
@@ -3565,10 +3853,13 @@ function stashSidebar(){
   const sb=document.getElementById('sidebar');if(!sb.classList.contains('open'))return;
   sb.classList.remove('open');
   const r=document.getElementById('sb-reopen');if(r)r.style.display='flex';
+  if(glideState.id&&glideState.id===currentLaunchId)showGlideMobile(glideState.id);   // re-float the glide scroller if glide range is active for this site
+  positionReopenBtn();
 }
 function reopenSidebar(){
   document.getElementById('sidebar').classList.add('open');
-  const r=document.getElementById('sb-reopen');if(r)r.style.display='none';
+  hideGlideMobile();                                  // the in-panel glide slider takes over; drop the floating scroller
+  const r=document.getElementById('sb-reopen');if(r){r.style.display='none';r.classList.remove('reopen-glide');r.style.top='';r.style.right='';r.style.bottom='';r.style.left='';}
 }
 function showPopup(lat,lon,html){
   destroyMini();
@@ -3593,7 +3884,8 @@ function updatePopup(html){const b=document.getElementById('sb-body');if(b)b.inn
 function closeSidebar(){
   document.getElementById('sidebar').classList.remove('open');
   document.body.classList.remove('popup-open');
-  const r=document.getElementById('sb-reopen');if(r)r.style.display='none';
+  const r=document.getElementById('sb-reopen');if(r){r.style.display='none';r.classList.remove('reopen-glide');r.style.top='';r.style.right='';r.style.bottom='';r.style.left='';}
+  if(glideState.id){glideState.id=null;clearGlide();}   // closing the site clears its glide overlay + stash state
   destroyMini();openPopup=null;clearFlight();currentEditLZ=null;currentLaunchId=null;clearZones();clearLZHighlight();lockAllPins();hideMobileAction();hideGlideMobile();clearNearWx();
   // Leave the top weather panel on the last selected spot (no revert to the regional default).
   if(useMapLibre&&mlMap){try{mlMap.easeTo({padding:{right:0,left:0,top:0,bottom:0},duration:400});}catch(e){}}
@@ -3624,8 +3916,18 @@ function setupSidebarSwipe(){
   const end=e=>{
     if(!active)return;active=false;
     const t=e.changedTouches&&e.changedTouches[0],dx=t?t.clientX-sx:0;
-    sb.style.transition='';sb.style.transform='';
-    if(dragging&&dx>80)closeSidebar();
+    const SPRING='transform .28s cubic-bezier(.22,.61,.36,1)';
+    if(dragging&&dx>80){
+      // Glide the panel the rest of the way off to the right, THEN leave — no snap-back flash.
+      // If glide range is active, re-stash (so the vertical scroller returns) instead of closing.
+      const w=sb.offsetWidth||window.innerWidth;
+      sb.style.transition=SPRING;sb.style.transform='translateX('+w+'px)';
+      setTimeout(()=>{if(glideState.id&&glideState.id===currentLaunchId){stashSidebar();}else{closeSidebar();}sb.style.transition='';sb.style.transform='';},280);
+    }else{
+      // Not far enough — spring smoothly back into place.
+      sb.style.transition=SPRING;sb.style.transform='translateX(0)';
+      setTimeout(()=>{sb.style.transition='';sb.style.transform='';},280);
+    }
   };
   sb.addEventListener('touchend',end,{passive:true});
   sb.addEventListener('touchcancel',()=>{active=false;sb.style.transition='';sb.style.transform='';},{passive:true});
@@ -3667,13 +3969,15 @@ function initMapLibre(timeoutMs){
         clearTimeout(timeout);
         // Add terrain
         m.addSource('terrain',{type:'raster-dem',url:DEM_URL,tileSize:512});
-        try{m.setTerrain({source:'terrain',exaggeration:1.5});}catch(e){}
+        try{m.setTerrain({source:'terrain',exaggeration:exagOn?1.5:1});}catch(e){}
         m.addLayer({id:'hillshade',type:'hillshade',source:'terrain',paint:{'hillshade-shadow-color':'rgba(40,20,5,0.4)','hillshade-exaggeration':0.5}});
         // Base map rasters (hidden until chosen) sit BELOW hillshade so terrain shading drapes them.
         m.addSource('sat',{type:'raster',tiles:[TILES.sat],tileSize:256,attribution:'Imagery © Esri'});
         m.addLayer({id:'sat',type:'raster',source:'sat',layout:{visibility:'none'}},'hillshade');
         m.addSource('topo',{type:'raster',tiles:[TILES.topo],tileSize:256,maxzoom:16,attribution:'USGS'});
         m.addLayer({id:'topo',type:'raster',source:'topo',layout:{visibility:'none'}},'hillshade');
+        m.addSource('terrainbase',{type:'raster',tiles:TILES.terrainbase,tileSize:256,maxzoom:17,attribution:'© OpenTopoMap (CC-BY-SA)'});
+        m.addLayer({id:'terrainbase',type:'raster',source:'terrainbase',layout:{visibility:'none'}},'hillshade');
         // VFR sectional overlay rides on top, semi-transparent.
         m.addSource('sectional',{type:'raster',tiles:[TILES.sectional],tileSize:256,maxzoom:11,attribution:'FAA / Esri'});
         m.addLayer({id:'sectional',type:'raster',source:'sectional',layout:{visibility:'none'},paint:{'raster-opacity':0.85}});
@@ -3731,7 +4035,8 @@ function initLeaflet(){
   lfBaseLayers={
     streets:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}),
     sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Imagery © Esri',maxZoom:19}),
-    topo:L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',{attribution:'USGS',maxZoom:16})
+    topo:L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',{attribution:'USGS',maxZoom:16}),
+    terrainbase:L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'© OpenTopoMap (CC-BY-SA)',maxZoom:17,subdomains:'abc'})
   };
   lfOverlays={
     sectional:L.tileLayer('https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Sectional/MapServer/tile/{z}/{y}/{x}',{attribution:'FAA / Esri',maxZoom:11,opacity:0.85}),
@@ -4170,7 +4475,7 @@ function cullGhostMarkers(){
   importUtahPGSites(); // background: pull Utah PG/HG sites (ParaglidingEarth) into our launches
   prefetchParks();     // background: cache OSM park outlines so they show instantly on click
   openSiteFromHash(); // if opened via a shared #site=<id> link, fly there and open it
-  if(!(location.hash||'').match(/site=/))autoGeoOnBoot();// otherwise ask for location only on the FIRST-EVER visit, then silent/quiet after
+  if(!(location.hash||'').match(/site=/)){seedMapFromCachedGeo();autoGeoOnBoot();}// snap to your cached area instantly, then locate (asks only on the FIRST-EVER visit)
   syncCtrlPanel();setTimeout(syncCtrlPanel,400);window.addEventListener('load',syncCtrlPanel);
   syncUnitBtns();   // highlight the saved unit choices in the menu
   fitAllModelSelects();   // size the model dropdown(s) to the selected word
