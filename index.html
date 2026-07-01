@@ -1890,13 +1890,16 @@ function makeFlightLayer(){
     onAdd(map,gl){
       this.map=map;
       const vs=`uniform mat4 u_matrix;attribute vec3 a_pos;uniform float u_size;void main(){gl_Position=u_matrix*vec4(a_pos,1.0);gl_PointSize=u_size;}`;
-      // u_mode 1 = round white disc (the line), 2 = textured paraglider sprite rotated by u_rot (bank).
-      const fs=`precision mediump float;uniform vec4 u_color;uniform float u_mode;uniform float u_rot;uniform sampler2D u_tex;void main(){
-        if(u_mode>1.5){vec2 p=gl_PointCoord-vec2(0.5);float s=sin(u_rot),c=cos(u_rot);vec2 r=vec2(c*p.x-s*p.y,s*p.x+c*p.y)+vec2(0.5);if(r.x<0.0||r.x>1.0||r.y<0.0||r.y>1.0)discard;vec4 t=texture2D(u_tex,r);if(t.a<0.04)discard;gl_FragColor=vec4(t.rgb,t.a);}
+      // u_mode 1 = round white disc (the line), 2 = paraglider sprite. The sprite is a FRONT view
+      // (full wingspan across x). u_xscale (>=1) squashes that span in the wing's own frame to fake
+      // yaw: 1 = flying toward/away (full span), large = flying across the view (edge-on), so the
+      // wing turns to a 3/4 / side view as it circles. u_rot then banks the whole thing.
+      const fs=`precision mediump float;uniform vec4 u_color;uniform float u_mode;uniform float u_rot;uniform float u_xscale;uniform sampler2D u_tex;void main(){
+        if(u_mode>1.5){vec2 p=gl_PointCoord-vec2(0.5);float s=sin(u_rot),c=cos(u_rot);vec2 r=vec2(c*p.x-s*p.y,s*p.x+c*p.y);r.x*=u_xscale;r+=vec2(0.5);if(r.x<0.0||r.x>1.0||r.y<0.0||r.y>1.0)discard;vec4 t=texture2D(u_tex,r);if(t.a<0.04)discard;gl_FragColor=vec4(t.rgb,t.a);}
         else{vec2 cc=gl_PointCoord-vec2(0.5);if(dot(cc,cc)>0.25)discard;gl_FragColor=u_color;}}`;
       const mk=(t,s)=>{const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);return x;};
       this.p=gl.createProgram();gl.attachShader(this.p,mk(gl.VERTEX_SHADER,vs));gl.attachShader(this.p,mk(gl.FRAGMENT_SHADER,fs));gl.linkProgram(this.p);
-      this.aPos=gl.getAttribLocation(this.p,'a_pos');this.uMat=gl.getUniformLocation(this.p,'u_matrix');this.uCol=gl.getUniformLocation(this.p,'u_color');this.uSize=gl.getUniformLocation(this.p,'u_size');this.uMode=gl.getUniformLocation(this.p,'u_mode');this.uRot=gl.getUniformLocation(this.p,'u_rot');this.uTex=gl.getUniformLocation(this.p,'u_tex');
+      this.aPos=gl.getAttribLocation(this.p,'a_pos');this.uMat=gl.getUniformLocation(this.p,'u_matrix');this.uCol=gl.getUniformLocation(this.p,'u_color');this.uSize=gl.getUniformLocation(this.p,'u_size');this.uMode=gl.getUniformLocation(this.p,'u_mode');this.uRot=gl.getUniformLocation(this.p,'u_rot');this.uXscale=gl.getUniformLocation(this.p,'u_xscale');this.uTex=gl.getUniformLocation(this.p,'u_tex');
       this.buf=gl.createBuffer();
       this.tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.tex);
       gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,makeGliderCanvas());
@@ -1918,11 +1921,15 @@ function makeFlightLayer(){
       // dots, no thin guide-line — just a single clean line).
       gl.uniform1f(this.uMode,1.0);
       gl.uniform1f(this.uSize,7.0);gl.uniform4f(this.uCol,1.0,1.0,1.0,1.0);gl.drawArrays(gl.POINTS,0,n);
-      // The paraglider sprite at the leading point, banked into the turn using the live camera
-      // bearing so the lean tracks the glider all the way around the spiral.
-      const rot=bankRoll(this.bank,n-1,((this.map&&this.map.getBearing&&this.map.getBearing())||0)*Math.PI/180);
+      // The paraglider sprite at the leading point. Banked into the turn (u_rot) AND yawed to face
+      // its heading (u_xscale) using the live camera bearing, so the wing turns from a full front
+      // view to a 3/4 / edge-on view as it circles — instead of facing the camera the whole time.
+      const bRad=((this.map&&this.map.getBearing&&this.map.getBearing())||0)*Math.PI/180;
+      const li=Math.min((this.bank&&this.bank.hdg?this.bank.hdg.length:1)-1,Math.max(0,n-1));
+      const rot=bankRoll(this.bank,n-1,bRad);
+      const face=(this.bank&&this.bank.hdg)?Math.abs(Math.cos(this.bank.hdg[li]-bRad)):1;
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.tex);gl.uniform1i(this.uTex,0);
-      gl.uniform1f(this.uMode,2.0);gl.uniform1f(this.uRot,rot);gl.uniform1f(this.uSize,34.0);
+      gl.uniform1f(this.uMode,2.0);gl.uniform1f(this.uRot,rot);gl.uniform1f(this.uXscale,1.0/Math.max(0.16,face));gl.uniform1f(this.uSize,34.0);
       gl.drawArrays(gl.POINTS,Math.max(0,n-1),1);
     }
   };
@@ -1987,7 +1994,7 @@ async function simulateFlight(sid){
     flightLayer.bank=computeBank(path);
     flightLayer.progress=0;
     setLZFade(site,true);   // fade the destination LZ badge so you can watch the glider touch down
-    const t0=performance.now(),DUR=8000;
+    const t0=performance.now(),DUR=10500;
     const step=now=>{const e=Math.min(1,(now-t0)/DUR);flightLayer.progress=e;mlMap.triggerRepaint();if(e<1)flightRAF=requestAnimationFrame(step);else if(btn){btn.disabled=false;btn.textContent='🪂 Replay flight → LZ';}};
     flightRAF=requestAnimationFrame(step);
   }else if(lfMap){
@@ -2002,8 +2009,8 @@ async function simulateFlight(sid){
     lfFlight.push(flownCase,flown,glider);
     setLZFade(site,true);
     try{const lb=L.latLngBounds(latlngs);if(lb.isValid())lfMap.fitBounds(lb,{padding:[30,30],maxZoom:15});}catch(e){}
-    const t0=performance.now(),DUR=7000;
-    const step=now=>{const e=Math.min(1,(now-t0)/DUR);const n=Math.max(1,Math.floor(latlngs.length*e));const seg=latlngs.slice(0,n);flownCase.setLatLngs(seg);flown.setLatLngs(seg);glider.setLatLng(latlngs[n-1]);const rot=glider._icon&&glider._icon.querySelector('.pg-rot');if(rot)rot.style.transform='rotate('+(bankRoll(bank,n-1,0)*180/Math.PI).toFixed(1)+'deg)';if(e<1)flightRAF=requestAnimationFrame(step);else if(btn){btn.disabled=false;btn.textContent='🪂 Replay flight → LZ';}};
+    const t0=performance.now(),DUR=9200;
+    const step=now=>{const e=Math.min(1,(now-t0)/DUR);const n=Math.max(1,Math.floor(latlngs.length*e));const seg=latlngs.slice(0,n);flownCase.setLatLngs(seg);flown.setLatLngs(seg);glider.setLatLng(latlngs[n-1]);const rot=glider._icon&&glider._icon.querySelector('.pg-rot');if(rot){const li=Math.min(bank.hdg.length-1,Math.max(0,n-1)),face=Math.max(0.16,Math.abs(Math.cos(bank.hdg[li])));rot.style.transform='rotate('+(bankRoll(bank,n-1,0)*180/Math.PI).toFixed(1)+'deg) scaleX('+face.toFixed(2)+')';}if(e<1)flightRAF=requestAnimationFrame(step);else if(btn){btn.disabled=false;btn.textContent='🪂 Replay flight → LZ';}};
     flightRAF=requestAnimationFrame(step);
   }
 }
