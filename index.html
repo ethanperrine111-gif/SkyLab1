@@ -2658,11 +2658,12 @@ function compareGridHTML(){
     rows+=`<div class="cmp-row cmp-grad"${rowStyle}><div class="cmp-lbl">${r.label}${has?'':' <span style="opacity:.5">—</span>'}</div>`;
     cmpAxis.forEach(t=>{const e=r.byTime[t];
       if(!e){rows+=`<div class="cmp-c cmp-empty${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')"></div>`;return;}
-      rows+=`<div class="cmp-c${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')">${dirArrowCell(e.dir)}<span class="cmp-w">${cvWind(e.wind)}</span><span class="cmp-g">${cvWind(e.gust)}</span></div>`;});
+      rows+=`<div class="cmp-c${t===cmpSelT?' cmp-tsel':''}" data-t="${t}" onclick="pickCmpTime('${t}')">${cmpDirCell(e,t)}<span class="cmp-w">${cvWind(e.wind)}</span><span class="cmp-g">${cvWind(e.gust)}</span></div>`;});
     rows+='</div>';
   });
+  const hasWin=!!(fcTarget&&fcTarget.site&&fcTarget.site.facing!=null);
   return '<div class="cmp-scroll"><div class="cmp-grid">'+hdr+rows+'</div></div>'+
-    `<div class="cmp-foot">Top number = wind, bottom = gust (${windU()}) · colour = speed · arrow points the way the wind blows</div>`;
+    `<div class="cmp-foot">Top number = wind, bottom = gust (${windU()}) · colour = speed · arrow points the way the wind blows${hasWin?' · wedge = this launch’s allowable wind window (green ok / yellow marginal / red no-go)':''}</div>`;
 }
 // Render the comparison inline inside a site menu's 2-Week-Forecast slot (mobile).
 async function openSiteCompare(wrap){
@@ -2962,6 +2963,17 @@ function thermalBar(e){
 function dirArrowCell(dir){
   // small arrow pointing the way the wind blows TO (met dir + 180)
   return`<svg width="16" height="16" viewBox="0 0 16 16"><g transform="rotate(${(dir+180)%360},8,8)"><line x1="8" y1="3" x2="8" y2="13" stroke="#475569" stroke-width="1.6" stroke-linecap="round"/><polygon points="8,2 5,7 11,7" fill="#475569"/></g></svg>`;
+}
+// Wind-direction cell for the model-comparison grid. When the forecast target is a real launch
+// with an allowable-wind window, draw the same compass dial as the forecast (allowable wedge +
+// wind arrow) coloured by that hour's fly-status; otherwise fall back to the plain arrow. Cloud/
+// temp aren't part of the model comparison, so pass benign values and let wind/dir/night decide.
+function cmpDirCell(e,t){
+  if(!(fcTarget&&fcTarget.site&&fcTarget.site.facing!=null))return dirArrowCell(e.dir);
+  const hr=new Date(t).getHours();
+  const fs=flyS(e.wind,e.gust,0,70,hr,fcTarget.site,e.dir);
+  const dc={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[fs];
+  return windDirCellSVG(e.dir,fcTarget.site,dc,22);
 }
 // Build a forecast grid into `container` as two panes: a static left labels column
 // (Hour/Temp/…) that never moves, and a horizontally-scrolling data grid beside it.
@@ -3335,8 +3347,8 @@ function windCompassSVG(site,col,size,w){
 }
 // Tiny per-hour wind dial for the forecast: same north-up compass as the pin, showing the
 // site's allowable-wind wedge (coloured by that hour's fly status) plus the hour's wind arrow.
-function windDirCellSVG(dir,site,col){
-  const size=26,c=size/2,r=c-1.5;
+function windDirCellSVG(dir,site,col,size){
+  size=size||26;const c=size/2,r=c-1.5;
   return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:block">`+
     compassInner(c,c,r,col,site,typeof dir==='number'?dir:null)+`</svg>`;
 }
