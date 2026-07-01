@@ -1800,10 +1800,14 @@ function buildFlightPath3(site,startR,lzR,vScale,plan,ratio){
   const routeMi=samp[samp.length-1].s/M2;
   const Rloop=Math.min(0.06,Math.max(0.03,routeMi*0.30));
   let pts=[];
-  // Glide straight in along the route to within a few loop-radii of the LZ.
+  // Hand off from the raw glide to the smooth approach curve BEFORE the route's
+  // final-leg corner (the "FAF" join, ~dist*0.22 out, where planRoute's terrain
+  // detour meets the straight-in leg). Handing off past it lets the cubic below
+  // absorb that corner instead of leaving it as a kink.
+  const handDist=Math.max(5*Rloop,routeMi*0.28);
   let handIdx=samp.length-1;
   for(let i=0;i<samp.length;i++){
-    if(hav(samp[i].la,samp[i].lo,site.lzLat,site.lzLon)<=5*Rloop){handIdx=i;break;}
+    if(hav(samp[i].la,samp[i].lo,site.lzLat,site.lzLon)<=handDist){handIdx=i;break;}
   }
   const hand=samp[handIdx];
   const handAlt=Math.max(startR-(hand.s/ratio)*vScale,spiralFloor);
@@ -1993,21 +1997,27 @@ async function simulateFlight(sid){
   const site=LAUNCHES.find(s=>s.id===sid);if(!site||site.lzLat==null)return;
   clearFlight();
   stashSidebar();
-  const btn=document.getElementById('flybtn-'+sid);if(btn){btn.disabled=true;btn.textContent='🪂 Flying…';}
+  const btn=document.getElementById('flybtn-'+sid);
+  // If the button already says "Replay", this is a re-run — leave the camera wherever the
+  // user has panned/rotated it to instead of snapping back to the framed intro view.
+  const isReplay=!!(btn&&/Replay/i.test(btn.textContent));
+  if(btn){btn.disabled=true;btn.textContent='🪂 Flying…';}
   const plan=await planRoute(site,site.alt*M,(site.lzAlt||4500)*M);
   const ratio=siteRatio[sid]||8;
   if(useMapLibre&&mlMap){
-    const brg=(bearingTo(site.lat,site.lon,site.lzLat,site.lzLon)+180+62)%360;
-    const isMob=window.innerWidth<=768;
-    // Mobile: bigger top padding pushes the framing lower on screen (it sat too high),
-    // and a larger zoom-out keeps the whole path comfortably in view.
-    const fpad=isMob?{top:200,bottom:80,left:30,right:30}:{top:70,bottom:70,left:60,right:330};
-    const fbnds=new maplibregl.LngLatBounds([site.lon,site.lat],[site.lon,site.lat]).extend([site.lzLon,site.lzLat]);
-    let fcam=null;try{fcam=mlMap.cameraForBounds(fbnds,{bearing:brg,padding:fpad,maxZoom:14.6});}catch(e){}
-    const fcenter=(fcam&&fcam.center)?fcam.center:[(site.lon+site.lzLon)/2,(site.lat+site.lzLat)/2];
-    const fzoom=(fcam&&isFinite(fcam.zoom))?Math.max(9.5,fcam.zoom-(isMob?0.7:0.1)):14.4;
-    mlMap.easeTo({center:fcenter,zoom:fzoom,pitch:76,bearing:brg,duration:900});
-    await new Promise(r=>{let done=false;const fin=()=>{if(!done){done=true;r();}};mlMap.once('idle',fin);setTimeout(fin,2600);});
+    if(!isReplay){
+      const brg=(bearingTo(site.lat,site.lon,site.lzLat,site.lzLon)+180+62)%360;
+      const isMob=window.innerWidth<=768;
+      // Mobile: bigger top padding pushes the framing lower on screen (it sat too high),
+      // and a larger zoom-out keeps the whole path comfortably in view.
+      const fpad=isMob?{top:200,bottom:80,left:30,right:30}:{top:70,bottom:70,left:60,right:330};
+      const fbnds=new maplibregl.LngLatBounds([site.lon,site.lat],[site.lon,site.lat]).extend([site.lzLon,site.lzLat]);
+      let fcam=null;try{fcam=mlMap.cameraForBounds(fbnds,{bearing:brg,padding:fpad,maxZoom:14.6});}catch(e){}
+      const fcenter=(fcam&&fcam.center)?fcam.center:[(site.lon+site.lzLon)/2,(site.lat+site.lzLat)/2];
+      const fzoom=(fcam&&isFinite(fcam.zoom))?Math.max(9.5,fcam.zoom-(isMob?0.7:0.1)):14.4;
+      mlMap.easeTo({center:fcenter,zoom:fzoom,pitch:76,bearing:brg,duration:900});
+      await new Promise(r=>{let done=false;const fin=()=>{if(!done){done=true;r();}};mlMap.once('idle',fin);setTimeout(fin,2600);});
+    }
     let startR=null,lzR=null;
     for(let tries=0;tries<8;tries++){
       startR=mlMap.queryTerrainElevation([site.lon,site.lat]);
