@@ -3185,16 +3185,38 @@ function maybeSetGeoForecast(lat,lon){
   if(currentLaunchId||currentEditLZ||(fcTarget&&fcTarget.site))return;   // user already picked a spot
   setForecastSite(lat,lon,'My location');
 }
+// Persistent "we've already triggered a location request at least once" flag. Survives across
+// tabs and reloads (unlike the in-memory geoAsked), so we can avoid re-prompting on every boot
+// even when the browser itself isn't remembering the grant.
+const GEO_ASKED_KEY='updraft_geo_asked_v1';
+function geoEverAsked(){try{return localStorage.getItem(GEO_ASKED_KEY)==='1';}catch(e){return false;}}
+function markGeoAsked(){try{localStorage.setItem(GEO_ASKED_KEY,'1');}catch(e){}}
 function goToMyLocation(fast,force){
   if(lastGeo){placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);return;}
   if((geoAsked&&!force)||!navigator.geolocation)return;   // auto path asks once; the button may force a retry
-  geoAsked=true;
+  geoAsked=true;markGeoAsked();
   // Fast first: a low-accuracy / cached fix returns almost instantly, so the dot + zoom appear right away.
   navigator.geolocation.getCurrentPosition(
     p=>{lastGeo={lat:p.coords.latitude,lon:p.coords.longitude};placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);},
     ()=>{},{enableHighAccuracy:false,timeout:9000,maximumAge:600000});
   // Then start continuous high-accuracy tracking so the dot follows you live.
   startLiveTracking();
+}
+// Boot-time auto-locate. We want the browser's permission prompt to appear at most ONCE ever —
+// on the very first visit. On later loads (new tab, revisit) we locate silently if the browser
+// still holds the grant, and otherwise stay quiet so no unsolicited prompt pops up. The 📍 button
+// (force=true) can always re-request on demand.
+function autoGeoOnBoot(){
+  if(!navigator.geolocation)return;
+  if(navigator.permissions&&navigator.permissions.query){
+    navigator.permissions.query({name:'geolocation'}).then(st=>{
+      if(st.state==='granted')goToMyLocation(true);                       // already allowed → silent locate
+      else if(st.state==='prompt'&&!geoEverAsked())goToMyLocation(true);  // genuine first visit → prompt once
+      // 'denied', or 'prompt' after we've already asked once → do nothing (button can still force it)
+    }).catch(()=>{ if(!geoEverAsked())goToMyLocation(true); });
+  }else if(!geoEverAsked()){
+    goToMyLocation(true);   // no Permissions API → fall back to our own once-ever flag
+  }
 }
 // Apple Maps on Apple devices, Google Maps elsewhere.
 function directionsURL(lat,lon){
@@ -4136,7 +4158,7 @@ function cullGhostMarkers(){
   importUtahPGSites(); // background: pull Utah PG/HG sites (ParaglidingEarth) into our launches
   prefetchParks();     // background: cache OSM park outlines so they show instantly on click
   openSiteFromHash(); // if opened via a shared #site=<id> link, fly there and open it
-  if(!(location.hash||'').match(/site=/))goToMyLocation(true);// otherwise ask for location ONCE on open, then zoom straight in
+  if(!(location.hash||'').match(/site=/))autoGeoOnBoot();// otherwise ask for location only on the FIRST-EVER visit, then silent/quiet after
   syncCtrlPanel();setTimeout(syncCtrlPanel,400);window.addEventListener('load',syncCtrlPanel);
   syncUnitBtns();   // highlight the saved unit choices in the menu
   fitAllModelSelects();   // size the model dropdown(s) to the selected word
