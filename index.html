@@ -3547,17 +3547,24 @@ async function openAR(){
   if(arActive)return;
   arActive=true;
   document.getElementById('ar-view').style.display='block';
+  setARStatus('Requesting compass access…');
+  // iOS only treats requestPermission() as "in response to your tap" if it's the very first
+  // async call made — anything awaited before it (like the camera prompt) breaks that chain
+  // and makes this throw. So compass goes first, camera second.
+  if(!(await startARCompass())){arActive=false;return;}   // leave the error + close button visible, but allow tapping 📷 to retry
+  if(!arActive)return;
   setARStatus('Starting camera…');
   try{
     arStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
   }catch(e){
     setARStatus('Camera access denied. Allow camera permission in your browser settings to use AR view.');
+    arActive=false;
     return;
   }
   if(!arActive)return;   // closed while awaiting the permission prompt
   const v=document.getElementById('ar-video');v.srcObject=arStream;
   try{await v.play();}catch(e){}
-  await startARCompass();
+  setARStatus('Waiting for compass + your location…');
   if(navigator.geolocation)startLiveTracking();   // reuses the app's own location watcher — harmless if already running
   if(!arRenderTimer)arRenderTimer=setInterval(renderAR,500);
   renderAR();
@@ -3571,18 +3578,21 @@ function closeAR(){
   if(arRenderTimer){clearInterval(arRenderTimer);arRenderTimer=null;}
 }
 function setARStatus(msg){const el=document.getElementById('ar-status');if(el){el.textContent=msg;el.style.display=msg?'block':'none';}}
+// Returns true once listeners are wired (or on Android/desktop, which have no gated
+// permission API and just start firing events). Returns false — with a status message
+// already set — if the device has no compass or the user declines.
 async function startARCompass(){
-  const need=typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function';
+  if(typeof DeviceOrientationEvent==='undefined'){setARStatus('This device has no compass — AR view needs one to work.');return false;}
+  const need=typeof DeviceOrientationEvent.requestPermission==='function';
   if(need){
     try{
       const res=await DeviceOrientationEvent.requestPermission();
-      if(res!=='granted'){setARStatus('Compass access denied — AR view needs it to know which way you\'re facing.');return;}
-    }catch(e){setARStatus('Compass permission failed.');return;}
+      if(res!=='granted'){setARStatus('Compass access denied — AR view needs it to know which way you\'re facing.');return false;}
+    }catch(e){setARStatus('Compass permission failed — tap 📷 again to retry.');return false;}
   }
-  if(typeof DeviceOrientationEvent==='undefined'){setARStatus('This device has no compass — AR view needs one to work.');return;}
   window.addEventListener('deviceorientationabsolute',onARHeading,true);
   window.addEventListener('deviceorientation',onARHeading,true);
-  setARStatus('Waiting for compass + your location…');
+  return true;
 }
 function onARHeading(e){
   let h=null;
