@@ -780,6 +780,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="checkbox" id="ov-relief" onchange="toggleOverlay('relief',this.checked)"/><span class="lp-ico">⛰️</span><span class="lp-lbl">Hillshade</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/><span class="lp-ico">🥾</span><span class="lp-lbl">Hiking trails</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-blm" onchange="toggleOverlay('blm',this.checked)"/><span class="lp-ico">🏞️</span><span class="lp-lbl">BLM public land</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-camping" onchange="toggleFeatureLayer('camping',this.checked)"/><span class="lp-ico">🏕️</span><span class="lp-lbl">Free camping</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-power" onchange="toggleOverlay('power',this.checked)"/> ⚡ Power lines</label>
       </div>
     </div>
@@ -1354,6 +1355,33 @@ async function fetchAirports(){
   const items=await oaFetchRaw('airports');if(!items)return null;
   return items.map(it=>oaPt(it,(it.icaoCode?it.icaoCode+' · ':'')+(it.name||'Airport'))).filter(p=>typeof p.lon==='number');
 }
+// Free camping: OpenStreetMap `tourism=camp_site` across Utah, excluding sites explicitly
+// tagged `fee=yes`. Keeps the many unspecified-fee dispersed sites (typical of BLM/USFS land)
+// where free camping is the norm — the popup calls that out so the user knows to double-check.
+async function fetchCamping(){
+  const q='[out:json][timeout:60];area["ISO3166-2"="US-UT"]->.a;(node["tourism"="camp_site"]["fee"!="yes"](area.a);way["tourism"="camp_site"]["fee"!="yes"](area.a););out center 800;';
+  try{
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)});
+    if(!r.ok)return null;
+    const j=await r.json();
+    return(j.elements||[]).map(el=>{
+      const t=el.tags||{};
+      const lat=el.lat!=null?el.lat:(el.center&&el.center.lat);
+      const lon=el.lon!=null?el.lon:(el.center&&el.center.lon);
+      if(lat==null||lon==null)return null;
+      const feeNote=t.fee==='no'?'Free':'Fee not marked — usually free on public land, verify on site';
+      const bits=[];
+      if(t.operator)bits.push('Operated by '+t.operator);
+      if(t.backcountry==='yes'||t.informal==='yes')bits.push('Dispersed / primitive');
+      if(t.tents==='yes')bits.push('Tents');
+      if(t.caravans==='yes'||t['caravan']==='yes')bits.push('RVs');
+      if(t.toilets==='yes')bits.push('Toilets');
+      if(t.water==='yes'||t.drinking_water==='yes')bits.push('Water');
+      const label=t.name||(t.backcountry==='yes'?'Dispersed campsite':'Campsite');
+      return{lon,lat,id:'osm_'+el.type+'_'+el.id,name:label,fee:feeNote,detail:bits.join(' · ')};
+    }).filter(Boolean);
+  }catch(e){return null;}
+}
 // Weather stations: NWS (api.weather.gov) observation stations in Utah — CORS-friendly, key-less.
 async function fetchWxStations(){
   try{
@@ -1437,7 +1465,8 @@ function obsHTML(name,o,id){
 const FEATURE_LAYERS={
   obstacles:{color:'#ef4444',marker:'tower',fetch:fetchObstacles},
   airports:{color:'#2563eb',marker:'plane',fetch:fetchAirports},
-  wx:{color:'#0891b2',marker:'windsock',fetch:fetchWxStations}
+  wx:{color:'#0891b2',marker:'windsock',fetch:fetchWxStations},
+  camping:{color:'#a16207',marker:'tent',fetch:fetchCamping}
 };
 // Windsock icons for weather stations: a cone that streams DOWNWIND (rotated to wind direction)
 // and grows with wind speed — grey nub = calm, short green = light, long red = strong. 'sock-na'
@@ -1510,6 +1539,17 @@ function ensureRunwayIcon(){
   x.setLineDash([3,3]);x.beginPath();x.moveTo(0,-8);x.lineTo(0,8);x.stroke();
   try{mlMap.addImage('runway',{width:s,height:s,data:x.getImageData(0,0,s,s).data});}catch(e){}
 }
+// Tent icon for the free-camping layer: brown triangle over a base dot at the exact location.
+const TENT_SVG='<svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 1.2px rgba(0,0,0,.55));"><path d="M4 21 L13 5 L22 21 Z" fill="#a16207" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/><path d="M13 5 L13 21" stroke="#fff" stroke-width="1.4"/><circle cx="13" cy="21" r="2.4" fill="#a16207" stroke="#fff" stroke-width="1.4"/></svg>';
+function ensureTentIcon(){
+  if(!mlMap||(mlMap.hasImage&&mlMap.hasImage('tent')))return;
+  const s=26,cv=document.createElement('canvas');cv.width=cv.height=s;const x=cv.getContext('2d');
+  x.fillStyle='#a16207';x.strokeStyle='#fff';x.lineWidth=1.6;x.lineJoin='round';
+  x.beginPath();x.moveTo(4,21);x.lineTo(13,5);x.lineTo(22,21);x.closePath();x.fill();x.stroke();
+  x.lineWidth=1.4;x.beginPath();x.moveTo(13,5);x.lineTo(13,21);x.stroke();   // centre pole line
+  x.beginPath();x.arc(13,21,2.4,0,Math.PI*2);x.fillStyle='#a16207';x.fill();x.stroke();
+  try{mlMap.addImage('tent',{width:s,height:s,data:x.getImageData(0,0,s,s).data});}catch(e){}
+}
 // Obstacle graphic: a little red lattice tower rising from a dot that marks its exact spot.
 const TOWER_SVG='<svg width="24" height="28" viewBox="0 0 24 28" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 1.2px rgba(0,0,0,.6));"><g stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M7 25 L12 5 L17 25"/><line x1="7.75" y1="22" x2="16.25" y2="22"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="10.5" y1="11" x2="13.5" y2="11"/></g><circle cx="12" cy="5" r="1.8" fill="#dc2626"/><circle cx="12" cy="25" r="2.6" fill="#dc2626" stroke="#fff" stroke-width="1.4"/></svg>';
 function ensureTowerIcon(){
@@ -1526,21 +1566,32 @@ function ensureTowerIcon(){
 }
 const oaData={};   // name -> fetched points (cache)
 const lfFeatureGroups={};
+// Popup for a camping pin: name, whether OSM marks it free vs unspecified, and a directions button.
+function campingPopupHTML(pr,lat,lon){
+  const feeStyle=/free/i.test(pr.fee)?'background:rgba(22,163,74,.14);color:#166534;':'background:rgba(234,179,8,.14);color:#854d0e;';
+  return `<div class="oa-pop">
+    <div style="font-weight:800;margin-bottom:3px;">🏕 ${pr.label||'Campsite'}</div>
+    <div style="margin:3px 0 5px;padding:4px 7px;border-radius:6px;${feeStyle}font-weight:700;line-height:1.25;">${pr.fee||''}</div>
+    ${pr.detail?'<div style="font-size:12px;">'+pr.detail+'</div>':''}
+    <div style="margin-top:6px;"><a href="${directionsURL(lat,lon)}" target="_blank" rel="noopener" style="color:#2563eb;font-weight:700;">Directions →</a></div>
+  </div>`;
+}
 function renderFeatures(name,pts){
   const cfg=FEATURE_LAYERS[name];
-  const emoji=name==='obstacles'?'🗼 ':name==='airports'?'✈ ':'🌡 ';
+  const emoji=name==='obstacles'?'🗼 ':name==='airports'?'✈ ':name==='camping'?'🏕 ':'🌡 ';
   if(useMapLibre&&mlMap){
-    const fc={type:'FeatureCollection',features:pts.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{label:p.name||'',sid:p.id||''}}))};
+    const fc={type:'FeatureCollection',features:pts.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{label:p.name||'',sid:p.id||'',fee:p.fee||'',detail:p.detail||''}}))};
     const src='oa-'+name;
     if(mlMap.getSource(src)){mlMap.getSource(src).setData(fc);return;}
     mlMap.addSource(src,{type:'geojson',data:fc});
     if(cfg.marker==='windsock'){
       ensureSockIcons();
       mlMap.addLayer({id:src+'-c',type:'symbol',source:src,layout:WX_SOCK_LAYOUT});
-    }else if(cfg.marker==='runway'||cfg.marker==='vane'||cfg.marker==='tower'||cfg.marker==='plane'){
-      cfg.marker==='runway'?ensureRunwayIcon():cfg.marker==='vane'?ensureVaneIcon():cfg.marker==='plane'?ensurePlaneIcon():ensureTowerIcon();
+    }else if(cfg.marker==='runway'||cfg.marker==='vane'||cfg.marker==='tower'||cfg.marker==='plane'||cfg.marker==='tent'){
+      const ensures={runway:ensureRunwayIcon,vane:ensureVaneIcon,plane:ensurePlaneIcon,tower:ensureTowerIcon,tent:ensureTentIcon};
+      ensures[cfg.marker]();
       const lay={'icon-image':cfg.marker,'icon-size':1,'icon-allow-overlap':true};
-      if(cfg.marker==='tower')lay['icon-anchor']='bottom';   // the base dot sits on the location
+      if(cfg.marker==='tower'||cfg.marker==='tent')lay['icon-anchor']='bottom';   // the base dot sits on the location
       mlMap.addLayer({id:src+'-c',type:'symbol',source:src,layout:lay});
     }else{
       mlMap.addLayer({id:src+'-c',type:'circle',source:src,paint:{'circle-radius':5,'circle-color':cfg.color,'circle-stroke-color':'#fff','circle-stroke-width':1.5,'circle-opacity':0.9}});
@@ -1553,6 +1604,7 @@ function renderFeatures(name,pts){
       const pr=f.properties||{},ll=f.geometry.coordinates.slice();
       const pop=new maplibregl.Popup({offset:(name==='wx'?32:12),closeButton:true}).setLngLat(ll);
       if(name==='wx'){pop.setHTML('<div class="oa-pop wxpop"><div class="wxpop-h">🌡 '+(pr.label||'Station')+'</div><div class="wxpop-na">Loading…</div></div>').addTo(mlMap);fetchStationObs(pr.sid).then(o=>pop.setHTML('<div class="oa-pop">'+obsHTML(pr.label||'Station',o,pr.sid)+'</div>'));}
+      else if(name==='camping')pop.setHTML(campingPopupHTML(pr,ll[1],ll[0])).addTo(mlMap);
       else pop.setHTML('<div class="oa-pop">'+emoji+(pr.label||'')+'</div>').addTo(mlMap);
     });
     mlMap.on('mouseenter',cid,()=>mlMap.getCanvas().style.cursor='pointer');
@@ -1565,8 +1617,10 @@ function renderFeatures(name,pts){
       else if(cfg.marker==='plane')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:'<div style="font-size:18px;line-height:1;text-shadow:0 0 2px rgba(0,0,0,.5);">✈️</div>',className:'',iconSize:[22,22],iconAnchor:[11,11]})});
       else if(cfg.marker==='vane'||cfg.marker==='windsock')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:VANE_SVG,className:'',iconSize:[26,26],iconAnchor:[5,23],popupAnchor:[7,-26]})});
       else if(cfg.marker==='tower')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:TOWER_SVG,className:'',iconSize:[24,28],iconAnchor:[12,27],popupAnchor:[0,-26]})});
+      else if(cfg.marker==='tent')mk=L.marker([p.lat,p.lon],{icon:L.divIcon({html:TENT_SVG,className:'',iconSize:[26,26],iconAnchor:[13,25],popupAnchor:[0,-24]})});
       else mk=L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:1.5,fillColor:cfg.color,fillOpacity:0.9});
       if(name==='wx'){mk.bindPopup('<div class="wxpop"><div class="wxpop-h">🌡 '+(p.name||'Station')+'</div><div class="wxpop-na">Loading…</div></div>');mk.on('click',()=>fetchStationObs(p.id).then(o=>mk.setPopupContent(obsHTML(p.name||'Station',o,p.id))));}
+      else if(name==='camping')mk.bindPopup(campingPopupHTML({label:p.name,fee:p.fee,detail:p.detail},p.lat,p.lon));
       else mk.bindPopup(emoji+(p.name||''));
       return mk;
     }));
