@@ -68,7 +68,7 @@ body.fc-collapsed #forecast{display:none;}
 .fc-data{display:flex;flex-direction:column;width:max-content;font-family:system-ui,sans-serif;position:relative;}
 /* Live "exact time" bar that glides across the forecast at the current minute. */
 .fc-nowline{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;pointer-events:none;z-index:4;box-shadow:0 0 0 1px rgba(255,255,255,.7);}
-.fc-nowline::before{content:'';position:absolute;top:-1px;left:-3px;width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 1.5px #fff;}
+.fc-nowline::before{content:'';position:absolute;top:0;left:-3px;width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 1.5px #fff;}
 .fc-row{display:flex;align-items:stretch;}
 .fc-cell{width:var(--fcw);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-right:1px solid #eef1f5;}
 .fc-cell.now{background:rgba(37,99,235,.08);box-shadow:inset 2px 0 0 #2563eb,inset -2px 0 0 #2563eb;}
@@ -151,7 +151,7 @@ body.compare-open #fc-compare{background:rgba(255,255,255,.32);border-color:rgba
 .cmp-scroll{overflow-x:auto;}
 .cmp-grid{display:inline-block;min-width:100%;position:relative;}
 .cmp-nowline{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;pointer-events:none;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,.7);}
-.cmp-nowline::before{content:'';position:absolute;top:-1px;left:-3px;width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 1.5px #fff;}
+.cmp-nowline::before{content:'';position:absolute;top:0;left:-3px;width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 1.5px #fff;}
 .cmp-row{display:flex;}
 .cmp-lbl{flex:0 0 70px;position:sticky;left:0;background:#fff;z-index:2;display:flex;align-items:center;font-size:12px;font-weight:800;padding:0 6px;border-right:1px solid #e2e8f0;}
 body.dark .cmp-lbl{background:rgba(15,23,42,.98);border-color:#1e293b;}
@@ -354,7 +354,7 @@ body.dark .ppwind-note{color:#94a3b8;}
 /* styling lives in .fc-model-sel (matches the in-popup dropdown); keep this ID rule minimal so it doesn't override the border/chevron */
 #model-select{cursor:pointer;}
 /* detail sidebar */
-#sidebar{position:absolute;top:0;right:0;width:316px;max-width:86%;height:100%;z-index:700;background:rgba(255,255,255,.98);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:-5px 0 24px rgba(0,0,0,.3);transform:translateX(100%);transition:transform .28s ease;overflow:hidden;}
+#sidebar{position:absolute;top:0;right:0;width:316px;max-width:86%;height:100%;z-index:700;background:rgba(255,255,255,.98);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:-5px 0 24px rgba(0,0,0,.3);transform:translateX(100%);transition:transform .4s cubic-bezier(.22,.61,.36,1);overflow:hidden;}
 #sidebar.open{transform:translateX(0);}
 #sb-close{position:absolute;top:9px;right:11px;z-index:3;border:none;background:rgba(0,0,0,.4);color:#fff;width:27px;height:27px;border-radius:50%;font-size:15px;cursor:pointer;line-height:1;}
 #sb-close:hover{background:rgba(0,0,0,.6);}
@@ -564,6 +564,7 @@ body.dark .lzedit[open]>summary{border-bottom-color:#1e293b;}
 .lzedit select[multiple]{height:auto;padding:4px;}
 /* "Fly from here?" map-click prompt */
 .flyprompt{padding:1px 0;}
+.flyprompt-coords{font-size:12px;font-weight:700;color:#475569;margin:0 2px 6px;}
 .flyprompt-btn{display:flex;align-items:center;gap:7px;background:linear-gradient(120deg,#2563eb,#0ea5e9);color:#fff;border:none;border-radius:9px;padding:9px 13px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);}
 .flyprompt-btn:hover{filter:brightness(1.08);}
 .flyprompt-pop .maplibregl-popup-content,.flyprompt-pop .leaflet-popup-content-wrapper{padding:6px;border-radius:12px;}
@@ -2732,8 +2733,16 @@ async function fetchHRRRBatch(sites,fallback){
 }
 function setModel(m){
   if(m==='__compare__'){
-    // "Compare models" is an entry in the model dropdown — open the comparison and snap the
-    // dropdown back to the active model so it doesn't stick on the Compare row.
+    if(isMobileView()){
+      // Mobile: treat "Compare models" like a selectable model. Keep the dropdown showing it
+      // (so the compare grid replaces the forecast and re-picking a real model switches back),
+      // rather than snapping back to the active model like the full-size version does.
+      document.querySelectorAll('#model-select,.nb-model,.pp-fc-model').forEach(s=>{s.value='__compare__';});
+      fitAllModelSelects();
+      openModelCompare();return;
+    }
+    // Desktop / full size: open the comparison panel and snap the dropdown back to the active
+    // model so it doesn't stick on the Compare row.
     document.querySelectorAll('#model-select,.nb-model,.pp-fc-model').forEach(s=>{s.value=currentModel;});
     openModelCompare();return;
   }
@@ -2906,7 +2915,7 @@ function compareGridHTML(){
   const t0=new Date(cmpAxis[0]).getTime();
   const nowX=70+(((Date.now()-t0)/3600000)+0.5)*40;
   const gridW=70+n*40;
-  const nowLine=`<div class="cmp-nowline" data-t0="${t0}" style="left:${nowX.toFixed(1)}px;${(nowX<70||nowX>gridW)?'display:none;':''}"></div>`;
+  const nowLine=`<div class="cmp-nowline" data-t0="${t0}" style="left:${Math.round(nowX)}px;${(nowX<70||nowX>gridW)?'display:none;':''}"></div>`;
   const selI=cmpAxis.indexOf(cmpSelT);
   const selBar=`<div class="cmp-selbar" style="left:${(70+(selI<0?0:selI)*40)}px;${selI<0?'display:none;':''}"></div>`;
   return '<div class="cmp-scroll" ondblclick="compareNow()" title="Double-click to jump back to the current time"><div class="cmp-grid">'+hdr+rows+nowLine+selBar+'</div></div>';
@@ -3041,6 +3050,7 @@ function renderNow(w,label){
       m('Clouds',`${w.cloud}%`,cloudWord(w.cloud))+
       (pres!=null?m('Pressure',`${pres}`,'hPa'):'')+
     `</div>`;
+  fitAllModelSelects();   // the now-bar's model dropdown was just rebuilt — shrink it to the current word
 }
 
 // ── Long scrollable forecast (auto-extends, switches models for range) ─────────
@@ -3141,7 +3151,9 @@ function tempColor(t){              // °F text colour
 function skyIcon(cloud,pop,night){
   const S='<svg viewBox="0 0 24 24" width="18" height="18" style="display:block">';
   const sun=(cx,cy,r)=>`<g stroke="#f59e0b" stroke-width="1.7" stroke-linecap="round"><line x1="${cx}" y1="${cy-r-3.4}" x2="${cx}" y2="${cy-r-1.2}"/><line x1="${cx}" y1="${cy+r+1.2}" x2="${cx}" y2="${cy+r+3.4}"/><line x1="${cx-r-3.4}" y1="${cy}" x2="${cx-r-1.2}" y2="${cy}"/><line x1="${cx+r+1.2}" y1="${cy}" x2="${cx+r+3.4}" y2="${cy}"/><line x1="${cx-r-2.4}" y1="${cy-r-2.4}" x2="${cx-r-0.9}" y2="${cy-r-0.9}"/><line x1="${cx+r+0.9}" y1="${cy+r+0.9}" x2="${cx+r+2.4}" y2="${cy+r+2.4}"/><line x1="${cx-r-2.4}" y1="${cy+r+2.4}" x2="${cx-r-0.9}" y2="${cy+r+0.9}"/><line x1="${cx+r+0.9}" y1="${cy-r-0.9}" x2="${cx+r+2.4}" y2="${cy-r-2.4}"/></g><circle cx="${cx}" cy="${cy}" r="${r}" fill="#fcd34d" stroke="#f59e0b" stroke-width="1"/>`;
-  const moon=(cx,cy,r)=>`<path d="M${cx},${cy-r} A${r},${r} 0 1,0 ${cx},${cy+r} A${(r*0.62).toFixed(2)},${r} 0 1,1 ${cx},${cy-r} Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="0.9"/>`;
+  // Bumped ~20% bigger than the sun glyph, with a darker fill/stroke — the original pale-gray
+  // crescent at matching size was hard to spot against the white forecast cells.
+  const moon=(cx,cy,r0)=>{const r=r0*1.2;return `<path d="M${cx},${cy-r} A${r},${r} 0 1,0 ${cx},${cy+r} A${(r*0.62).toFixed(2)},${r} 0 1,1 ${cx},${cy-r} Z" fill="#94a3b8" stroke="#475569" stroke-width="1"/>`;};
   const lum=night?moon:sun;   // moon after dark, sun by day
   const cld=(fill,stroke)=>`<path d="M8 18.5h8.6a3.2 3.2 0 0 0 .35-6.38 4.7 4.7 0 0 0-8.95-1.34A3.45 3.45 0 0 0 8 18.5z" fill="${fill}" stroke="${stroke}" stroke-width="1.1"/>`;
   if(pop>=45)return S+cld('#cbd5e1','#94a3b8')+'<g stroke="#3b82f6" stroke-width="1.7" stroke-linecap="round"><line x1="9" y1="20" x2="8" y2="22.5"/><line x1="13" y1="20" x2="12" y2="22.5"/><line x1="17" y1="20" x2="16" y2="22.5"/></g></svg>';
@@ -3349,7 +3361,7 @@ function positionNowLine(dataEl){
   const x=(idx+0.5)*dataEl._fcColW;                    // +0.5 → centre of the hour cell
   const w=dataEl.scrollWidth||dataEl.offsetWidth||0;
   if(x<0||(w&&x>w)){nl.style.display='none';return;}
-  nl.style.display='';nl.style.left=x+'px';
+  nl.style.display='';nl.style.left=Math.round(x)+'px';   // whole pixel — a fractional left blurs/kinks the 2px line under anti-aliasing
 }
 function updateNowLines(){document.querySelectorAll('.fc-data').forEach(positionNowLine);}
 // Glide the compare grid's "current time" bar (same cadence as the forecast now-line).
@@ -3359,7 +3371,7 @@ function positionCmpNowLines(){
     const grid=nl.parentElement;const gw=grid?grid.scrollWidth:0;
     const x=70+(((Date.now()-t0)/3600000)+0.5)*40;
     if(x<70||(gw&&x>gw)){nl.style.display='none';return;}
-    nl.style.display='';nl.style.left=x.toFixed(1)+'px';
+    nl.style.display='';nl.style.left=Math.round(x)+'px';   // whole pixel — matches the forecast now-line fix
   });
   if(!window._cmpNowTimer)window._cmpNowTimer=setInterval(positionCmpNowLines,30000);
 }
@@ -3427,13 +3439,17 @@ function updateCompass(){const n=document.getElementById('compass-needle');if(!n
   n.setAttribute('transform',`rotate(${_compassAngle} 23 23)`);}
 // Geolocation — drops a single clickable blue pin at your location and recenters.
 let myLocMarker=null, lastGeo=null, geoAsked=false, geoWatchId=null;
+// Follow mode: while true, live position updates keep the camera centred on you (panning only —
+// your zoom/pitch/bearing are left alone). Turns on whenever a location fix lands, turns off the
+// moment you manually drag the map (so it doesn't fight you while you look around).
+let followMe=false;
 // Circular "you are here" dot: soft outer halo + solid blue core with white ring.
 function blueDotSVG(){return`<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1"><circle cx="8" cy="8" r="6" fill="#2563eb" stroke="#fff" stroke-width="2.5"/></svg>`;}
 // Place or move the dot. recenter=true flies the camera to it (open + button); live updates pass false so the
 // camera holds still and you watch the dot slide across the map as you move.
 function placeMyLoc(lat,lon,fast,recenter){
   if(recenter===undefined)recenter=true;
-  const onClick=()=>{const la=lastGeo?lastGeo.lat:lat,lo=lastGeo?lastGeo.lon:lon;showPopup(la,lo,`<div class="pp"><div class="ppn">📍 My location</div><div class="pps">${la.toFixed(5)}, ${lo.toFixed(5)}</div></div>`);};
+  const onClick=()=>{const la=lastGeo?lastGeo.lat:lat,lo=lastGeo?lastGeo.lon:lon;showMyLocPopup(la,lo);};
   if(useMapLibre&&mlMap){
     if(myLocMarker){try{myLocMarker.setLngLat([lon,lat]);}catch(e){}}
     else{
@@ -3455,11 +3471,19 @@ function placeMyLoc(lat,lon,fast,recenter){
   }
 }
 // Live tracking: once permission is granted, keep the dot glued to your real position as you move.
-// watchPosition fires a callback every time the device reports a new fix; we move the dot, never the camera.
+// watchPosition fires a callback every time the device reports a new fix; we always move the dot,
+// and — while followMe is on — gently pan the camera along too (zoom/pitch/bearing untouched).
 function startLiveTracking(){
   if(geoWatchId!=null||!navigator.geolocation)return;
   geoWatchId=navigator.geolocation.watchPosition(
-    p=>{const la=p.coords.latitude,lo=p.coords.longitude;lastGeo={lat:la,lon:lo};saveLastGeo(la,lo);placeMyLoc(la,lo,false,false);},
+    p=>{
+      const la=p.coords.latitude,lo=p.coords.longitude;lastGeo={lat:la,lon:lo};
+      placeMyLoc(la,lo,false,false);
+      if(followMe){
+        if(useMapLibre&&mlMap){try{mlMap.easeTo({center:[lo,la],duration:600});}catch(e){}}
+        else if(lfMap){try{lfMap.panTo([la,lo],{animate:true,duration:0.6});}catch(e){}}
+      }
+    },
     ()=>{},{enableHighAccuracy:true,timeout:20000,maximumAge:1000});
 }
 // Only ever PROMPTS once per session; after that reuse the cached fix (no repeat prompts).
@@ -3472,51 +3496,26 @@ function maybeSetGeoForecast(lat,lon){
   if(currentLaunchId||currentEditLZ||(fcTarget&&fcTarget.site))return;   // user already picked a spot
   setForecastSite(lat,lon,'My location');
 }
-// Persistent "we've already triggered a location request at least once" flag. Survives across
-// tabs and reloads (unlike the in-memory geoAsked), so we can avoid re-prompting on every boot
-// even when the browser itself isn't remembering the grant.
-const GEO_ASKED_KEY='updraft_geo_asked_v1';
-function geoEverAsked(){try{return localStorage.getItem(GEO_ASKED_KEY)==='1';}catch(e){return false;}}
-function markGeoAsked(){try{localStorage.setItem(GEO_ASKED_KEY,'1');}catch(e){}}
-// Remember the last known position so repeat visits can jump straight to your area instantly,
-// instead of waiting on a fresh GPS fix before zooming in.
-const GEO_LAST_KEY='updraft_lastgeo_v1';
-function saveLastGeo(la,lo){try{localStorage.setItem(GEO_LAST_KEY,JSON.stringify({la,lo,t:Date.now()}));}catch(e){}}
-function loadLastGeo(){try{const o=JSON.parse(localStorage.getItem(GEO_LAST_KEY)||'null');return(o&&isFinite(o.la)&&isFinite(o.lo))?o:null;}catch(e){return null;}}
-// On boot, snap the map to your cached location the moment it's ready (no permission needed to
-// read a stored coord, so this never prompts). The permission-gated live locate then refines it.
-function seedMapFromCachedGeo(){
-  const g=loadLastGeo();if(!g)return;
-  const mob=window.innerWidth<=768;
-  if(useMapLibre&&mlMap){try{mlMap.jumpTo({center:[g.lo,g.la],zoom:mob?11.5:13.5,pitch:mob?0:45,bearing:0});}catch(e){}}
-  else if(lfMap){try{lfMap.setView([g.la,g.lo],mob?11:13);}catch(e){}}
-}
 function goToMyLocation(fast,force){
+  followMe=true;   // (re)enable follow — a fresh explicit locate should always start tracking again
   if(lastGeo){placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);return;}
-  if((geoAsked&&!force)||!navigator.geolocation)return;   // auto path asks once; the button may force a retry
-  geoAsked=true;markGeoAsked();
-  // Fast first: a low-accuracy / cached fix returns almost instantly, so the dot + zoom appear right away.
+  if((geoAsked&&!force)||!navigator.geolocation)return;   // avoid a duplicate in-flight request; the button may force a retry
+  geoAsked=true;
+  // Always ask for a fresh, high-accuracy (GPS-grade, not coarse cell/wifi-tower) fix — a coarse
+  // network fix can be off by an entire state, which is worse than the couple extra seconds this takes.
   navigator.geolocation.getCurrentPosition(
-    p=>{lastGeo={lat:p.coords.latitude,lon:p.coords.longitude};saveLastGeo(lastGeo.lat,lastGeo.lon);placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);},
-    ()=>{},{enableHighAccuracy:false,timeout:9000,maximumAge:600000});
+    p=>{lastGeo={lat:p.coords.latitude,lon:p.coords.longitude};placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);},
+    ()=>{},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
   // Then start continuous high-accuracy tracking so the dot follows you live.
   startLiveTracking();
 }
-// Boot-time auto-locate. We want the browser's permission prompt to appear at most ONCE ever —
-// on the very first visit. On later loads (new tab, revisit) we locate silently if the browser
-// still holds the grant, and otherwise stay quiet so no unsolicited prompt pops up. The 📍 button
-// (force=true) can always re-request on demand.
+// Boot-time auto-locate: always try, on every load/refresh, so the map centers on your real
+// location whenever possible. This is safe to call unconditionally — a browser that has already
+// decided (granted or denied) never shows another native popup for it, it just resolves or fails
+// silently; the popup only reappears while the permission is genuinely still undecided, which is
+// exactly when we want to keep asking. The 📍 button (force=true) can always re-request on demand.
 function autoGeoOnBoot(){
-  if(!navigator.geolocation)return;
-  if(navigator.permissions&&navigator.permissions.query){
-    navigator.permissions.query({name:'geolocation'}).then(st=>{
-      if(st.state==='granted')goToMyLocation(true);                       // already allowed → silent locate
-      else if(st.state==='prompt'&&!geoEverAsked())goToMyLocation(true);  // genuine first visit → prompt once
-      // 'denied', or 'prompt' after we've already asked once → do nothing (button can still force it)
-    }).catch(()=>{ if(!geoEverAsked())goToMyLocation(true); });
-  }else if(!geoEverAsked()){
-    goToMyLocation(true);   // no Permissions API → fall back to our own once-ever flag
-  }
+  if(navigator.geolocation)goToMyLocation(true);
 }
 // Apple Maps on Apple devices, Google Maps elsewhere.
 function directionsURL(lat,lon){
@@ -3688,6 +3687,17 @@ function highlightConnectedLZ(launchId){
   paintLZMarker(lz.id,true);
   highlightedLZId=lz.id;
 }
+// Small popup on the "my location" dot: just your coordinates + a shortcut into the same
+// ad-hoc "fly from here" flow the long-press gesture uses — not the full site sidebar.
+function showMyLocPopup(lat,lon){
+  closeFlyPrompt();
+  const html=`<div class="flyprompt"><div class="flyprompt-coords">${lat.toFixed(5)}, ${lon.toFixed(5)}</div><button class="flyprompt-btn" onclick="flyFromHere(${lat.toFixed(6)},${lon.toFixed(6)})">🪂 Fly from here</button></div>`;
+  if(useMapLibre&&mlMap){
+    flyPromptPopup=new maplibregl.Popup({closeButton:true,closeOnClick:true,offset:14,className:'flyprompt-pop'}).setLngLat([lon,lat]).setHTML(html).addTo(mlMap);
+  }else if(lfMap){
+    flyPromptPopup=L.popup({closeButton:true,closeOnClick:true,className:'flyprompt-pop',autoPan:false}).setLatLng([lat,lon]).setContent(html).openOn(lfMap);
+  }
+}
 // Small popup at the tapped point offering to launch an ad-hoc glide analysis from there.
 function showFlyPrompt(lat,lon){
   closeFlyPrompt();
@@ -3857,9 +3867,19 @@ function stashSidebar(){
   positionReopenBtn();
 }
 function reopenSidebar(){
-  document.getElementById('sidebar').classList.add('open');
+  const sb=document.getElementById('sidebar');
   hideGlideMobile();                                  // the in-panel glide slider takes over; drop the floating scroller
   const r=document.getElementById('sb-reopen');if(r){r.style.display='none';r.classList.remove('reopen-glide');r.style.top='';r.style.right='';r.style.bottom='';r.style.left='';}
+  if(sb.classList.contains('open')){sb.style.transition='';sb.style.transform='';return;}
+  // Guarantee a visible right-to-left slide-in: pin the panel fully off-screen with the transition
+  // disabled and COMMIT that frame (the reflow below), then re-enable the transition and flip .open
+  // so it animates the whole way over from the committed off-screen start. Doing it via the reflow
+  // (rather than rAF) keeps the open reliable even if rAF is throttled, and a stray inline
+  // transform/transition left by a drag can't short-circuit the animation.
+  sb.style.transition='none';sb.style.transform='translateX(100%)';
+  void sb.offsetWidth;
+  sb.style.transition='';sb.style.transform='';
+  sb.classList.add('open');
 }
 function showPopup(lat,lon,html){
   destroyMini();
@@ -4009,8 +4029,8 @@ function initMapLibre(timeoutMs){
         m.on('click',e=>{if(suppressMapClick){suppressMapClick=false;return;}handleEditClick(e.lngLat.lng,e.lngLat.lat);});  // "Fly from here?" uses a press-and-hold (short on desktop, longer on mobile)
         m.on('dblclick',e=>{if(drawingFor){e.preventDefault();finishDraw();}});
         m.on('mousemove',e=>probeWind(e.lngLat.lat,e.lngLat.lng));
+        m.on('dragstart',()=>{followMe=false;});   // a manual pan means you're looking elsewhere — stop fighting it with live-follow
         mlMap=m;window.mlMap=m;updateCompass();
-        // No auto-geolocate on load (avoids the location prompt every visit) — use 📍 My location.
         resolve(m);
       });
       // Transient tile/sprite/DEM errors (missing "gate" icon, rate-limited tiles) are NOT fatal —
@@ -4052,6 +4072,7 @@ function initLeaflet(){
   m.on('dblclick',()=>{if(drawingFor)finishDraw();});
   m.on('mousemove',e=>probeWind(e.latlng.lat,e.latlng.lng));
   m.on('moveend',()=>{if(centerProbeActive())probeCenter();});   // touch: re-sample wind at screen centre
+  m.on('dragstart',()=>{followMe=false;});   // a manual pan means you're looking elsewhere — stop fighting it with live-follow
   lfMap=m;
   document.getElementById('mode-badge').textContent='2D mode — 3D not supported in this browser';
   // Pitch/exaggeration are meaningless without 3D — hide the whole row and drop
@@ -4475,7 +4496,7 @@ function cullGhostMarkers(){
   importUtahPGSites(); // background: pull Utah PG/HG sites (ParaglidingEarth) into our launches
   prefetchParks();     // background: cache OSM park outlines so they show instantly on click
   openSiteFromHash(); // if opened via a shared #site=<id> link, fly there and open it
-  if(!(location.hash||'').match(/site=/)){seedMapFromCachedGeo();autoGeoOnBoot();}// snap to your cached area instantly, then locate (asks only on the FIRST-EVER visit)
+  if(!(location.hash||'').match(/site=/)){autoGeoOnBoot();}// map boots on the default Utah overview; once the browser resolves (or grants) location, fly in to the real fix
   syncCtrlPanel();setTimeout(syncCtrlPanel,400);window.addEventListener('load',syncCtrlPanel);
   syncUnitBtns();   // highlight the saved unit choices in the menu
   fitAllModelSelects();   // size the model dropdown(s) to the selected word
