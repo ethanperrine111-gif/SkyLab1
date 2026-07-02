@@ -533,6 +533,9 @@ body.dark .uvbtn.active{background:#0ea5e9;color:#fff;border-color:#0ea5e9;}
 .edbtn.active{background:#2563eb;border-color:#1d4ed8;color:#fff;}
 .edbtn.danger{background:#fef2f2;border-color:#ef4444;color:#b91c1c;}
 .edbtn.danger:hover{background:#fee2e2;}
+.edbtn.confirm-armed{background:#dc2626;border-color:#991b1b;color:#fff;animation:confirmPulse 1s ease-in-out infinite;}
+.edbtn.confirm-armed:hover{background:#b91c1c;}
+@keyframes confirmPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5);}50%{box-shadow:0 0 0 6px rgba(220,38,38,0);}}
 .edbtn.save{background:#dcfce7;border-color:#16a34a;color:#15803d;margin-top:7px;}
 .edbtn.save:hover{background:#bbf7d0;}
 .edbtn.saved-ok{background:#16a34a;border-color:#15803d;color:#fff;}
@@ -1033,6 +1036,13 @@ function loadLaunchPos(){try{const m=JSON.parse(localStorage.getItem(LAUNCH_POS_
   LAUNCH_EDIT_FIELDS.forEach(f=>{if(f!=='wind'&&o[f]!=null)s[f]=o[f];});});}catch(e){}}
 function saveCustomLaunches(){const v=LAUNCHES.filter(s=>s.custom);try{localStorage.setItem(CUSTOM_LAUNCH_KEY,JSON.stringify(v));}catch(e){}cloudSave(CUSTOM_LAUNCH_KEY,v);}
 function loadCustomLaunches(){try{const a=JSON.parse(localStorage.getItem(CUSTOM_LAUNCH_KEY));if(Array.isArray(a))a.forEach(s=>{if(!LAUNCHES.some(x=>x.id===s.id))LAUNCHES.push(s);});}catch(e){}}
+// Deleted BASE launches (custom ones just disappear on delete, since they only live in
+// CUSTOM_LAUNCH_KEY). Base launches come from the const LAUNCHES array so we track their
+// IDs here and filter them out on boot; that way a delete persists across reloads/devices.
+const DELETED_LAUNCH_KEY='updraft_deletedlaunches_v1';
+function loadDeletedLaunches(){try{const a=JSON.parse(localStorage.getItem(DELETED_LAUNCH_KEY));return Array.isArray(a)?a:[];}catch(e){return[];}}
+function saveDeletedLaunches(ids){try{localStorage.setItem(DELETED_LAUNCH_KEY,JSON.stringify(ids));}catch(e){}cloudSave(DELETED_LAUNCH_KEY,ids);}
+function applyDeletedLaunches(){const ids=loadDeletedLaunches();if(!ids.length)return;for(let i=LAUNCHES.length-1;i>=0;i--){if(ids.includes(LAUNCHES[i].id))LAUNCHES.splice(i,1);}}
 // ── Favorites ─────────────────────────────────────────────────────────────────
 // Pilots can star the sites they actually fly. Stored locally + mirrored to the cloud.
 const FAV_KEY='skylab_favs_v1';
@@ -4374,6 +4384,37 @@ function handleEditClick(lon,lat){
   return false;
 }
 function deleteLZ(lz){lzStore=lzStore.filter(z=>z!==lz);saveLZStore();buildLZMarkers();drawConnectors();drawLZZones();closeSidebar();}
+// Remove a takeoff: pull it from LAUNCHES, drop its marker/weather caches, unlink any LZs that
+// pointed at it, and persist. Base (non-custom) launches also get added to the deleted-ids list
+// so they don't reappear on next boot from the const LAUNCHES array.
+function deleteLaunch(site){
+  const i=LAUNCHES.findIndex(s=>s.id===site.id);if(i>=0)LAUNCHES.splice(i,1);
+  const mk=launchMarkerMap[site.id];if(mk){try{useMapLibre?mk.remove():lfMap.removeLayer(mk);}catch(e){}}
+  delete launchMarkerMap[site.id];
+  if(typeof launchElMap!=='undefined')delete launchElMap[site.id];
+  if(typeof siteWx!=='undefined')delete siteWx[site.id];
+  if(typeof siteRatio!=='undefined')delete siteRatio[site.id];
+  // Unlink any LZs that were connected to this takeoff (silent — no user prompt needed).
+  let anyUnlinked=false;
+  (lzStore||[]).forEach(z=>{if(z.launchIds&&z.launchIds.includes(site.id)){z.launchIds=z.launchIds.filter(id=>id!==site.id);anyUnlinked=true;}});
+  if(anyUnlinked){saveLZStore();drawConnectors();}
+  saveCustomLaunches();   // if it was custom, this drops it from the stored custom list
+  if(!site.custom){const ids=loadDeletedLaunches();if(!ids.includes(site.id)){ids.push(site.id);saveDeletedLaunches(ids);}}
+  closeSidebar();
+}
+// Two-step delete confirm: first click flips the button into a red "tap again to confirm" state
+// with a 4-second safety timeout. A second click within that window fires the delete.
+function wireConfirmDelete(btn,labelDelete,doDelete){
+  if(!btn)return;
+  let armed=false, timer=null;
+  const reset=()=>{armed=false;btn.textContent=labelDelete;btn.classList.remove('confirm-armed');if(timer){clearTimeout(timer);timer=null;}};
+  reset();
+  btn.onclick=()=>{
+    if(armed){reset();doDelete();return;}
+    armed=true;btn.textContent='⚠ Tap again to confirm';btn.classList.add('confirm-armed');
+    timer=setTimeout(reset,4000);
+  };
+}
 function showDrawUndo(on){const b=document.getElementById('draw-undo');if(b)b.style.display=on?'block':'none';}
 // Floating Save/Done button shown on mobile while the menu is hidden during move/draw.
 function showMobileAction(label,handler){const b=document.getElementById('mobile-action');if(!b)return;b.textContent=label;b.onclick=handler;b.style.display='block';}
@@ -4411,7 +4452,7 @@ function wireLZEditor(lz){
   document.getElementById('ed-launch').onchange=e=>{lz.launchIds=Array.from(e.target.selectedOptions).map(o=>o.value);applyConnections();drawConnectors();saveLZStore();};
   document.getElementById('ed-draw').onclick=()=>startDrawBoundary(lz);
   document.getElementById('ed-clearb').onclick=()=>{lz.boundary=null;clearZones();saveLZStore();};
-  document.getElementById('ed-del').onclick=()=>deleteLZ(lz);
+  wireConfirmDelete(document.getElementById('ed-del'),'🗑 Delete LZ',()=>deleteLZ(lz));
   document.getElementById('ed-desc').oninput=e=>{lz.desc=e.target.value;saveLZStore();};
   document.getElementById('ed-move').onclick=()=>toggleMovePin(lz);
   document.getElementById('ed-save').onclick=e=>{saveLZStore();flashSaved(e.target);};
@@ -4421,7 +4462,7 @@ function flashSaved(b){if(!b)return;const t=b.textContent;b.textContent='✓ Sav
 // ── Takeoff (launch) editor: collapsible dropdown in the launch popup ──────────
 function launchEditorHTML(site){
   const win=windowFor(site);
-  return`<details class="lzedit"><summary class="lzedit-t">✎ Edit this takeoff</summary><div class="lzedit-body"><label class="edl">Name</label><input class="edi" id="led-name" value="${(site.name||'').replace(/"/g,'&quot;')}"/><div class="edrow"><div style="flex:1"><label class="edl">Facing (°)</label><input class="edi" id="led-facing" type="number" min="0" max="359" value="${site.facing}"/></div><div style="flex:1"><label class="edl">Altitude (ft)</label><input class="edi" id="led-alt" type="number" value="${site.alt}"/></div></div><label class="edl">Allowable wind direction (° wind blows FROM)</label><div class="edrow"><div style="flex:1"><label class="edl">From</label><input class="edi" id="led-windfrom" type="number" min="0" max="359" value="${Math.round(win[0])}"/></div><div style="flex:1"><label class="edl">To (clockwise)</label><input class="edi" id="led-windto" type="number" min="0" max="359" value="${Math.round(win[1])}"/></div></div><div class="ppnote" style="margin-top:2px;margin-bottom:4px;">e.g. From 202 → To 292 = a SW–W window. Drives the green wedge on the pin and the fly/no-fly check.</div><div class="edrow"><div style="flex:1"><label class="edl">LZ altitude (ft)</label><input class="edi" id="led-lzalt" type="number" value="${site.lzAlt!=null?site.lzAlt:''}"/></div><div style="flex:1"><label class="edl">Glide needed (x:1)</label><input class="edi" id="led-glide" type="number" step="0.1" value="${site.glideReq!=null?site.glideReq:''}"/></div></div><label class="edl">Best window</label><input class="edi" id="led-best" value="${(site.bestWindow||'').replace(/"/g,'&quot;')}" placeholder="e.g. Mornings, before midday thermals"/><label class="edl">Access</label><input class="edi" id="led-access" value="${(site.access||'').replace(/"/g,'&quot;')}" placeholder="e.g. 4WD, 2 mi hike, 1,500 ft gain"/><label class="edl">Airspace</label><input class="edi" id="led-airspace" value="${(site.airspace||'').replace(/"/g,'&quot;')}" placeholder="e.g. Class B floor 10,500 ft MSL"/><label class="edl">Radio</label><input class="edi" id="led-radio" value="${(site.radio||'').replace(/"/g,'&quot;')}" placeholder="e.g. 146.560 MHz"/><label class="edl">Bio / notes</label><textarea class="edi" id="led-desc" rows="3">${(site.desc||'').replace(/</g,'&lt;')}</textarea><button class="edbtn" id="led-move">✥ Move pin</button><button class="edbtn save" id="led-save">💾 Save changes</button><div class="ppnote" style="margin-top:6px;">Move pin: drag the takeoff on the map, then click lock. Facing drives the glide cone.</div></div></details>`;
+  return`<details class="lzedit"><summary class="lzedit-t">✎ Edit this takeoff</summary><div class="lzedit-body"><label class="edl">Name</label><input class="edi" id="led-name" value="${(site.name||'').replace(/"/g,'&quot;')}"/><div class="edrow"><div style="flex:1"><label class="edl">Facing (°)</label><input class="edi" id="led-facing" type="number" min="0" max="359" value="${site.facing}"/></div><div style="flex:1"><label class="edl">Altitude (ft)</label><input class="edi" id="led-alt" type="number" value="${site.alt}"/></div></div><label class="edl">Allowable wind direction (° wind blows FROM)</label><div class="edrow"><div style="flex:1"><label class="edl">From</label><input class="edi" id="led-windfrom" type="number" min="0" max="359" value="${Math.round(win[0])}"/></div><div style="flex:1"><label class="edl">To (clockwise)</label><input class="edi" id="led-windto" type="number" min="0" max="359" value="${Math.round(win[1])}"/></div></div><div class="ppnote" style="margin-top:2px;margin-bottom:4px;">e.g. From 202 → To 292 = a SW–W window. Drives the green wedge on the pin and the fly/no-fly check.</div><div class="edrow"><div style="flex:1"><label class="edl">LZ altitude (ft)</label><input class="edi" id="led-lzalt" type="number" value="${site.lzAlt!=null?site.lzAlt:''}"/></div><div style="flex:1"><label class="edl">Glide needed (x:1)</label><input class="edi" id="led-glide" type="number" step="0.1" value="${site.glideReq!=null?site.glideReq:''}"/></div></div><label class="edl">Best window</label><input class="edi" id="led-best" value="${(site.bestWindow||'').replace(/"/g,'&quot;')}" placeholder="e.g. Mornings, before midday thermals"/><label class="edl">Access</label><input class="edi" id="led-access" value="${(site.access||'').replace(/"/g,'&quot;')}" placeholder="e.g. 4WD, 2 mi hike, 1,500 ft gain"/><label class="edl">Airspace</label><input class="edi" id="led-airspace" value="${(site.airspace||'').replace(/"/g,'&quot;')}" placeholder="e.g. Class B floor 10,500 ft MSL"/><label class="edl">Radio</label><input class="edi" id="led-radio" value="${(site.radio||'').replace(/"/g,'&quot;')}" placeholder="e.g. 146.560 MHz"/><label class="edl">Bio / notes</label><textarea class="edi" id="led-desc" rows="3">${(site.desc||'').replace(/</g,'&lt;')}</textarea><button class="edbtn" id="led-move">✥ Move pin</button><button class="edbtn save" id="led-save">💾 Save changes</button><button class="edbtn danger" id="led-del">🗑 Delete takeoff</button><div class="ppnote" style="margin-top:6px;">Move pin: drag the takeoff on the map, then click lock. Facing drives the glide cone.</div></div></details>`;
 }
 function wireLaunchEditor(site){
   const nameEl=document.getElementById('led-name');if(!nameEl)return;
@@ -4443,6 +4484,7 @@ function wireLaunchEditor(site){
   txt('led-best','bestWindow');txt('led-access','access');txt('led-airspace','airspace');txt('led-radio','radio');
   document.getElementById('led-move').onclick=()=>toggleMoveLaunch(site.id);
   document.getElementById('led-save').onclick=e=>{saveLaunchPos();saveCustomLaunches();flashSaved(e.target);};
+  wireConfirmDelete(document.getElementById('led-del'),'🗑 Delete takeoff',()=>deleteLaunch(site));
 }
 // Pins are locked by default; this enables dragging for one LZ until you lock it again.
 function toggleMovePin(lz){
@@ -4616,6 +4658,7 @@ function cullGhostMarkers(){
   initBackend();       // connect to Supabase if configured
   await hydrateFromCloud(); // pull any cloud-saved edits into localStorage before the loaders read it
   loadCustomLaunches();// user-added takeoffs (localStorage) appended to LAUNCHES
+  applyDeletedLaunches();// prune any base launches the user previously deleted (persisted across devices via cloud sync)
   loadFavs();          // starred sites (localStorage / cloud)
   updateFavBtnCount(); // show the count on the top-bar ★ button
   loadLaunchPos();     // apply any persisted launch-pin moves/edits before drawing markers
