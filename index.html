@@ -779,7 +779,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="checkbox" id="ov-wx" onchange="toggleFeatureLayer('wx',this.checked)"/><span class="lp-ico">🌡️</span><span class="lp-lbl">Weather stations</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-relief" onchange="toggleOverlay('relief',this.checked)"/><span class="lp-ico">⛰️</span><span class="lp-lbl">Hillshade</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/><span class="lp-ico">🥾</span><span class="lp-lbl">Hiking trails</span></label>
-        <label class="lp-row"><input type="checkbox" id="ov-blm" onchange="toggleOverlay('blm',this.checked)"/><span class="lp-ico">🏞️</span><span class="lp-lbl">BLM public land</span></label>
+<label class="lp-row"><input type="checkbox" id="ov-blm" onchange="toggleOverlay('blm',this.checked)"/><span class="lp-ico">🏞️</span><span class="lp-lbl">BLM public land</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-fedland" onchange="toggleOverlay('fedland',this.checked)"/><span class="lp-ico">🌲</span><span class="lp-lbl">National park / forest</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-camping" onchange="toggleFeatureLayer('camping',this.checked)"/><span class="lp-ico">🏕️</span><span class="lp-lbl">Free camping</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-power" onchange="toggleOverlay('power',this.checked)"/> ⚡ Power lines</label>
       </div>
@@ -1279,7 +1280,8 @@ const TILES={
   relief:'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',   // free Esri World Hillshade (slope/aspect relief)
   thermals:'https://thermal.kk7.ch/tiles/thermals_all_all/{z}/{x}/{y}.png?src=ethanperrine111-gif.github.io',   // free kk7 thermal hotspot heatmap (from XC flight tracks)
   skyways:'https://thermal.kk7.ch/tiles/skyways_all_all/{z}/{x}/{y}.png?src=ethanperrine111-gif.github.io',   // free kk7 "skyways" — thermal glide-lines pilots fly between thermals
-  blm:'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_BLM_Only/MapServer/tile/{z}/{y}/{x}'   // BLM public land parcels only (SMA layer, cached to z14)
+  blm:'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_BLM_Only/MapServer/tile/{z}/{y}/{x}',   // BLM public land parcels only (SMA layer, cached to z14)
+  fedland:'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/tile/{z}/{y}/{x}'   // All federal land: NPS (purple), USFS (green), BLM (yellow), USFWS (brown), etc.
 };
 // OpenAIP airspace tiles need a free API key (sign up at openaip.net → My Account → API key).
 // Paste it here to enable the ✈ Airspace overlay; leave blank and the toggle will prompt you.
@@ -4229,6 +4231,9 @@ function initMapLibre(timeoutMs){
         // BLM public land — orange fill for parcels the Bureau of Land Management administers.
         m.addSource('blm',{type:'raster',tiles:[TILES.blm],tileSize:256,maxzoom:14,attribution:'Public land © Bureau of Land Management'});
         m.addLayer({id:'blm',type:'raster',source:'blm',layout:{visibility:'none'},paint:{'raster-opacity':0.55}});
+        // National park / forest — multi-agency federal land layer (NPS purple, USFS green, etc.).
+        m.addSource('fedland',{type:'raster',tiles:[TILES.fedland],tileSize:256,maxzoom:14,attribution:'Federal land © BLM SMA'});
+        m.addLayer({id:'fedland',type:'raster',source:'fedland',layout:{visibility:'none'},paint:{'raster-opacity':0.5}});
         // Free Esri World Hillshade relief overlay — multiply-blends to read slope/aspect.
         m.addSource('relief',{type:'raster',tiles:[TILES.relief],tileSize:256,attribution:'Hillshade © Esri'});
         m.addLayer({id:'relief',type:'raster',source:'relief',layout:{visibility:'none'},paint:{'raster-opacity':0.55}});
@@ -4289,7 +4294,8 @@ function initLeaflet(){
     relief:L.tileLayer(TILES.relief,{attribution:'Hillshade © Esri',maxZoom:19,opacity:0.55}),
     thermals:L.tileLayer(TILES.thermals,{attribution:'Thermals © thermal.kk7.ch',maxNativeZoom:12,maxZoom:18,opacity:0.6,tms:true}),  // kk7 serves TMS (flipped y)
     skyways:L.tileLayer(TILES.skyways,{attribution:'Skyways © thermal.kk7.ch',maxNativeZoom:12,maxZoom:18,opacity:0.7,tms:true}),
-    blm:L.tileLayer(TILES.blm,{attribution:'Public land © Bureau of Land Management',maxNativeZoom:14,maxZoom:18,opacity:0.55})
+    blm:L.tileLayer(TILES.blm,{attribution:'Public land © Bureau of Land Management',maxNativeZoom:14,maxZoom:18,opacity:0.55}),
+    fedland:L.tileLayer(TILES.fedland,{attribution:'Federal land © BLM SMA',maxNativeZoom:14,maxZoom:18,opacity:0.5})
   };
   const oa=openAipTiles();
   if(oa)lfOverlays.airspace=L.tileLayer(oa,{attribution:'Airspace © OpenAIP',maxZoom:14,opacity:0.85});
