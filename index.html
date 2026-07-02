@@ -583,6 +583,13 @@ body.dark .lzedit[open]>summary{border-bottom-color:#1e293b;}
 .ar-chip.launch .ar-chip-ico{background:#16a34a;}
 .ar-chip.lz .ar-chip-ico{background:#2563eb;}
 .ar-chip-lbl{margin-top:3px;background:rgba(15,23,42,.75);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;text-align:center;line-height:1.3;}
+/* Off-screen sites (outside the camera's field of view): a small dot pinned to whichever
+   edge you'd need to turn toward, instead of vanishing entirely. */
+.ar-edge{position:absolute;pointer-events:auto;cursor:pointer;}
+.ar-edge-dot{width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 3px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.5);}
+.ar-edge.launch .ar-edge-dot{background:#16a34a;}
+.ar-edge.lz .ar-edge-dot{background:#2563eb;}
+#ar-hint{position:absolute;top:calc(48px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:rgba(15,23,42,.5);color:#fde68a;font-size:11px;font-weight:700;padding:3px 12px;border-radius:14px;white-space:nowrap;pointer-events:none;display:none;}
 /* native geolocate button hidden — driven by #geo-btn instead */
 .maplibregl-ctrl-geolocate{display:none!important;}
 /* brand logo as a cut-out overlay, bottom-centre of the map */
@@ -780,6 +787,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
       <video id="ar-video" autoplay playsinline muted></video>
       <div id="ar-markers"></div>
       <div id="ar-heading"></div>
+      <div id="ar-hint"></div>
       <div id="ar-status"></div>
       <button id="ar-close" onclick="closeAR()" aria-label="Close AR view">✕</button>
     </div>
@@ -3607,39 +3615,58 @@ function renderAR(){
   if(!arActive)return;
   const layer=document.getElementById('ar-markers');
   const hEl=document.getElementById('ar-heading');
+  const hintEl=document.getElementById('ar-hint');
   if(hEl)hEl.textContent=arHeading!=null?arCompassLabel(arHeading):'';
   if(arHeading==null||!lastGeo){
     if(layer)layer.innerHTML='';
+    if(hintEl)hintEl.style.display='none';
     return;
   }
   setARStatus('');
   const w=layer.clientWidth||window.innerWidth;
-  const items=[];
-  LAUNCHES.forEach(s=>{
-    if(s.lat==null||s.lon==null)return;
-    const mi=hav(lastGeo.lat,lastGeo.lon,s.lat,s.lon);if(mi>AR_RANGE_MI)return;
-    items.push(arItem(s,'launch',mi,w));
-  });
-  (typeof lzStore!=='undefined'?lzStore:[]).forEach(z=>{
-    if(z.lat==null||z.lon==null)return;
-    const mi=hav(lastGeo.lat,lastGeo.lon,z.lat,z.lon);if(mi>AR_RANGE_MI)return;
-    items.push(arItem(z,'lz',mi,w));
-  });
-  const shown=items.filter(Boolean).sort((a,b)=>b.mi-a.mi);   // farthest first so nearer chips paint on top
-  layer.innerHTML=shown.map(it=>
-    `<div class="ar-chip ${it.type}" style="left:${it.x}px;top:${it.y}%;transform:translate(-50%,-50%) scale(${it.scale})" onclick="arPick('${it.type}','${it.id}')">
-      <div class="ar-chip-ico">${it.type==='launch'?'▲':'⬛'}</div>
-      <div class="ar-chip-lbl">${it.name}<br>${it.mi.toFixed(1)} mi</div>
-    </div>`).join('');
+  let cands=[];
+  LAUNCHES.forEach(s=>{if(s.lat!=null&&s.lon!=null)cands.push({site:s,type:'launch',mi:hav(lastGeo.lat,lastGeo.lon,s.lat,s.lon)});});
+  (typeof lzStore!=='undefined'?lzStore:[]).forEach(z=>{if(z.lat!=null&&z.lon!=null)cands.push({site:z,type:'lz',mi:hav(lastGeo.lat,lastGeo.lon,z.lat,z.lon)});});
+  let picked=cands.filter(c=>c.mi<=AR_RANGE_MI), fallback=false;
+  if(!picked.length&&cands.length){
+    // Nothing within range — fall back to just the single nearest launch, plus its paired LZ (if it has one).
+    fallback=true;
+    const nearest=cands.filter(c=>c.type==='launch').sort((a,b)=>a.mi-b.mi)[0];
+    if(nearest){
+      picked=[nearest];
+      const lz=(lzStore||[]).find(z=>(z.launchIds||[]).includes(nearest.site.id));
+      if(lz)picked.push({site:lz,type:'lz',mi:hav(lastGeo.lat,lastGeo.lon,lz.lat,lz.lon)});
+    }
+  }
+  if(hintEl){
+    if(fallback&&picked.length){hintEl.textContent=`Nothing within ${AR_RANGE_MI} mi — showing nearest`;hintEl.style.display='block';}
+    else hintEl.style.display='none';
+  }
+  const items=picked.map(({site,type,mi})=>arItem(site,type,mi,w));
+  const onscreen=items.filter(it=>!it.offscreen).sort((a,b)=>b.mi-a.mi);   // farthest first so nearer chips paint on top
+  const edge=items.filter(it=>it.offscreen);
+  layer.innerHTML=
+    onscreen.map(it=>
+      `<div class="ar-chip ${it.type}" style="left:${it.x}px;top:${it.y}%;transform:translate(-50%,-50%) scale(${it.scale})" onclick="arPick('${it.type}','${it.id}')">
+        <div class="ar-chip-ico">${it.type==='launch'?'▲':'⬛'}</div>
+        <div class="ar-chip-lbl">${it.name}<br>${it.mi.toFixed(1)} mi</div>
+      </div>`).join('')+
+    edge.map(it=>{
+      const side=it.rel<0?'left':'right';
+      return `<div class="ar-edge ${it.type}" style="${side}:6px;top:${it.y}%;transform:translateY(-50%) scale(${it.scale})" onclick="arPick('${it.type}','${it.id}')" title="${it.name} — ${it.mi.toFixed(1)} mi, turn ${side}">
+        <div class="ar-edge-dot"></div>
+      </div>`;
+    }).join('');
 }
 function arItem(site,type,mi,viewportW){
   const brg=bearingTo(lastGeo.lat,lastGeo.lon,site.lat,site.lon);
-  const rel=((brg-arHeading+540)%360)-180;               // signed delta from where you're facing, -180..180
-  if(Math.abs(rel)>AR_FOV/2)return null;                 // outside the camera's view — hidden until you turn toward it
+  const rel=((brg-arHeading+540)%360)-180;               // signed delta from where you're facing, -180..180 (negative = turn left)
+  const offscreen=Math.abs(rel)>AR_FOV/2;                // outside the camera's view — shown as an edge dot instead of a full chip
   const x=Math.round((0.5+rel/AR_FOV)*viewportW);
-  const scale=(Math.max(0.55,1-(mi/AR_RANGE_MI)*0.5)).toFixed(2);
+  const capped=Math.min(mi,AR_RANGE_MI);                 // the fallback nearest-site can be farther than the normal range cap
+  const scale=(Math.max(0.55,1-(capped/AR_RANGE_MI)*0.5)).toFixed(2);
   const y=(50-scale*22).toFixed(1);                      // closer (bigger) chips sit a little lower, for a rough depth cue
-  return{id:site.id,name:site.name,type,mi,x,y,scale};
+  return{id:site.id,name:site.name,type,mi,x,y,scale,rel,offscreen};
 }
 function arPick(type,id){
   closeAR();
