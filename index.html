@@ -326,7 +326,8 @@ body.dark .ppwind-note{color:#94a3b8;}
 .lp-sec:first-child{margin-top:0;}
 .lp-row{display:flex;align-items:center;gap:10px;padding:9px 4px;cursor:pointer;user-select:none;font-size:13px;}
 .lp-row input{cursor:pointer;margin:0;accent-color:#38bdf8;width:20px;height:20px;flex-shrink:0;}
-.lp-ico{flex-shrink:0;width:20px;text-align:center;font-size:15px;line-height:1;}
+.lp-ico{flex-shrink:0;width:20px;text-align:center;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;}
+.lp-swatch{width:14px;height:14px;border-radius:3px;border:1.5px solid rgba(255,255,255,.8);box-shadow:0 0 0 1px rgba(0,0,0,.35);display:block;}
 .lp-lbl{flex:1;}
 .lp-div{height:1px;background:rgba(255,255,255,.12);margin:7px 0 3px;}
 /* 3D popup thumbnail */
@@ -777,8 +778,9 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
         <label class="lp-row"><input type="checkbox" id="ov-wx" onchange="toggleFeatureLayer('wx',this.checked)"/><span class="lp-ico">🌡️</span><span class="lp-lbl">Weather stations</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-relief" onchange="toggleOverlay('relief',this.checked)"/><span class="lp-ico">⛰️</span><span class="lp-lbl">Hillshade</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-hiking" onchange="toggleOverlay('hiking',this.checked)"/><span class="lp-ico">🥾</span><span class="lp-lbl">Hiking trails</span></label>
-<label class="lp-row"><input type="checkbox" id="ov-blm" onchange="toggleOverlay('blm',this.checked)"/><span class="lp-ico">🏞️</span><span class="lp-lbl">BLM public land</span></label>
-        <label class="lp-row"><input type="checkbox" id="ov-fedland" onchange="toggleOverlay('fedland',this.checked)"/><span class="lp-ico">🌲</span><span class="lp-lbl">National park / forest</span></label>
+<label class="lp-row"><input type="checkbox" id="ov-blm" onchange="toggleOverlay('blm',this.checked)"/><span class="lp-ico"><span class="lp-swatch" style="background:#facc15;"></span></span><span class="lp-lbl">BLM public land</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-nps" onchange="toggleOverlay('nps',this.checked)"/><span class="lp-ico"><span class="lp-swatch" style="background:#a855f7;"></span></span><span class="lp-lbl">National Parks</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-usfs" onchange="toggleOverlay('usfs',this.checked)"/><span class="lp-ico"><span class="lp-swatch" style="background:#22c55e;"></span></span><span class="lp-lbl">National Forests</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-camping" onchange="toggleFeatureLayer('camping',this.checked)"/><span class="lp-ico">🏕️</span><span class="lp-lbl">Free camping</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-power" onchange="toggleOverlay('power',this.checked)"/> ⚡ Power lines</label>
       </div>
@@ -1279,7 +1281,11 @@ const TILES={
   thermals:'https://thermal.kk7.ch/tiles/thermals_all_all/{z}/{x}/{y}.png?src=ethanperrine111-gif.github.io',   // free kk7 thermal hotspot heatmap (from XC flight tracks)
   skyways:'https://thermal.kk7.ch/tiles/skyways_all_all/{z}/{x}/{y}.png?src=ethanperrine111-gif.github.io',   // free kk7 "skyways" — thermal glide-lines pilots fly between thermals
   blm:'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_BLM_Only/MapServer/tile/{z}/{y}/{x}',   // BLM public land parcels only (SMA layer, cached to z14)
-  fedland:'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/tile/{z}/{y}/{x}'   // All federal land: NPS (purple), USFS (green), BLM (yellow), USFWS (brown), etc.
+  // National Park boundaries — dynamic-render from the NPS's own ArcGIS server. Each tile is a
+  // separate export request, so it's slower than a cached layer but returns clean, agency-only geometry.
+  nps:'https://mapservices.nps.gov/arcgis/rest/services/LandResourcesDivisionTractAndBoundaryService/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image',
+  // National Forest boundaries — dynamic-render from USDA Forest Service's EDW ArcGIS server.
+  usfs:'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ForestSystemBoundaries_01/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image'
 };
 // OpenAIP airspace tiles need a free API key (sign up at openaip.net → My Account → API key).
 // Paste it here to enable the ✈ Airspace overlay; leave blank and the toggle will prompt you.
@@ -4087,12 +4093,24 @@ function setupLongPress(){
 }
 
 // ── Click handler ─────────────────────────────────────────────────────────────
+// Snap the "Weather altitude" slider up to a launch's real elevation, since you'd never
+// fly the surface wind from an 11,000 ft peak. Nearest 1000 ft step, capped at 18k (the
+// slider's max). Silent no-op if already close — no need to refire loadForecast then.
+function autoSetWindAltForLaunch(site){
+  if(!site||site.alt==null)return;
+  const target=Math.max(0,Math.min(18000,Math.round(site.alt/1000)*1000));
+  if(target===windAlt)return;
+  windAlt=target;
+  if(windState.on)fetchWindGrid(windState.time).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});
+  clearTimeout(windAltFcTimer);windAltFcTimer=setTimeout(loadForecast,250);
+}
 function onLaunchClick(site,e){
   stopEvt(e);
   closeFlyPrompt();
   if(site.id!==adhocId)clearAdhoc();          // selecting a real launch clears any temp "fly from here" pin
   clearZones();currentEditLZ=null;
   currentLaunchId=site.id;
+  autoSetWindAltForLaunch(site);              // slide the altitude bar up to the launch's real elevation before we build the popup
   const w=siteWx[site.id];
   setForecastSite(site.lat,site.lon,site.name,site);   // forecast bar follows the clicked site
   showPopup(site.lat,site.lon,launchPop(site,w));
@@ -4276,9 +4294,12 @@ function initMapLibre(timeoutMs){
         // BLM public land — orange fill for parcels the Bureau of Land Management administers.
         m.addSource('blm',{type:'raster',tiles:[TILES.blm],tileSize:256,maxzoom:14,attribution:'Public land © Bureau of Land Management'});
         m.addLayer({id:'blm',type:'raster',source:'blm',layout:{visibility:'none'},paint:{'raster-opacity':0.55}});
-        // National park / forest — multi-agency federal land layer (NPS purple, USFS green, etc.).
-        m.addSource('fedland',{type:'raster',tiles:[TILES.fedland],tileSize:256,maxzoom:14,attribution:'Federal land © BLM SMA'});
-        m.addLayer({id:'fedland',type:'raster',source:'fedland',layout:{visibility:'none'},paint:{'raster-opacity':0.5}});
+        // National Parks — purple fill from NPS's own boundary server (dynamic export).
+        m.addSource('nps',{type:'raster',tiles:[TILES.nps],tileSize:256,attribution:'National Parks © NPS'});
+        m.addLayer({id:'nps',type:'raster',source:'nps',layout:{visibility:'none'},paint:{'raster-opacity':0.55}});
+        // National Forests — green fill from USDA Forest Service EDW (dynamic export).
+        m.addSource('usfs',{type:'raster',tiles:[TILES.usfs],tileSize:256,attribution:'National Forests © USDA Forest Service'});
+        m.addLayer({id:'usfs',type:'raster',source:'usfs',layout:{visibility:'none'},paint:{'raster-opacity':0.55}});
         // Free Esri World Hillshade relief overlay — multiply-blends to read slope/aspect.
         m.addSource('relief',{type:'raster',tiles:[TILES.relief],tileSize:256,attribution:'Hillshade © Esri'});
         m.addLayer({id:'relief',type:'raster',source:'relief',layout:{visibility:'none'},paint:{'raster-opacity':0.55}});
@@ -4340,7 +4361,8 @@ function initLeaflet(){
     thermals:L.tileLayer(TILES.thermals,{attribution:'Thermals © thermal.kk7.ch',maxNativeZoom:12,maxZoom:18,opacity:0.6,tms:true}),  // kk7 serves TMS (flipped y)
     skyways:L.tileLayer(TILES.skyways,{attribution:'Skyways © thermal.kk7.ch',maxNativeZoom:12,maxZoom:18,opacity:0.7,tms:true}),
     blm:L.tileLayer(TILES.blm,{attribution:'Public land © Bureau of Land Management',maxNativeZoom:14,maxZoom:18,opacity:0.55}),
-    fedland:L.tileLayer(TILES.fedland,{attribution:'Federal land © BLM SMA',maxNativeZoom:14,maxZoom:18,opacity:0.5})
+    nps:L.tileLayer(TILES.nps,{attribution:'National Parks © NPS',opacity:0.55}),
+    usfs:L.tileLayer(TILES.usfs,{attribution:'National Forests © USDA Forest Service',opacity:0.55})
   };
   const oa=openAipTiles();
   if(oa)lfOverlays.airspace=L.tileLayer(oa,{attribution:'Airspace © OpenAIP',maxZoom:14,opacity:0.85});
