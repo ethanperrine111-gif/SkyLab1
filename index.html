@@ -571,6 +571,18 @@ body.dark .lzedit[open]>summary{border-bottom-color:#1e293b;}
 .flyprompt-pop .leaflet-popup-content{margin:6px;}
 /* Leaflet blue-dot */
 .bluedot-pulse{border-radius:50%;background:rgba(26,115,232,.25);}
+/* AR "look around" view: live camera feed + bearing/distance chips for nearby takeoffs & LZs */
+#ar-view{position:fixed;inset:0;z-index:1600;background:#000;display:none;}
+#ar-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+#ar-markers{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+#ar-heading{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:rgba(15,23,42,.55);color:#fff;font-size:13px;font-weight:800;padding:5px 14px;border-radius:20px;letter-spacing:.5px;pointer-events:none;white-space:nowrap;}
+#ar-status{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:14px;font-weight:700;text-align:center;padding:14px 20px;background:rgba(15,23,42,.72);border-radius:12px;max-width:80%;}
+#ar-close{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px));width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.6);color:#fff;border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:0;}
+.ar-chip{position:absolute;display:flex;flex-direction:column;align-items:center;pointer-events:auto;cursor:pointer;}
+.ar-chip-ico{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.5);border:2px solid #fff;}
+.ar-chip.launch .ar-chip-ico{background:#16a34a;}
+.ar-chip.lz .ar-chip-ico{background:#2563eb;}
+.ar-chip-lbl{margin-top:3px;background:rgba(15,23,42,.75);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;text-align:center;line-height:1.3;}
 /* native geolocate button hidden — driven by #geo-btn instead */
 .maplibregl-ctrl-geolocate{display:none!important;}
 /* brand logo as a cut-out overlay, bottom-centre of the map */
@@ -762,6 +774,14 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
     </div>
     <div id="br-controls">
       <button class="cbtn icon-btn" id="geo-btn" onclick="goToMyLocation(false,true)" title="My location" aria-label="My location"><svg width="20" height="26" viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg"><path d="M15 1C8 1 3 6 3 13c0 9 12 25 12 25S27 22 27 13C27 6 22 1 15 1z" fill="#2563eb" stroke="#fff" stroke-width="2.5"/><circle cx="15" cy="13" r="4.5" fill="#fff"/></svg></button>
+      <button class="cbtn icon-btn" id="ar-btn" onclick="openAR()" title="Look around (AR)" aria-label="Look around (AR)">📷</button>
+    </div>
+    <div id="ar-view">
+      <video id="ar-video" autoplay playsinline muted></video>
+      <div id="ar-markers"></div>
+      <div id="ar-heading"></div>
+      <div id="ar-status"></div>
+      <button id="ar-close" onclick="closeAR()" aria-label="Close AR view">✕</button>
     </div>
     <div id="compass" onclick="resetNorth()" title="Reset to north">
       <svg width="46" height="46" viewBox="0 0 46 46">
@@ -3516,6 +3536,105 @@ function goToMyLocation(fast,force){
 // exactly when we want to keep asking. The 📍 button (force=true) can always re-request on demand.
 function autoGeoOnBoot(){
   if(navigator.geolocation)goToMyLocation(true);
+}
+// ── AR "look around" view ───────────────────────────────────────────────────
+// Live camera feed with takeoff/LZ chips positioned by compass bearing + distance from you.
+// Bearing math assumes a ~62° horizontal field of view, typical for a phone's main camera —
+// close enough for "which peak is that", not landing-precision.
+let arStream=null, arWatchId=null, arHeading=null, arActive=false, arRenderTimer=null;
+const AR_RANGE_MI=25, AR_FOV=62;
+async function openAR(){
+  if(arActive)return;
+  arActive=true;
+  document.getElementById('ar-view').style.display='block';
+  setARStatus('Starting camera…');
+  try{
+    arStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+  }catch(e){
+    setARStatus('Camera access denied. Allow camera permission in your browser settings to use AR view.');
+    return;
+  }
+  if(!arActive)return;   // closed while awaiting the permission prompt
+  const v=document.getElementById('ar-video');v.srcObject=arStream;
+  try{await v.play();}catch(e){}
+  await startARCompass();
+  if(navigator.geolocation)startLiveTracking();   // reuses the app's own location watcher — harmless if already running
+  if(!arRenderTimer)arRenderTimer=setInterval(renderAR,500);
+  renderAR();
+}
+function closeAR(){
+  arActive=false;
+  document.getElementById('ar-view').style.display='none';
+  if(arStream){arStream.getTracks().forEach(t=>t.stop());arStream=null;}
+  window.removeEventListener('deviceorientationabsolute',onARHeading,true);
+  window.removeEventListener('deviceorientation',onARHeading,true);
+  if(arRenderTimer){clearInterval(arRenderTimer);arRenderTimer=null;}
+}
+function setARStatus(msg){const el=document.getElementById('ar-status');if(el){el.textContent=msg;el.style.display=msg?'block':'none';}}
+async function startARCompass(){
+  const need=typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function';
+  if(need){
+    try{
+      const res=await DeviceOrientationEvent.requestPermission();
+      if(res!=='granted'){setARStatus('Compass access denied — AR view needs it to know which way you\'re facing.');return;}
+    }catch(e){setARStatus('Compass permission failed.');return;}
+  }
+  if(typeof DeviceOrientationEvent==='undefined'){setARStatus('This device has no compass — AR view needs one to work.');return;}
+  window.addEventListener('deviceorientationabsolute',onARHeading,true);
+  window.addEventListener('deviceorientation',onARHeading,true);
+  setARStatus('Waiting for compass + your location…');
+}
+function onARHeading(e){
+  let h=null;
+  if(typeof e.webkitCompassHeading==='number')h=e.webkitCompassHeading;          // iOS: already a true compass heading
+  else if(e.alpha!=null)h=(360-e.alpha)%360;                                     // alpha counts CCW from north — flip to a compass bearing
+  if(h==null||isNaN(h))return;
+  arHeading=h;
+  renderAR();
+}
+function arCompassLabel(h){const dirs=['N','NE','E','SE','S','SW','W','NW'];return dirs[Math.round(h/45)%8]+' '+Math.round(h)+'°';}
+function renderAR(){
+  if(!arActive)return;
+  const layer=document.getElementById('ar-markers');
+  const hEl=document.getElementById('ar-heading');
+  if(hEl)hEl.textContent=arHeading!=null?arCompassLabel(arHeading):'';
+  if(arHeading==null||!lastGeo){
+    if(layer)layer.innerHTML='';
+    return;
+  }
+  setARStatus('');
+  const w=layer.clientWidth||window.innerWidth;
+  const items=[];
+  LAUNCHES.forEach(s=>{
+    if(s.lat==null||s.lon==null)return;
+    const mi=hav(lastGeo.lat,lastGeo.lon,s.lat,s.lon);if(mi>AR_RANGE_MI)return;
+    items.push(arItem(s,'launch',mi,w));
+  });
+  (typeof lzStore!=='undefined'?lzStore:[]).forEach(z=>{
+    if(z.lat==null||z.lon==null)return;
+    const mi=hav(lastGeo.lat,lastGeo.lon,z.lat,z.lon);if(mi>AR_RANGE_MI)return;
+    items.push(arItem(z,'lz',mi,w));
+  });
+  const shown=items.filter(Boolean).sort((a,b)=>b.mi-a.mi);   // farthest first so nearer chips paint on top
+  layer.innerHTML=shown.map(it=>
+    `<div class="ar-chip ${it.type}" style="left:${it.x}px;top:${it.y}%;transform:translate(-50%,-50%) scale(${it.scale})" onclick="arPick('${it.type}','${it.id}')">
+      <div class="ar-chip-ico">${it.type==='launch'?'▲':'⬛'}</div>
+      <div class="ar-chip-lbl">${it.name}<br>${it.mi.toFixed(1)} mi</div>
+    </div>`).join('');
+}
+function arItem(site,type,mi,viewportW){
+  const brg=bearingTo(lastGeo.lat,lastGeo.lon,site.lat,site.lon);
+  const rel=((brg-arHeading+540)%360)-180;               // signed delta from where you're facing, -180..180
+  if(Math.abs(rel)>AR_FOV/2)return null;                 // outside the camera's view — hidden until you turn toward it
+  const x=Math.round((0.5+rel/AR_FOV)*viewportW);
+  const scale=(Math.max(0.55,1-(mi/AR_RANGE_MI)*0.5)).toFixed(2);
+  const y=(50-scale*22).toFixed(1);                      // closer (bigger) chips sit a little lower, for a rough depth cue
+  return{id:site.id,name:site.name,type,mi,x,y,scale};
+}
+function arPick(type,id){
+  closeAR();
+  if(type==='launch'){const s=LAUNCHES.find(x=>x.id===id);if(s)onLaunchClick(s,{});}
+  else{const z=(lzStore||[]).find(x=>x.id===id);if(z)onLZClick(z,{});}
 }
 // Apple Maps on Apple devices, Google Maps elsewhere.
 function directionsURL(lat,lon){
