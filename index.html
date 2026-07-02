@@ -580,12 +580,10 @@ body.dark .lzedit[open]>summary{border-bottom-color:#1e293b;}
 #ar-markers{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
 #ar-heading{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:rgba(15,23,42,.55);color:#fff;font-size:13px;font-weight:800;padding:5px 14px;border-radius:20px;letter-spacing:.5px;pointer-events:none;white-space:nowrap;}
 #ar-status{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:14px;font-weight:700;text-align:center;padding:14px 20px;background:rgba(15,23,42,.72);border-radius:12px;max-width:80%;}
-#ar-close{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px));width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.6);color:#fff;border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:0;}
-.ar-chip{position:absolute;display:flex;flex-direction:column;align-items:center;pointer-events:auto;cursor:pointer;}
-.ar-chip-ico{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.5);border:2px solid #fff;}
-.ar-chip.launch .ar-chip-ico{background:#16a34a;}
-.ar-chip.lz .ar-chip-ico{background:#2563eb;}
-.ar-chip-lbl{margin-top:3px;background:rgba(15,23,42,.75);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;text-align:center;line-height:1.3;}
+#ar-close{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px));width:46px;height:46px;border-radius:50%;background:rgba(15,23,42,.85);color:#fff;border:2px solid rgba(255,255,255,.4);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:0;z-index:1610;pointer-events:auto;-webkit-tap-highlight-color:rgba(255,255,255,.2);}
+.ar-chip{position:absolute;display:flex;flex-direction:column;align-items:center;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));}
+.ar-chip svg{display:block;}
+.ar-chip-lbl{margin-top:2px;background:rgba(15,23,42,.75);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;text-align:center;line-height:1.3;}
 /* Off-screen sites (outside the camera's field of view): a small dot pinned to whichever
    edge you'd need to turn toward, instead of vanishing entirely. */
 .ar-edge{position:absolute;pointer-events:auto;cursor:pointer;}
@@ -3618,11 +3616,22 @@ function autoGeoOnBoot(){
 // Bearing math assumes a ~62° horizontal field of view, typical for a phone's main camera —
 // close enough for "which peak is that", not landing-precision.
 let arStream=null, arWatchId=null, arHeading=null, arActive=false, arRenderTimer=null;
+let arSmoothedHeading=null, arGotAbsolute=false;   // smoothing state + "have we seen an absolute reading yet"
 const AR_RANGE_MI=25, AR_FOV=62;
 async function openAR(){
   if(arActive)return;
   arActive=true;
   document.getElementById('ar-view').style.display='block';
+  // Wire the close button up here (once, idempotent) with a real event listener + touchend,
+  // instead of relying only on the HTML `onclick`. Some mobile browsers get flaky with the
+  // inline handler once the video / permission prompts run — a proper listener is bulletproof.
+  const closeBtn=document.getElementById('ar-close');
+  if(closeBtn&&!closeBtn._arBound){
+    closeBtn._arBound=true;
+    const doClose=e=>{if(e)e.preventDefault();closeAR();};
+    closeBtn.addEventListener('click',doClose,true);
+    closeBtn.addEventListener('touchend',doClose,true);
+  }
   setARStatus('Requesting compass access…');
   // iOS only treats requestPermission() as "in response to your tap" if it's the very first
   // async call made — anything awaited before it (like the camera prompt) breaks that chain
@@ -3647,7 +3656,9 @@ async function openAR(){
 }
 function closeAR(){
   arActive=false;
+  arSmoothedHeading=null;arGotAbsolute=false;arHeading=null;
   document.getElementById('ar-view').style.display='none';
+  const v=document.getElementById('ar-video');if(v){try{v.srcObject=null;v.pause();}catch(e){}}
   if(arStream){arStream.getTracks().forEach(t=>t.stop());arStream=null;}
   window.removeEventListener('deviceorientationabsolute',onARHeading,true);
   window.removeEventListener('deviceorientation',onARHeading,true);
@@ -3670,12 +3681,40 @@ async function startARCompass(){
   window.addEventListener('deviceorientation',onARHeading,true);
   return true;
 }
+// Turn a raw device-orientation event into a compass bearing (0=N, 90=E, …), then
+// low-pass smooth it so the sensor jitter doesn't rattle the pins around the screen.
+//
+// Two source types:
+//  * iOS Safari fires `deviceorientation` with `webkitCompassHeading` — that's ALREADY
+//    a true north bearing, screen-orientation compensated. Use it verbatim.
+//  * Android/Chromium fires `deviceorientationabsolute` with alpha measured CCW from
+//    magnetic north. We flip it to a compass bearing and subtract the screen orientation
+//    (portrait 0, landscape ±90) so the reading reflects the phone's back-camera axis.
+//
+// Once we've seen an absolute reading, we IGNORE any subsequent relative `deviceorientation`
+// event (they'd drift from the last-known device pose, not from north, and would fight
+// the correct absolute stream).
 function onARHeading(e){
-  let h=null;
-  if(typeof e.webkitCompassHeading==='number')h=e.webkitCompassHeading;          // iOS: already a true compass heading
-  else if(e.alpha!=null)h=(360-e.alpha)%360;                                     // alpha counts CCW from north — flip to a compass bearing
-  if(h==null||isNaN(h))return;
-  arHeading=h;
+  let raw=null;
+  if(typeof e.webkitCompassHeading==='number'){
+    raw=e.webkitCompassHeading;arGotAbsolute=true;
+  }else if(e.absolute===true&&e.alpha!=null){
+    const so=(screen.orientation&&screen.orientation.angle)||(typeof window.orientation==='number'?window.orientation:0);
+    raw=((360-e.alpha)-so+720)%360;arGotAbsolute=true;
+  }else if(!arGotAbsolute&&e.alpha!=null){
+    // Last resort: only until an absolute reading arrives. Better than showing no heading.
+    const so=(screen.orientation&&screen.orientation.angle)||(typeof window.orientation==='number'?window.orientation:0);
+    raw=((360-e.alpha)-so+720)%360;
+  }
+  if(raw==null||isNaN(raw))return;
+  if(arSmoothedHeading==null)arSmoothedHeading=raw;
+  else{
+    // Handle the wraparound at 359°→0°: take the shortest angular delta.
+    let d=raw-arSmoothedHeading;
+    if(d>180)d-=360;else if(d<-180)d+=360;
+    arSmoothedHeading=(arSmoothedHeading+d*0.25+360)%360;   // 0.25 = light smoothing (fast response, mild jitter cut)
+  }
+  arHeading=arSmoothedHeading;
   renderAR();
 }
 function arCompassLabel(h){const dirs=['N','NE','E','SE','S','SW','W','NW'];return dirs[Math.round(h/45)%8]+' '+Math.round(h)+'°';}
@@ -3714,11 +3753,17 @@ function renderAR(){
   const onscreen=items.filter(it=>!it.offscreen).sort((a,b)=>b.mi-a.mi);   // farthest first so nearer chips paint on top
   const edge=items.filter(it=>it.offscreen);
   layer.innerHTML=
-    onscreen.map(it=>
-      `<div class="ar-chip ${it.type}" style="left:${it.x}px;top:${it.y}%;transform:translate(-50%,-50%) scale(${it.scale})" onclick="arPick('${it.type}','${it.id}')">
-        <div class="ar-chip-ico">${it.type==='launch'?'▲':'⬛'}</div>
+    onscreen.map(it=>{
+      const svg=it.type==='launch'
+        ?mkLaunchSVG({flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[launchStatus(it.site)],it.site,siteWx[it.site.id])
+        :mkLZSVG(false,!!it.site.inTFR);
+      // Anchor the pin's TIP at the site's screen position (like the map does), with the
+      // label riding just below the tip so it doesn't cover the icon.
+      return `<div class="ar-chip ${it.type}" style="left:${it.x}px;top:${it.y}%;transform:translate(-50%,-100%) scale(${it.scale})" onclick="arPick('${it.type}','${it.id}')">
+        ${svg}
         <div class="ar-chip-lbl">${it.name}<br>${it.mi.toFixed(1)} mi</div>
-      </div>`).join('')+
+      </div>`;
+    }).join('')+
     edge.map(it=>{
       const side=it.rel<0?'left':'right';
       return `<div class="ar-edge ${it.type}" style="${side}:6px;top:${it.y}%;transform:translateY(-50%) scale(${it.scale})" onclick="arPick('${it.type}','${it.id}')" title="${it.name} — ${it.mi.toFixed(1)} mi, turn ${side}">
@@ -3734,7 +3779,7 @@ function arItem(site,type,mi,viewportW){
   const capped=Math.min(mi,AR_RANGE_MI);                 // the fallback nearest-site can be farther than the normal range cap
   const scale=(Math.max(0.55,1-(capped/AR_RANGE_MI)*0.5)).toFixed(2);
   const y=(50-scale*22).toFixed(1);                      // closer (bigger) chips sit a little lower, for a rough depth cue
-  return{id:site.id,name:site.name,type,mi,x,y,scale,rel,offscreen};
+  return{id:site.id,name:site.name,type,mi,x,y,scale,rel,offscreen,site};
 }
 function arPick(type,id){
   closeAR();
