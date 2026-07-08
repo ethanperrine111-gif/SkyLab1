@@ -11,6 +11,9 @@
 <meta name="application-name" content="SkyLab"/>
 <meta name="theme-color" content="#0f172a"/>
 <link rel="manifest" href="manifest.json"/>
+<!-- Prefer the freshest index.html — a mid-edit reload should NOT resurrect a stale cached copy. -->
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
 <!-- Offline support: cache the app shell + last-seen tiles/weather so remote launches work without signal. -->
 
 <title>SkyLab</title>
@@ -32,7 +35,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;}
+html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;overscroll-behavior:none;-webkit-touch-callout:none;}
 #wrap{display:flex;flex-direction:column;height:100vh;}
 #topbar{background:linear-gradient(120deg,#0b3a82,#2563eb 55%,#0ea5e9);padding:8px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:10;}
 #topbar h1{font-size:16px;font-weight:800;color:white;margin:0;display:flex;align-items:center;gap:8px;letter-spacing:.3px;}
@@ -75,6 +78,17 @@ body.fc-collapsed #forecast{display:none;}
 /* Purple day-divider, drawn as a full-height line in .fc-data (see buildForecast) so it
    runs from the very top (Day/Model header rows) to the bottom of the grid. */
 .fc-dayline{position:absolute;top:0;bottom:0;width:2px;background:#a855f7;pointer-events:none;z-index:3;}
+/* Sunrise / sunset markers — thin dashed vertical line at the exact astronomical time,
+   with a colored pill badge in the Day-header row. Sunrise is warm gold, sunset is deep violet. */
+.fc-sunmark{position:absolute;top:22px;bottom:0;width:1px;pointer-events:auto;z-index:2;opacity:.7;}
+.fc-sunmark.sunrise{background:repeating-linear-gradient(to bottom,#f59e0b 0 4px,transparent 4px 8px);}
+.fc-sunmark.sunset{background:repeating-linear-gradient(to bottom,#7c3aed 0 4px,transparent 4px 8px);}
+.fc-sunmark::before{position:absolute;top:-19px;left:-9px;width:20px;height:14px;border-radius:7px;line-height:14px;text-align:center;font-size:9px;font-weight:800;color:#fff;box-shadow:0 0 0 1.5px #fff;pointer-events:none;font-family:system-ui,sans-serif;}
+.fc-sunmark.sunrise::before{content:'▲';background:#f59e0b;}
+.fc-sunmark.sunset::before{content:'▼';background:#7c3aed;}
+body.dark .fc-sunmark{opacity:.85;}
+body.dark .fc-sunmark.sunrise::before{background:#fbbf24;color:#0f172a;}
+body.dark .fc-sunmark.sunset::before{background:#a78bfa;color:#0f172a;}
 .fc-data .fc-cell{cursor:pointer;}
 .fc-cell.wt-sel{box-shadow:inset 2px 0 0 #0ea5e9,inset -2px 0 0 #0ea5e9;}
 .fc-r-hr .fc-cell.wt-sel{color:#0ea5e9;font-weight:800;}
@@ -319,7 +333,9 @@ body.dark .ppwind-note{color:#94a3b8;}
   #legend{font-size:10px;padding:6px 8px;}
 }
 /* layer panel */
-#layer-panel{width:210px;background:rgba(17,24,39,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 9px;color:#fff;font-size:11px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.45);max-height:calc(100dvh - 230px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none;}
+/* max-height sized so the panel's bottom edge lines up with the bottom edge of the pin button
+   in #br-controls (top:196 + trow 30 + gap 5 + pin bottom offset 12 + safe-area). */
+#layer-panel{width:210px;background:rgba(17,24,39,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 9px;color:#fff;font-size:11px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.45);max-height:calc(100dvh - 243px - env(safe-area-inset-bottom,0px));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none;}
 #layer-panel::-webkit-scrollbar{display:none;}
 #layer-panel.open{display:block;}
 .lp-sec{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.45);margin:8px 0 3px;}
@@ -335,6 +351,16 @@ body.dark .ppwind-note{color:#94a3b8;}
 .pp-sat .maplibregl-canvas{border-radius:8px;}
 .pp-sat-tag{position:absolute;left:6px;bottom:5px;z-index:2;font-size:9px;color:#fff;background:rgba(0,0,0,.42);padding:1px 6px;border-radius:7px;pointer-events:none;}
 .thumb-compass{position:absolute;right:6px;bottom:5px;z-index:3;pointer-events:auto;touch-action:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
+/* First-view scrubber affordance: a curved arrow orbits the compass, rocks side-to-side twice,
+   then fades. Purely a hint — pointer-events:none so it never gets in the way of a real drag. */
+.thumb-compass-hint{position:absolute;inset:0;pointer-events:none;transform-origin:50% 50%;animation:tch-swing 1.4s ease-in-out 0s 3, tch-fade .6s ease-out 4.2s forwards;filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));}
+@keyframes tch-swing{
+  0%,100%{transform:rotate(-42deg);}
+  50%{transform:rotate(42deg);}
+}
+@keyframes tch-fade{
+  to{opacity:0;transform:rotate(0deg) scale(.9);}
+}
 .thumb-takeoff-dot{width:14px;height:14px;border-radius:50%;background:rgba(125,211,252,.4);border:2.5px solid rgba(125,211,252,.4);box-shadow:none;}
 .oa-pop{font-size:12px;color:#0f172a;line-height:1.45;min-width:120px;}
 /* Cleaner weather-station popup card */
@@ -386,6 +412,9 @@ body.dark .ppwind-note{color:#94a3b8;}
 #br-controls{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:calc(12px + env(safe-area-inset-left,0px));z-index:601;display:flex;flex-direction:row;gap:6px;align-items:flex-end;}
 /* icon-only buttons (square, centred graphic) */
 .icon-btn{padding:7px;display:flex;align-items:center;justify-content:center;line-height:0;}
+/* Pin & camera share dimensions so they line up visually in #br-controls */
+#geo-btn,#ar-btn{box-sizing:border-box;width:36px;height:42px;}
+#ar-btn{font-size:22px;line-height:1;}
 #geo-btn{background:rgba(255,255,255,.92);border-color:rgba(0,0,0,.12);}
 #geo-btn:hover{background:#fff;}
 /* compass indicator (left side, below control buttons) */
@@ -411,6 +440,8 @@ body.dark .ppwind-note{color:#94a3b8;}
 .ppcalc .ppcl{font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
 .ppcalc .ppcv{font-size:14px;font-weight:700;color:#0f172a;}
 .ppcalc .ppch{font-size:9px;color:#94a3b8;margin-top:1px;}
+.ppc-i{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;margin-left:4px;border-radius:50%;background:#94a3b8;color:#fff;font-size:9px;font-weight:800;font-style:italic;font-family:Georgia,serif;cursor:help;vertical-align:1px;}
+body.dark .ppc-i{background:#475569;}
 body.dark .ppcalc .ppc{background:#1e293b;border-color:#334155;}
 body.dark .ppcalc .ppcv{color:#e2e8f0;}
 /* Wind-aloft (hodograph + rose) & Sun/shade panels */
@@ -673,6 +704,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   /* Bigger tap targets for thumbs */
   .cbtn{padding:9px 13px;font-size:13px;border-radius:11px;}
   .icon-btn{padding:9px;}
+  #geo-btn,#ar-btn{width:40px;height:46px;}
+  #ar-btn{font-size:24px;}
   .edbtn{padding:9px 11px;font-size:13px;}
   .flybtn,.dirbtn{padding:12px;font-size:14px;}
   /* Drop the Favorites/Models header below the status bar / notch so it isn't jammed at the top */
@@ -684,7 +717,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   /* On mobile, fold Compare into the Weather Models dropdown (bottom option) to free up the top bar for the location. */
   #fc-compare,.nb-compare{display:none;}
   #model-compare{max-height:50vh;}
-  #layer-panel{width:210px;max-height:calc(100dvh - 72px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:16px;}  /* fit within the viewport from its anchor so all rows are reachable by scrolling */
+  /* Mobile pin sits higher (bottom:32px + safe-area) and the trow is 40px tall — panel bottom lines up with it. */
+  #layer-panel{width:210px;max-height:calc(100dvh - 273px - env(safe-area-inset-bottom,0px));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:16px;}
   /* Detail sidebar takes the full screen on a phone */
   #sidebar{width:100%;max-width:100%;}
   #sb-body{padding:calc(15px + env(safe-area-inset-top,0px)) 15px calc(96px + env(safe-area-inset-bottom,0px));}  /* extra bottom space so content clears the phone browser's bottom bar */
@@ -710,6 +744,11 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
 /* Popups must sit above every pin (which are forced to z-index 400–430 above). */
 .maplibregl-popup{z-index:600 !important;}
 .leaflet-popup-pane{z-index:800 !important;}
+/* Admin-gated UI: hidden until body has .adm (owner logged in via password prompt). */
+.adm-only{display:none;}
+body.adm .adm-only{display:block;}
+#adm-btn{background:#fef3c7;border:1px solid #f59e0b;color:#78350f;}
+body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
 </style>
 </head>
 <body class="probe-off">
@@ -874,12 +913,17 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
       <div class="lr"><div class="ls" style="background:rgba(34,197,94,.25);border:1.5px dashed #16a34a;"></div>LZ field boundary</div>
       <div class="lp-div"></div>
       <div class="lp-sec">Weather</div>
-      <button class="edbtn" onclick="openModelsInfo();toggleMenu();">🌦 About weather models</button>
+      <button class="edbtn" onclick="openModelsInfo();">🌦 About weather models</button>
       <div class="lp-div"></div>
-      <div class="lp-sec">Add to map</div>
-      <button class="edbtn" onclick="startAddLaunch();toggleMenu();">＋ Add takeoff</button>
-      <button class="edbtn" onclick="startAddLZ();toggleMenu();">＋ Add LZ</button>
-      <div class="lp-h2">Click any pin to rename it, edit its bio, link LZs to takeoffs, draw boundaries, or move it.</div>
+      <div class="lp-sec">Owner</div>
+      <button class="edbtn" id="adm-btn" onclick="promptAdminLogin();">🔒 Admin login</button>
+      <div class="adm-only">
+        <div class="lp-div"></div>
+        <div class="lp-sec">Add to map</div>
+        <button class="edbtn" onclick="startAddLaunch();toggleMenu();">＋ Add takeoff</button>
+        <button class="edbtn" onclick="startAddLZ();toggleMenu();">＋ Add LZ</button>
+        <div class="lp-h2">Click any pin to rename it, edit its bio, link LZs to takeoffs, draw boundaries, or move it.</div>
+      </div>
     </div>
     <button id="draw-undo" class="cbtn" style="display:none;position:absolute;bottom:48px;left:50%;transform:translateX(-50%);z-index:600;" onclick="undoDrawPoint()">↶ Undo point</button>
     <button id="mobile-action" style="display:none;position:absolute;bottom:92px;left:50%;transform:translateX(-50%);z-index:702;border:none;border-radius:22px;padding:12px 22px;font-size:14px;font-weight:800;color:#fff;background:rgba(34,197,94,.97);box-shadow:0 3px 14px rgba(0,0,0,.42);cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);"></button>
@@ -1093,10 +1137,11 @@ function favSiteCardHTML(site){
 async function loadFavForecast(site){
   const card=document.querySelector('.fav-card[data-id="'+site.id+'"]');if(!card)return;
   const wrap=card.querySelector('.fav-fc');if(!wrap)return;
-  let series=[];
+  let series=[],daily=null;
   try{
     const j=await fetchSeriesAt(site.lat,site.lon,currentModel,16);
     series=entriesFrom(j,MODEL_LABELS[currentModel]||currentModel);
+    daily=j&&j.daily||null;
     const lastT=series.length?new Date(series[series.length-1].t):null;
     const reachH=lastT?(lastT-Date.now())/36e5:0;
     if(currentModel!=='best_match'&&reachH<FC_TARGET_H-12){
@@ -1104,6 +1149,8 @@ async function loadFavForecast(site){
       const jx=await fetchSeriesAt(site.lat,site.lon,extModel,16);
       const ext=entriesFrom(jx,MODEL_LABELS[extModel]||'GFS').filter(e=>!lastT||new Date(e.t)>lastT);
       series=series.concat(ext);
+      const jxD=jx&&jx.daily;
+      if(jxD&&jxD.sunrise&&(!daily||!daily.sunrise||jxD.sunrise.length>daily.sunrise.length))daily=jxD;
     }
   }catch(e){}
   if(!document.querySelector('.fav-card[data-id="'+site.id+'"]'))return;   // overlay closed while fetching
@@ -1112,7 +1159,8 @@ async function loadFavForecast(site){
   series=series.filter(e=>new Date(e.t).getTime()>=backStart.getTime());
   // buildForecast reads fcTarget.site for per-site flyability/wind-direction; swap it in just for this build.
   const prev=fcTarget;fcTarget={lat:site.lat,lon:site.lon,label:site.name,site};
-  try{buildForecast(wrap,series.slice(0,336),{temp:'°F',rain:'Rain%',dir:'Direction'});}finally{fcTarget=prev;}
+  const trimmed=series.slice(0,336);if(daily)trimmed.daily=daily;
+  try{buildForecast(wrap,trimmed,{temp:'°F',rain:'Rain%',dir:'Direction'});}finally{fcTarget=prev;}
 }
 async function loadAllFavForecasts(favs){for(const s of favs){await loadFavForecast(s);}}   // sequential — avoids Open-Meteo rate limits
 function openFavorites(){
@@ -1161,9 +1209,7 @@ function bindOverlaySwipe(ov,closeFn){
   ov.addEventListener('touchcancel',finish,{passive:true});
 }
 function openModelsInfo(){bindOverlaySwipe(document.getElementById('models-overlay'),closeModelsInfo);document.getElementById('models-overlay').classList.add('open');}
-function closeModelsInfo(){const ov=document.getElementById('models-overlay');ov.classList.remove('open');ov.style.transform='';ov.style.opacity='';ov.style.transition='';
-  // Bring the main menu back so you land where you opened this from (it was closed on open).
-  const mp=document.getElementById('menu-panel');if(mp)mp.classList.add('open');}
+function closeModelsInfo(){const ov=document.getElementById('models-overlay');ov.classList.remove('open');ov.style.transform='';ov.style.opacity='';ov.style.transition='';}
 // ── Guided tour / new-user orientation ────────────────────────────────────────
 const TOUR_STEPS=[
   {emoji:'👋',title:'Welcome to SkyLab',body:'Utah’s paragliding weather &amp; site map. Here’s a quick tour of what everything does — tap <b>Next</b> to start (or ✕ to skip).'},
@@ -1264,13 +1310,21 @@ function flightCalcsHTML(site,w){
   if(da==null&&cb==null)return'';
   const daHi=da!=null&&da-site.alt>3000;     // flag big density-altitude excess over field elevation
   const cells=[];
-  if(da!=null)cells.push(`<div class="ppc"><div class="ppcl">Density alt</div><div class="ppcv"${daHi?' style="color:#b45309;"':''}>${da.toLocaleString()} ft${daHi?' ⚠':''}</div><div class="ppch">vs ${site.alt.toLocaleString()} ft field</div></div>`);
-  if(cb!=null)cells.push(`<div class="ppc"><div class="ppcl">Est. cloudbase</div><div class="ppcv">${cb.toLocaleString()} ft</div><div class="ppch">${Math.max(0,cb-site.alt).toLocaleString()} ft above launch</div></div>`);
+  const daTip="Density altitude — the effective altitude your wing feels after adjusting for temperature and pressure. Higher DA = less lift, longer takeoff/landing rolls, softer flare. More than ~3,000 ft above field elevation flags noticeably degraded performance.";
+  const cbTip="Estimated cloudbase (spread method) — projected altitude MSL where rising air cools to its dew point and forms cumulus. A rough working ceiling for thermals and cross-country climbs.";
+  if(da!=null)cells.push(`<div class="ppc"><div class="ppcl">Density alt<span class="ppc-i" title="${daTip}">i</span></div><div class="ppcv"${daHi?' style="color:#b45309;"':''}>${da.toLocaleString()} ft${daHi?' ⚠':''}</div><div class="ppch">field elev ${site.alt.toLocaleString()} ft</div></div>`);
+  if(cb!=null)cells.push(`<div class="ppc"><div class="ppcl">Est. cloudbase<span class="ppc-i" title="${cbTip}">i</span></div><div class="ppcv">${cb.toLocaleString()} ft</div><div class="ppch">${Math.max(0,cb-site.alt).toLocaleString()} ft above launch</div></div>`);
   return`<div class="ppcalc">${cells.join('')}</div>`;
 }
 let geoCtrl=null, lfBlueDot=null;                // geolocation: MapLibre control + Leaflet blue dot
 let currentModel='gfs_hrrr';                     // selected weather model
 const MODEL_LABELS={gfs_hrrr:'HRRR',gfs_seamless:'GFS',ecmwf_ifs025:'ECMWF',icon_seamless:'ICON',gem_seamless:'GEM',best_match:'Best'};
+// USFS "Forest System Boundaries" MapServer's default render fills each forest polygon with a
+// solid color — at any tile opacity that fill still obscures the satellite basemap beneath, so
+// turning the layer on looked like the satellite had been swapped for a green/streets-style
+// image. Force a hollow fill with just the outline via ArcGIS dynamicLayers so we get boundary
+// LINES only, on a transparent PNG.
+const USFS_DYN=encodeURIComponent(JSON.stringify([{id:0,source:{type:"mapLayer",mapLayerId:0},drawingInfo:{renderer:{type:"simple",symbol:{type:"esriSFS",style:"esriSFSNull",outline:{type:"esriSLS",style:"esriSLSSolid",color:[22,163,74,255],width:2}}}}}]));
 // CORS-enabled tile sources (verified to drape on MapLibre)
 const TILES={
   sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -1286,7 +1340,7 @@ const TILES={
   // separate export request, so it's slower than a cached layer but returns clean, agency-only geometry.
   nps:'https://mapservices.nps.gov/arcgis/rest/services/LandResourcesDivisionTractAndBoundaryService/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image',
   // National Forest boundaries — dynamic-render from USDA Forest Service's EDW ArcGIS server.
-  usfs:'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ForestSystemBoundaries_01/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image',
+  usfs:`https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ForestSystemBoundaries_01/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&dynamicLayers=${USFS_DYN}&f=image`,
   // Designated Wilderness (no-fly under FAA 91.119 spirit + agency rules; motorized/mechanized travel
   // prohibited by the 1964 Wilderness Act). Same USFS EDW server, different service.
   wilderness:'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_Wilderness_01/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image'
@@ -1975,11 +2029,20 @@ function d2c(d){return['N','NE','E','SE','S','SW','W','NW'][Math.round(d/45)%8];
 let civilDawnH=null, civilDuskH=null;
 function hourOf(iso){const t=(iso||'').split('T')[1]||'0:0';const p=t.split(':');return (+p[0])+(+p[1]||0)/60;}
 function curHourLocal(){const n=new Date();return n.getHours()+n.getMinutes()/60;}
-function isNight(h){if(civilDawnH==null)return false;return h<civilDawnH||h>civilDuskH;}
+// Site-aware night check: prefer that launch's own dawn/dusk (cached in siteWx from the
+// batch weather fetch), fall back to whatever the forecast bar last loaded, then to null=day.
+// Without this, every site was judged against wherever the forecast pointed — Monroe stayed
+// green after sunset because SLC's dawn/dusk was in the global.
+function isNight(h,site){
+  let dawn=civilDawnH,dusk=civilDuskH;
+  if(site){const wx=siteWx&&siteWx[site.id];if(wx&&wx.dawnH!=null){dawn=wx.dawnH;dusk=wx.duskH;}}
+  if(dawn==null)return false;
+  return h<dawn||h>dusk;
+}
 // Fly status. Optional `site`+`dir` tighten the call with that site's allowable
 // wind window (direction the wind blows FROM) and its per-rating strength limits.
 function flyS(w,g,c,t,hour,site,dir){
-  if(isNight(hour==null?curHourLocal():hour))return'no';
+  if(isNight(hour==null?curHourLocal():hour,site))return'no';
   if(t<35||w>30||g>38)return'no';
   let st=(w>18||g>25||c>85)?'caution':'flyable';
   if(site){
@@ -2620,12 +2683,12 @@ function launchPop(site,w){
   const bio=siteBioHTML(site);
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div>${windCompassSVG(site,stCol,40,w)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · ${site.rating} · ${d2c(site.facing)}-facing</div>${bdg(s)}${wxG(w)}${windAltSliderHTML()}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div>${windCompassSVG(site,stCol,40,w)}</div>${bdg(s)}${wxG(w)}${windAltSliderHTML()}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
   const bioHTML=lzBio?`<div class="ppbio"><div class="ppbio-h">📋 About this LZ</div><p>${lzBio}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}${tfrFlagHTML(site)}</div><div class="pps">${site.sub} · ${site.alt.toLocaleString()} ft · Landing Zone</div>${wxG(w)}${windAltSliderHTML()}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${shareBtnHTML(site.id)}${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}${tfrFlagHTML(site)}</div>${wxG(w)}${windAltSliderHTML()}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${shareBtnHTML(site.id)}${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
 }
 
 // ── 3D mini-map thumbnail (popup) ─────────────────────────────────────────────
@@ -2684,6 +2747,21 @@ function buildThumbCompass(container,brg){
     <circle class="tc-dot" r="5" fill="#38bdf8" stroke="#fff" stroke-width="1.6" style="cursor:grab"/>
   </svg>`;
   container.appendChild(wrap);
+  // First few times the user opens a launch, overlay a curved arrow that rocks side-to-side
+  // to advertise that the compass dot is draggable. Auto-removes after the animation.
+  try{
+    const seen=parseInt(localStorage.getItem('skylab_scrubber_hint_seen')||'0',10);
+    if(seen<3){
+      const hint=document.createElement('div');hint.className='thumb-compass-hint';
+      hint.innerHTML=`<svg viewBox="0 0 40 40" width="100%" height="100%" style="overflow:visible;">
+        <defs><marker id="tch-head" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fbbf24"/></marker></defs>
+        <path d="M 34 20 A 14 14 0 0 1 20 34" fill="none" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round" marker-end="url(#tch-head)"/>
+      </svg>`;
+      wrap.appendChild(hint);
+      localStorage.setItem('skylab_scrubber_hint_seen',String(seen+1));
+      setTimeout(()=>{try{hint.remove();}catch(e){}},4900);
+    }
+  }catch(e){}
   const svg=wrap.querySelector('svg'),north=wrap.querySelector('.tc-north'),dot=wrap.querySelector('.tc-dot'),look=wrap.querySelector('.tc-look');
   svg.style.cursor='grab';svg.style.touchAction='none';
   const R=14,CX=20,CY=20;
@@ -2809,8 +2887,9 @@ async function getGroundElevs(coords){
 async function fetchHRRR(lat,lon){
   const k=`${currentModel}|${lat.toFixed(2)},${lon.toFixed(2)}`;if(wxCache[k])return wxCache[k];
   try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&daily=sunrise,sunset&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);const d=await r.json();const c=d.current;
-    if(d.daily&&d.daily.sunrise&&d.daily.sunrise[0]){civilDawnH=hourOf(d.daily.sunrise[0])-0.5;civilDuskH=hourOf(d.daily.sunset[0])+0.5;}  // civil twilight ≈ ±30 min
-    const res={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),dp:(c.dew_point_2m!=null?Math.round(c.dew_point_2m):null),pres:Math.round(c.surface_pressure)};wxCache[k]=res;return res;}catch{return null;}
+    let dawnH=null,duskH=null;
+    if(d.daily&&d.daily.sunrise&&d.daily.sunrise[0]){dawnH=hourOf(d.daily.sunrise[0])-0.5;duskH=hourOf(d.daily.sunset[0])+0.5;civilDawnH=dawnH;civilDuskH=duskH;}  // civil twilight ≈ ±30 min
+    const res={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),dp:(c.dew_point_2m!=null?Math.round(c.dew_point_2m):null),pres:Math.round(c.surface_pressure),dawnH,duskH};wxCache[k]=res;return res;}catch{return null;}
 }
 // Fetch weather for MANY sites in a single Open-Meteo call (comma-separated coords),
 // in chunks. Firing one request per site (60+ at once) trips the API's rate limit
@@ -2822,13 +2901,17 @@ async function fetchHRRRBatch(sites,fallback){
     const lats=grp.map(s=>s.lat).join(','), lons=grp.map(s=>s.lon).join(',');
     let arr=null;
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&daily=sunrise,sunset&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);
       const j=await r.json();arr=Array.isArray(j)?j:[j];
     }catch(e){arr=null;}
     grp.forEach((s,idx)=>{
       const d=arr&&arr[idx], c=d&&d.current;let eff=fallback;
       if(c){
         eff={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),dp:(c.dew_point_2m!=null?Math.round(c.dew_point_2m):null),pres:Math.round(c.surface_pressure)};
+        // Per-site civil dawn/dusk so isNight() judges each launch against its own sun, not whichever
+        // location the forecast bar last loaded (fixes Monroe-stays-green-after-sunset).
+        const dl=d&&d.daily;
+        if(dl&&dl.sunrise&&dl.sunrise[0]){eff.dawnH=hourOf(dl.sunrise[0])-0.5;eff.duskH=hourOf(dl.sunset[0])+0.5;}
         wxCache[`${currentModel}|${s.lat.toFixed(2)},${s.lon.toFixed(2)}`]=eff;
       }
       if(eff)siteWx[s.id]={...eff,status:flyS(eff.wind,eff.gusts,eff.cloud,eff.temp,null,s,eff.dir)};
@@ -3213,19 +3296,26 @@ async function loadForecast(){
   // If the chosen model can't reach our target horizon, extend with a long-range model.
   // HRRR is short-range (~48h), so once it runs out we continue with GFS; other models
   // fall back to best-match.
+  let jxAll=null;
   if(currentModel!=='best_match'&&reachH<FC_TARGET_H-12){
     const extModel=currentModel==='gfs_hrrr'?'gfs_seamless':'best_match';
     const extLabel=MODEL_LABELS[extModel]||'GFS';
     let jx=null;try{jx=await fetchSeries(extModel,16);}catch(e){}
+    jxAll=jx;
     const ext=entriesFrom(jx,extLabel).filter(e=>!lastT||new Date(e.t)>lastT);
     series=series.concat(ext);
   }
+  // Astronomical daily data (sunrise/sunset) — prefer whichever fetch has more days covered.
+  const jselD=jsel&&jsel.daily,jxD=jxAll&&jxAll.daily;
+  const pickDaily=((jxD&&jxD.sunrise&&jxD.sunrise.length)||0)>((jselD&&jselD.sunrise&&jselD.sunrise.length)||0)?jxD:(jselD||jxD||null);
+  if(pickDaily)series.daily=pickDaily;
   if(!series.length){
     // Forecast strip failed (rate-limited) — fall back to the last cached series so the
     // strip never goes blank. Prefer an exact location match, but show any saved forecast.
     const c=loadFcCache();
     if(c&&c.series&&c.series.length){
       series=c.series;
+      if(c.daily)series.daily=c.daily;
       const exact=c.lat===fcTarget.lat&&c.lon===fcTarget.lon;
       showWxBanner(`⚠ Live weather unavailable — showing cached forecast from ${ageStr(c.ts)} ago${exact?'':' (nearest saved location)'}`);
     }
@@ -3435,6 +3525,26 @@ function buildForecast(container,series,labels){
         const dl=document.createElement('div');dl.className='fc-dayline';dl.style.left=(i*_cw)+'px';dataEl0.appendChild(dl);
       }
     }
+    // Sunrise / sunset markers — positioned at the exact astronomical minute (fractional column).
+    if(series.daily&&(series.daily.sunrise||series.daily.sunset)){
+      const t0=dataEl0._fcT0,maxX=series.length*_cw;
+      const addSun=(iso,cls,lbl)=>{
+        if(!iso)return;
+        const t=new Date(iso).getTime();
+        if(!isFinite(t))return;
+        const x=((t-t0)/3600000)*_cw;
+        if(x<0||x>maxX)return;
+        const m=document.createElement('div');
+        m.className='fc-sunmark '+cls;
+        m.style.left=x+'px';
+        const d=new Date(iso),hh=d.getHours(),mm=d.getMinutes();
+        const h12=((hh+11)%12)+1,ap=hh<12?'AM':'PM';
+        m.title=`${lbl} ${h12}:${String(mm).padStart(2,'0')} ${ap}`;
+        dataEl0.appendChild(m);
+      };
+      (series.daily.sunrise||[]).forEach(iso=>addSun(iso,'sunrise','Sunrise'));
+      (series.daily.sunset||[]).forEach(iso=>addSun(iso,'sunset','Sunset'));
+    }
   }
   // wire scroll: keep the now-column near the left, and update the frozen Model name.
   const scroll=container.querySelector('.fc-scroll');
@@ -3503,13 +3613,15 @@ function resetWindTime(){
 function renderForecast(series){
   const fcEl=document.getElementById('forecast');
   if(!series||!series.length){if(fcEl)fcEl.innerHTML='<div class="nb-load" style="color:#64748b;">Forecast unavailable</div>';return;}
+  const daily=series.daily;   // filter/slice returns a new array — carry the daily-astronomy over
   // Keep from the start of YESTERDAY so you can scroll back a day; drop anything older.
   const backStart=new Date();backStart.setHours(0,0,0,0);backStart.setDate(backStart.getDate()-1);
   series=series.filter(e=>new Date(e.t).getTime()>=backStart.getTime());
+  if(daily)series.daily=daily;
   buildForecast(fcEl,series,{temp:'°F',rain:'Rain %',dir:'Wind dir'});
   // Also render the mini forecast inside an open launch/LZ popup, if present.
   const ppWrap=document.querySelector('.pp-fc-wrap');
-  if(ppWrap&&!ppWrap.classList.contains('pp-cmp'))buildForecast(ppWrap,series.slice(0,336),{temp:'°F',rain:'Rain%',dir:'Direction'});
+  if(ppWrap&&!ppWrap.classList.contains('pp-cmp')){const mini=series.slice(0,336);if(daily)mini.daily=daily;buildForecast(ppWrap,mini,{temp:'°F',rain:'Rain%',dir:'Direction'});}
 }
 // "Now" button: smooth-scroll every visible forecast back to the current-hour column.
 function forecastNow(){
@@ -4113,6 +4225,8 @@ function onLaunchClick(site,e){
   closeFlyPrompt();
   if(site.id!==adhocId)clearAdhoc();          // selecting a real launch clears any temp "fly from here" pin
   clearZones();currentEditLZ=null;
+  // Switching to a different launch → drop the previous site's best-glide overlay & mobile scroller
+  if(glideState.id&&glideState.id!==site.id){glideState.id=null;try{clearGlide();}catch(e){}hideGlideMobile();}
   currentLaunchId=site.id;
   autoSetWindAltForLaunch(site);              // slide the altitude bar up to the launch's real elevation before we build the popup
   const w=siteWx[site.id];
@@ -4126,6 +4240,8 @@ function onLaunchClick(site,e){
 function onLZClick(lz,e){
   stopEvt(e);
   closeFlyPrompt();clearLZHighlight();
+  // Any glide overlay was anchored to a launch; clicking an LZ moves us off that launch.
+  if(glideState.id){glideState.id=null;try{clearGlide();}catch(e){}hideGlideMobile();}
   currentLaunchId=null;currentEditLZ=lz.id;
   clearFlight();
   const w=siteWx[lz.id];
@@ -4303,7 +4419,7 @@ function initMapLibre(timeoutMs){
         m.addLayer({id:'nps',type:'raster',source:'nps',layout:{visibility:'none'},paint:{'raster-opacity':0.55}});
         // National Forests — green fill from USDA Forest Service EDW (dynamic export).
         m.addSource('usfs',{type:'raster',tiles:[TILES.usfs],tileSize:256,attribution:'National Forests © USDA Forest Service'});
-        m.addLayer({id:'usfs',type:'raster',source:'usfs',layout:{visibility:'none'},paint:{'raster-opacity':0.55}});
+        m.addLayer({id:'usfs',type:'raster',source:'usfs',layout:{visibility:'none'},paint:{'raster-opacity':0.9}});
         // Designated Wilderness — red fill from the USFS EDW Wilderness service. Overlays
         // on top of the National Forests layer so no-fly pockets read against the green fly-OK fill.
         m.addSource('wilderness',{type:'raster',tiles:[TILES.wilderness],tileSize:256,attribution:'Wilderness © USDA Forest Service'});
@@ -4370,7 +4486,7 @@ function initLeaflet(){
     skyways:L.tileLayer(TILES.skyways,{attribution:'Skyways © thermal.kk7.ch',maxNativeZoom:12,maxZoom:18,opacity:0.7,tms:true}),
     blm:L.tileLayer(TILES.blm,{attribution:'Public land © Bureau of Land Management',maxNativeZoom:14,maxZoom:18,opacity:0.55}),
     nps:L.tileLayer(TILES.nps,{attribution:'National Parks © NPS',opacity:0.55}),
-    usfs:L.tileLayer(TILES.usfs,{attribution:'National Forests © USDA Forest Service',opacity:0.55}),
+    usfs:L.tileLayer(TILES.usfs,{attribution:'National Forests © USDA Forest Service',opacity:0.9}),
     wilderness:L.tileLayer(TILES.wilderness,{attribution:'Wilderness © USDA Forest Service',opacity:0.6})
   };
   const oa=openAipTiles();
@@ -4495,6 +4611,21 @@ function buildLZMarkers(){
   if(typeof applyMarkerVisibility==='function')applyMarkerVisibility();
 }
 
+// ── Admin gate: only the owner can add / edit / delete launches & LZs ─────────
+// Client-side check only (this is a static site) — hides edit UI from casual visitors.
+// A determined user could bypass it in devtools, so treat it as UX, not real security.
+const ADMIN_KEY='updraft_admin_v1';
+const ADMIN_HASH='03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
+let isAdmin=(function(){try{return localStorage.getItem(ADMIN_KEY)==='1';}catch(e){return false;}})();
+async function sha256Hex(s){const b=new TextEncoder().encode(s);const h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,'0')).join('');}
+function applyAdminUI(){document.body.classList.toggle('adm',!!isAdmin);const b=document.getElementById('adm-btn');if(b)b.textContent=isAdmin?'🔓 Log out (admin on)':'🔒 Admin login';}
+async function promptAdminLogin(){
+  if(isAdmin){isAdmin=false;try{localStorage.removeItem(ADMIN_KEY);}catch(e){}applyAdminUI();return;}
+  const p=prompt('Enter admin password:');if(p==null)return;
+  const h=await sha256Hex(p);
+  if(h===ADMIN_HASH){isAdmin=true;try{localStorage.setItem(ADMIN_KEY,'1');}catch(e){}applyAdminUI();alert('✅ Admin unlocked. You can now add, edit, and delete launches and LZs.');}
+  else alert('❌ Wrong password.');
+}
 // ── Menu (map key + LZ tools) ─────────────────────────────────────────────────
 function toggleMenu(){document.getElementById('menu-panel').classList.toggle('open');}
 // ── Forecast collapse (mobile) — reclaim the table's height for the map ────────
@@ -4517,19 +4648,19 @@ document.addEventListener('click',e=>{
   if(flyPromptPopup&&!e.target.closest('.flyprompt-pop'))closeFlyPrompt();
 });
 function setBadge(t){const b=document.getElementById('mode-badge');if(b){b.textContent=t||'';b.style.opacity=t?'1':'0';}}
-function startAddLZ(){addingLZ=true;addingLaunch=false;setBadge('📍 Click the map to drop a new LZ');}
-function startAddLaunch(){addingLaunch=true;addingLZ=false;setBadge('📍 Click the map to drop a new takeoff');}
+function startAddLZ(){if(!isAdmin)return;addingLZ=true;addingLaunch=false;setBadge('📍 Click the map to drop a new LZ');}
+function startAddLaunch(){if(!isAdmin)return;addingLaunch=true;addingLZ=false;setBadge('📍 Click the map to drop a new takeoff');}
 function handleEditClick(lon,lat){
   if(addingLaunch){addingLaunch=false;setBadge('');const site={id:'lnch_user_'+Date.now(),name:'New Takeoff',sub:'Custom',lat,lon,alt:6000,lzAlt:4500,rating:'P2',facing:270,lzLat:null,lzLon:null,desc:'User-added takeoff.',custom:true};LAUNCHES.push(site);saveCustomLaunches();createLaunchMarker(site);fetchHRRR(site.lat,site.lon).then(w=>{if(w){siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};recolorMarkers();}});onLaunchClick(site);return true;}
   if(addingLZ){addingLZ=false;setBadge('');const lz={id:'lz_user_'+Date.now(),name:'New LZ',sub:'Custom',lat,lon,alt:4500,desc:'User-added landing zone.',launchIds:[],boundary:null,custom:true};lzStore.push(lz);saveLZStore();buildLZMarkers();drawConnectors();openLZ(lz);return true;}
   if(drawingFor){drawVerts.push([lon,lat]);updateDrawPreview();return true;}
   return false;
 }
-function deleteLZ(lz){lzStore=lzStore.filter(z=>z!==lz);saveLZStore();buildLZMarkers();drawConnectors();drawLZZones();closeSidebar();}
+function deleteLZ(lz){if(!isAdmin)return;lzStore=lzStore.filter(z=>z!==lz);saveLZStore();buildLZMarkers();drawConnectors();drawLZZones();closeSidebar();}
 // Remove a takeoff: pull it from LAUNCHES, drop its marker/weather caches, unlink any LZs that
 // pointed at it, and persist. Base (non-custom) launches also get added to the deleted-ids list
 // so they don't reappear on next boot from the const LAUNCHES array.
-function deleteLaunch(site){
+function deleteLaunch(site){if(!isAdmin)return;
   const i=LAUNCHES.findIndex(s=>s.id===site.id);if(i>=0)LAUNCHES.splice(i,1);
   const mk=launchMarkerMap[site.id];if(mk){try{useMapLibre?mk.remove():lfMap.removeLayer(mk);}catch(e){}}
   delete launchMarkerMap[site.id];
@@ -4581,6 +4712,7 @@ function clearDrawPreview(){
 }
 // LZ editor markup embedded in the LZ popup. Returns the HTML block.
 function lzEditorHTML(lz){
+  if(!isAdmin)return '';
   const ids=lz.launchIds||[];
   const opts=LAUNCHES.map(L=>`<option value="${L.id}"${ids.includes(L.id)?' selected':''}>${L.name}</option>`).join('');
   return`<details class="lzedit"><summary class="lzedit-t">✎ Edit this LZ</summary><div class="lzedit-body"><label class="edl">Name</label><input class="edi" id="ed-name" value="${(lz.name||'').replace(/"/g,'&quot;')}"/><label class="edl">Connect to takeoffs (ctrl/⌘-click for more than one)</label><select class="edi" id="ed-launch" multiple size="5">${opts}</select><label class="edl">Bio / notes</label><textarea class="edi" id="ed-desc" rows="3">${(lz.desc||'').replace(/</g,'&lt;')}</textarea><button class="edbtn" id="ed-move">✥ Move pin</button><div class="edrow"><button class="edbtn" id="ed-draw">✏ Draw boundary</button><button class="edbtn danger" id="ed-clearb">🗑 Delete boundary</button></div><button class="edbtn save" id="ed-save">💾 Save changes</button><button class="edbtn danger" id="ed-del">🗑 Delete LZ</button><div class="ppnote" style="margin-top:6px;">Drag the pin on the map to move it. Draw boundary: click points, then double-click / Finish.</div></div></details>`;
@@ -4603,6 +4735,7 @@ function wireLZEditor(lz){
 function flashSaved(b){if(!b)return;const t=b.textContent;b.textContent='✓ Saved';b.classList.add('saved-ok');const det=b.closest('details');setTimeout(()=>{b.textContent=t;b.classList.remove('saved-ok');if(det)det.open=false;},1000);}
 // ── Takeoff (launch) editor: collapsible dropdown in the launch popup ──────────
 function launchEditorHTML(site){
+  if(!isAdmin)return '';
   const win=windowFor(site);
   return`<details class="lzedit"><summary class="lzedit-t">✎ Edit this takeoff</summary><div class="lzedit-body"><label class="edl">Name</label><input class="edi" id="led-name" value="${(site.name||'').replace(/"/g,'&quot;')}"/><div class="edrow"><div style="flex:1"><label class="edl">Facing (°)</label><input class="edi" id="led-facing" type="number" min="0" max="359" value="${site.facing}"/></div><div style="flex:1"><label class="edl">Altitude (ft)</label><input class="edi" id="led-alt" type="number" value="${site.alt}"/></div></div><label class="edl">Allowable wind direction (° wind blows FROM)</label><div class="edrow"><div style="flex:1"><label class="edl">From</label><input class="edi" id="led-windfrom" type="number" min="0" max="359" value="${Math.round(win[0])}"/></div><div style="flex:1"><label class="edl">To (clockwise)</label><input class="edi" id="led-windto" type="number" min="0" max="359" value="${Math.round(win[1])}"/></div></div><div class="ppnote" style="margin-top:2px;margin-bottom:4px;">e.g. From 202 → To 292 = a SW–W window. Drives the green wedge on the pin and the fly/no-fly check.</div><div class="edrow"><div style="flex:1"><label class="edl">LZ altitude (ft)</label><input class="edi" id="led-lzalt" type="number" value="${site.lzAlt!=null?site.lzAlt:''}"/></div><div style="flex:1"><label class="edl">Glide needed (x:1)</label><input class="edi" id="led-glide" type="number" step="0.1" value="${site.glideReq!=null?site.glideReq:''}"/></div></div><label class="edl">Best window</label><input class="edi" id="led-best" value="${(site.bestWindow||'').replace(/"/g,'&quot;')}" placeholder="e.g. Mornings, before midday thermals"/><label class="edl">Access</label><input class="edi" id="led-access" value="${(site.access||'').replace(/"/g,'&quot;')}" placeholder="e.g. 4WD, 2 mi hike, 1,500 ft gain"/><label class="edl">Airspace</label><input class="edi" id="led-airspace" value="${(site.airspace||'').replace(/"/g,'&quot;')}" placeholder="e.g. Class B floor 10,500 ft MSL"/><label class="edl">Radio</label><input class="edi" id="led-radio" value="${(site.radio||'').replace(/"/g,'&quot;')}" placeholder="e.g. 146.560 MHz"/><label class="edl">Bio / notes</label><textarea class="edi" id="led-desc" rows="3">${(site.desc||'').replace(/</g,'&lt;')}</textarea><button class="edbtn" id="led-move">✥ Move pin</button><button class="edbtn save" id="led-save">💾 Save changes</button><button class="edbtn danger" id="led-del">🗑 Delete takeoff</button><div class="ppnote" style="margin-top:6px;">Move pin: drag the takeoff on the map, then click lock. Facing drives the glide cone.</div></div></details>`;
 }
@@ -4711,7 +4844,7 @@ const WX_CACHE_KEY='skylab_wxcache_v1', FC_CACHE_KEY='skylab_fccache_v1';
 const _stripHourly=o=>{if(!o)return o;const{hourly,...rest}=o;return rest;};
 function saveWxCache(){try{const sw={};for(const k in siteWx)sw[k]=_stripHourly(siteWx[k]);localStorage.setItem(WX_CACHE_KEY,JSON.stringify({ts:Date.now(),siteWx:sw,slcWx:_stripHourly(slcWx)}));}catch(e){}}
 function loadWxCache(){try{return JSON.parse(localStorage.getItem(WX_CACHE_KEY)||'null');}catch(e){return null;}}
-function saveFcCache(series){try{localStorage.setItem(FC_CACHE_KEY,JSON.stringify({ts:Date.now(),lat:fcTarget.lat,lon:fcTarget.lon,series}));}catch(e){}}
+function saveFcCache(series){try{localStorage.setItem(FC_CACHE_KEY,JSON.stringify({ts:Date.now(),lat:fcTarget.lat,lon:fcTarget.lon,series,daily:series&&series.daily||null}));}catch(e){}}
 function loadFcCache(){try{return JSON.parse(localStorage.getItem(FC_CACHE_KEY)||'null');}catch(e){return null;}}
 function ageStr(ts){const m=Math.round((Date.now()-ts)/60000);if(m<60)return m+' min';const h=Math.round(m/60);return h<48?h+' hr':Math.round(h/24)+' days';}
 let wxBannerShown=false, wxRetryTimer=null, wxCooldownMs=60000, wxRetrying=false;
@@ -4797,6 +4930,7 @@ function cullGhostMarkers(){
   }
   updateXhair();
   window.addEventListener('resize',()=>{clearTimeout(window._rsz);window._rsz=setTimeout(()=>{resizeActiveMap();syncCtrlPanel();updateXhair();},200);});
+  applyAdminUI();      // reflect stored admin state on <body> and the menu button
   initBackend();       // connect to Supabase if configured
   await hydrateFromCloud(); // pull any cloud-saved edits into localStorage before the loaders read it
   loadCustomLaunches();// user-added takeoffs (localStorage) appended to LAUNCHES
