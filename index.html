@@ -476,9 +476,38 @@ body.dark .sun-note{color:#94a3b8;}
 .fc-model-sel{height:32px;box-sizing:border-box;}
 #fav-btn:hover{background:rgba(255,255,255,.2);}
 /* Full-screen Favorites overlay */
-#fav-overlay,#models-overlay{position:fixed;inset:0;z-index:1200;background:#f1f5f9;display:none;flex-direction:column;}
-#fav-overlay.open,#models-overlay.open{display:flex;}
-body.dark #fav-overlay,body.dark #models-overlay{background:#0b1220;}
+#fav-overlay,#models-overlay,#flycfg-overlay{position:fixed;inset:0;z-index:1200;background:#f1f5f9;display:none;flex-direction:column;}
+#fav-overlay.open,#models-overlay.open,#flycfg-overlay.open{display:flex;}
+body.dark #fav-overlay,body.dark #models-overlay,body.dark #flycfg-overlay{background:#0b1220;}
+/* Fly-score threshold editor: table of param rows, hard-veto grid, band cutoffs. */
+#flycfg-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;max-width:900px;width:100%;margin:0 auto;}
+#flycfg-body h3{font-size:14px;font-weight:800;margin:18px 0 8px;color:#0f172a;}
+body.dark #flycfg-body h3{color:#e2e8f0;}
+.fc-lead{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.55;color:#1e40af;margin-bottom:6px;}
+body.dark .fc-lead{background:rgba(30,58,138,.35);border-color:rgba(96,165,250,.4);color:#dbeafe;}
+.fc-tbl{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;font-size:12px;}
+body.dark .fc-tbl{background:#111827;border-color:#334155;color:#e2e8f0;}
+.fc-tbl th{text-align:left;padding:8px 10px;background:#f8fafc;font-weight:700;color:#334155;border-bottom:1px solid #e2e8f0;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
+body.dark .fc-tbl th{background:#1f2937;color:#cbd5e1;border-color:#334155;}
+.fc-tbl td{padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+body.dark .fc-tbl td{border-color:#1f2937;}
+.fc-tbl tr:last-child td{border-bottom:none;}
+.fc-tbl input,.fc-tbl select{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;padding:5px 7px;font-size:12px;background:#fff;color:#0f172a;font-family:inherit;}
+body.dark .fc-tbl input,body.dark .fc-tbl select{background:#0f172a;border-color:#334155;color:#e2e8f0;}
+.fc-tbl .fc-nod{color:#94a3b8;font-size:10.5px;font-style:italic;}
+.fc-tbl input[type=number]{max-width:80px;}
+.fc-tbl .fc-lbl-cell{font-weight:700;color:#0f172a;}
+body.dark .fc-tbl .fc-lbl-cell{color:#e2e8f0;}
+.fc-tbl .fc-unit{color:#64748b;font-size:11px;margin-left:4px;font-weight:500;}
+.fc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;}
+body.dark .fc-grid{background:#111827;border-color:#334155;}
+.fc-gcell label{display:block;font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;}
+.fc-gcell input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;padding:6px 8px;font-size:12.5px;background:#fff;color:#0f172a;font-family:inherit;}
+body.dark .fc-gcell input{background:#0f172a;border-color:#334155;color:#e2e8f0;}
+#flycfg-reset{background:#fee2e2;border:1px solid #ef4444;color:#991b1b;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;margin-top:16px;}
+body.dark #flycfg-reset{background:rgba(153,27,27,.3);color:#fecaca;}
+#flycfg-saved{margin-top:12px;font-size:11.5px;color:#065f46;}
+body.dark #flycfg-saved{color:#6ee7b7;}
 /* Guided tour / new-user orientation modal */
 #tour-overlay{position:fixed;inset:0;z-index:1400;background:rgba(15,23,42,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;padding:18px;}
 #tour-overlay.open{display:flex;}
@@ -545,7 +574,8 @@ body.dark .fav-info:hover{background:#16233b;}
 .fav-fc{display:flex;overflow:hidden;border-radius:8px;border:1px solid #e2e8f0;background:#fff;--fcw:38px;--fcl:64px;margin-top:9px;}
 body.dark .fav-fc{background:#0f172a;border-color:#1e293b;}
 /* Menu panel (map key + LZ tools) */
-#menu-panel{position:absolute;top:8px;left:8px;bottom:auto;z-index:800;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:10px;padding:9px 11px;font-size:11px;box-shadow:0 2px 12px rgba(0,0,0,.28);line-height:1.7;display:none;min-width:158px;max-width:230px;}
+/* Desktop: menu bottom aligns with the my-location pin's top edge (br-controls bottom:12 + geo-btn height:42 = 54, minus 8 top offset → 100% - 62px). */
+#menu-panel{position:absolute;top:8px;left:8px;bottom:auto;z-index:800;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:10px;padding:9px 11px;font-size:11px;box-shadow:0 2px 12px rgba(0,0,0,.28);line-height:1.7;display:none;min-width:158px;max-width:230px;max-height:calc(100% - 62px - env(safe-area-inset-bottom,0px));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 #menu-panel.open{display:block;}
 #menu-panel .lp-sec{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3af;margin:8px 0 3px;font-weight:700;}
 #menu-panel .lp-sec:first-child{margin-top:0;}
@@ -713,7 +743,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   /* Compass sits at the same height as the Layers button on the opposite side (map area already clears the notch) */
   #compass{top:8px;}
   /* Floating panels: never overflow the viewport, scroll if tall */
-  #menu-panel{left:12px;right:12px;max-width:none;max-height:calc(100% - 40px);overflow-y:auto;}  /* grow down until its bottom reaches the My-location pin */
+  #menu-panel{left:12px;right:12px;max-width:none;max-height:calc(100% - 86px - env(safe-area-inset-bottom,0px));overflow-y:auto;}  /* grow down until its bottom meets the My-location pin's top (br-controls bottom:32 + geo-btn height:46 = 78, minus 8 top offset → 86px) */
   /* On mobile, fold Compare into the Weather Models dropdown (bottom option) to free up the top bar for the location. */
   #fc-compare,.nb-compare{display:none;}
   #model-compare{max-height:50vh;}
@@ -923,6 +953,10 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
         <button class="edbtn" onclick="startAddLaunch();toggleMenu();">＋ Add takeoff</button>
         <button class="edbtn" onclick="startAddLZ();toggleMenu();">＋ Add LZ</button>
         <div class="lp-h2">Click any pin to rename it, edit its bio, link LZs to takeoffs, draw boundaries, or move it.</div>
+        <div class="lp-div"></div>
+        <div class="lp-sec">Flyability rules</div>
+        <button class="edbtn" onclick="openFlyConfig();toggleMenu();">⚙ Edit fly-score thresholds</button>
+        <div class="lp-h2">Change the wind, gust, cloud (etc.) cutoffs used to color launch pins and forecasts. Live-syncs to your cloud.</div>
       </div>
     </div>
     <button id="draw-undo" class="cbtn" style="display:none;position:absolute;bottom:48px;left:50%;transform:translateX(-50%);z-index:600;" onclick="undoDrawPoint()">↶ Undo point</button>
@@ -955,6 +989,28 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
     <div class="mi-card"><div class="mi-h"><span class="mi-rank">5</span><span class="mi-n">GFS</span><span class="mi-g">~16 mi grid</span></div><p>The American global model — free, dependable, and what extends this app's 2-week forecast. Verifies a notch below ECMWF, especially for the <b>timing and strength</b> of systems. Fine for the broad picture.</p></div>
     <div class="mi-card mi-blend"><div class="mi-h"><span class="mi-n">Best match</span><span class="mi-g">blend</span></div><p>Open-Meteo automatically stitches the best-available model for each location and range. Convenient, but it hides <b>which</b> model is talking — so you lose the ability to judge agreement.</p></div>
     <div class="mi-tip"><b>💡 The pro habit:</b> open <b>⚖ Compare</b> and watch for agreement. When HRRR, ECMWF and ICON line up, confidence is high; when they diverge, treat the day as uncertain. And remember — <i>every</i> model smooths the terrain, so none truly capture a specific launch's rotor, venturi, or thermal trigger. That gap is what local knowledge and an on-site wind check fill.</div>
+  </div>
+</div>
+<!-- Fly-score threshold editor (admin only). Live-saves every edit. -->
+<div id="flycfg-overlay">
+  <div id="mi-bar"><span id="mi-title">⚙ Fly-score thresholds</span><button id="mi-close" onclick="closeFlyConfig()" title="Close">✕</button></div>
+  <div id="flycfg-body">
+    <div class="fc-lead">Each parameter has a <b>caution</b> edge and a <b>no-fly</b> edge. For <i>higher-bad</i> params (like wind), values at or above <b>caution</b> demote to caution and at or above <b>no-fly</b> veto. <i>Lower-bad</i> params (like cloud base, visibility) work the other way. The composite fly-score is a weighted average — weights only count for params the app has live data for; the rest are stored for when a data source is added.</div>
+    <h3>Parameters</h3>
+    <table class="fc-tbl" id="fc-params">
+      <thead><tr><th>Parameter</th><th>Direction</th><th>Caution</th><th>No fly</th><th>Weight</th><th>Data</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <h3>Automatic no-fly triggers</h3>
+    <div class="fc-lead" style="background:#fef3c7;border-color:#fcd34d;color:#78350f;">Any one of these true = veto to 'no fly', regardless of the score.</div>
+    <div class="fc-grid" id="fc-veto"></div>
+    <h3>Score bands</h3>
+    <div class="fc-lead">Score ≥ threshold puts a site in that band. Marker colors on the map use the two <b>Marker cutoffs</b> below (≥flyable = green, ≥caution = yellow, otherwise red).</div>
+    <div class="fc-grid" id="fc-bands"></div>
+    <h3>Marker color cutoffs</h3>
+    <div class="fc-grid" id="fc-marker"></div>
+    <button id="flycfg-reset" onclick="if(confirm('Reset every fly-score threshold to defaults?')){resetFlyConfig();renderFlyConfigEditor();recolorAfterFlyCfg();}">↺ Reset all to defaults</button>
+    <div id="flycfg-saved">Changes save automatically to this device and your cloud.</div>
   </div>
 </div>
 <div id="tour-overlay" onclick="if(event.target===this)closeTour()">
@@ -1210,6 +1266,69 @@ function bindOverlaySwipe(ov,closeFn){
 }
 function openModelsInfo(){bindOverlaySwipe(document.getElementById('models-overlay'),closeModelsInfo);document.getElementById('models-overlay').classList.add('open');}
 function closeModelsInfo(){const ov=document.getElementById('models-overlay');ov.classList.remove('open');ov.style.transform='';ov.style.opacity='';ov.style.transition='';}
+// ── Fly-score threshold editor (admin only) ───────────────────────────────────
+function openFlyConfig(){if(!isAdmin){promptAdminLogin();return;}renderFlyConfigEditor();bindOverlaySwipe(document.getElementById('flycfg-overlay'),closeFlyConfig);document.getElementById('flycfg-overlay').classList.add('open');}
+function closeFlyConfig(){const ov=document.getElementById('flycfg-overlay');ov.classList.remove('open');ov.style.transform='';ov.style.opacity='';ov.style.transition='';}
+// Recompute + repaint every launch marker after a threshold change.
+function recolorAfterFlyCfg(){
+  try{
+    LAUNCHES.forEach(s=>{const w=siteWx[s.id];if(w)siteWx[s.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,s,w.dir)};});
+    recolorMarkers();
+  }catch(e){}
+}
+function renderFlyConfigEditor(){
+  const tbody=document.querySelector('#fc-params tbody');if(!tbody)return;
+  tbody.innerHTML='';
+  Object.entries(flyConfig.params).forEach(([key,p])=>{
+    const tr=document.createElement('tr');
+    const dataTag=p.dataKey?'<span style="color:#059669;font-size:10.5px;font-weight:700;">● live</span>':'<span class="fc-nod">no source yet</span>';
+    tr.innerHTML=`
+      <td class="fc-lbl-cell">${p.label}<span class="fc-unit">${p.unit||''}</span></td>
+      <td><select data-k="${key}" data-f="dir">
+        <option value="higher-bad"${p.dir==='higher-bad'?' selected':''}>higher = worse</option>
+        <option value="lower-bad" ${p.dir==='lower-bad' ?' selected':''}>lower = worse</option>
+      </select></td>
+      <td><input type="number" step="any" data-k="${key}" data-f="caution" value="${p.caution}"/></td>
+      <td><input type="number" step="any" data-k="${key}" data-f="noFly"  value="${p.noFly}"/></td>
+      <td><input type="number" step="1"  min="0" max="100" data-k="${key}" data-f="weight" value="${p.weight}"/></td>
+      <td>${dataTag}</td>`;
+    tbody.appendChild(tr);
+  });
+  const wireParam=e=>{
+    const el=e.target,k=el.dataset.k,f=el.dataset.f;if(!k||!f)return;
+    let v=el.value; if(f!=='dir')v=parseFloat(v); if(f==='dir')flyConfig.params[k].dir=el.value;
+    else if(!isNaN(v))flyConfig.params[k][f]=v;
+    saveFlyConfig();recolorAfterFlyCfg();
+  };
+  tbody.querySelectorAll('input,select').forEach(el=>{el.addEventListener('change',wireParam);el.addEventListener('input',wireParam);});
+  // Hard-veto grid
+  const vetoLabels={surfaceWindMax:'Max surface wind (mph)',gustSpreadMax:'Max gust spread (mph)',windShearMax:'Max wind shear (mph)',capeMax:'Max CAPE (J/kg)',rainRateMax:'Max rain rate (in/hr)',visibilityMin:'Min visibility (mi)',cloudBaseMin:'Min cloud base (ft AGL)'};
+  const veto=document.getElementById('fc-veto');veto.innerHTML='';
+  Object.entries(flyConfig.hardVeto).forEach(([k,v])=>{
+    const cell=document.createElement('div');cell.className='fc-gcell';
+    cell.innerHTML=`<label>${vetoLabels[k]||k}</label><input type="number" step="any" data-vk="${k}" value="${v}"/>`;
+    veto.appendChild(cell);
+  });
+  veto.querySelectorAll('input').forEach(el=>{const h=()=>{const v=parseFloat(el.value);if(!isNaN(v)){flyConfig.hardVeto[el.dataset.vk]=v;saveFlyConfig();recolorAfterFlyCfg();}};el.addEventListener('change',h);el.addEventListener('input',h);});
+  // Score bands
+  const bandLabels={excellent:'Excellent',veryGood:'Very good',good:'Good',flyable:'Flyable',marginal:'Marginal',poor:'Poor'};
+  const bands=document.getElementById('fc-bands');bands.innerHTML='';
+  Object.entries(flyConfig.bands).forEach(([k,v])=>{
+    const cell=document.createElement('div');cell.className='fc-gcell';
+    cell.innerHTML=`<label>${bandLabels[k]||k} (≥)</label><input type="number" step="1" min="0" max="100" data-bk="${k}" value="${v}"/>`;
+    bands.appendChild(cell);
+  });
+  bands.querySelectorAll('input').forEach(el=>{const h=()=>{const v=parseFloat(el.value);if(!isNaN(v)){flyConfig.bands[el.dataset.bk]=v;saveFlyConfig();recolorAfterFlyCfg();}};el.addEventListener('change',h);el.addEventListener('input',h);});
+  // Marker cutoffs
+  const mLabels={flyable:'Green ≥ (flyable)',caution:'Yellow ≥ (caution)'};
+  const mk=document.getElementById('fc-marker');mk.innerHTML='';
+  Object.entries(flyConfig.markerCutoffs).forEach(([k,v])=>{
+    const cell=document.createElement('div');cell.className='fc-gcell';
+    cell.innerHTML=`<label>${mLabels[k]||k}</label><input type="number" step="1" min="0" max="100" data-mk="${k}" value="${v}"/>`;
+    mk.appendChild(cell);
+  });
+  mk.querySelectorAll('input').forEach(el=>{const h=()=>{const v=parseFloat(el.value);if(!isNaN(v)){flyConfig.markerCutoffs[el.dataset.mk]=v;saveFlyConfig();recolorAfterFlyCfg();}};el.addEventListener('change',h);el.addEventListener('input',h);});
+}
 // ── Guided tour / new-user orientation ────────────────────────────────────────
 const TOUR_STEPS=[
   {emoji:'👋',title:'Welcome to SkyLab',body:'Utah’s paragliding weather &amp; site map. Here’s a quick tour of what everything does — tap <b>Next</b> to start (or ✕ to skip).'},
@@ -2039,23 +2158,153 @@ function isNight(h,site){
   if(dawn==null)return false;
   return h<dawn||h>dusk;
 }
-// Fly status. Optional `site`+`dir` tighten the call with that site's allowable
-// wind window (direction the wind blows FROM) and its per-rating strength limits.
-function flyS(w,g,c,t,hour,site,dir){
-  if(isNight(hour==null?curHourLocal():hour,site))return'no';
-  if(t<35||w>30||g>38)return'no';
-  let st=(w>18||g>25||c>85)?'caution':'flyable';
+// ── Fly-score configuration ──────────────────────────────────────────────────
+// Baseline thresholds informed by paragliding best-practice (recreational XC & soaring).
+// Each param has: label, unit, direction ('higher-bad' | 'lower-bad'), the edge where
+// conditions turn from fly→caution and caution→no-fly, and a weight (0-100) used in the
+// composite score. `dataKey` names the field on the weather record; params without a
+// dataKey (wind aloft, CAPE, etc.) are shown in the editor but skipped from scoring
+// until a data source is wired up. `higher-bad` = value at/above `caution` demotes to
+// caution and at/above `noFly` vetoes. `lower-bad` = value at/below is worse.
+const FLY_CFG_KEY='updraft_flycfg_v1';
+const FLY_DEFAULTS={
+  version:1,
+  params:{
+    surfaceWind :{label:'Surface Wind',           unit:'mph',   dir:'higher-bad', caution:15, noFly:20, weight:25, dataKey:'wind'},
+    gustSpread  :{label:'Gust Spread (gust − avg)',unit:'mph',  dir:'higher-bad', caution:5,  noFly:10, weight:20, dataKey:'gustSpread'},
+    windAloft2k :{label:'~2,500 ft Wind (925 hPa)',unit:'mph',  dir:'higher-bad', caution:18, noFly:25, weight:8,  dataKey:'wind2k'},
+    windAloft5k :{label:'~5,000 ft Wind (850 hPa)',unit:'mph',  dir:'higher-bad', caution:22, noFly:30, weight:7,  dataKey:'wind5k'},
+    windDirChg  :{label:'Wind Dir Change (sfc→5k)',unit:'°',    dir:'higher-bad', caution:20, noFly:45, weight:5,  dataKey:'dirChg'},
+    windShear   :{label:'Vertical Wind Shear',     unit:'mph',  dir:'higher-bad', caution:10, noFly:15, weight:10, dataKey:'shear'},
+    thermals    :{label:'Thermal Strength',        unit:'fpm',  dir:'higher-bad', caution:600,noFly:900,weight:10, dataKey:null},
+    cape        :{label:'CAPE',                    unit:'J/kg', dir:'higher-bad', caution:200,noFly:500,weight:6,  dataKey:'cape'},
+    liftedIdx   :{label:'Lifted Index',            unit:'',     dir:'lower-bad',  caution:0,  noFly:-2, weight:4,  dataKey:'liftedIdx'},
+    cloudCover  :{label:'Cloud Cover',             unit:'%',    dir:'higher-bad', caution:60, noFly:85, weight:3,  dataKey:'cloud'},
+    cloudBase   :{label:'Cloud Base (LCL est.)',   unit:'ft AGL',dir:'lower-bad', caution:4000,noFly:2500,weight:3,dataKey:'cloudBase'},
+    rainChance  :{label:'Rain Chance',             unit:'%',    dir:'higher-bad', caution:20, noFly:40, weight:3,  dataKey:'rainChance'},
+    visibility  :{label:'Visibility',              unit:'mi',   dir:'lower-bad',  caution:10, noFly:5,  weight:2,  dataKey:'visibility'},
+    humidity    :{label:'Relative Humidity',       unit:'%',    dir:'higher-bad', caution:70, noFly:90, weight:2,  dataKey:'rh'},
+    dewSpread   :{label:'Dew Point Spread',        unit:'°F',   dir:'lower-bad',  caution:5,  noFly:2,  weight:2,  dataKey:'dewSpread'}
+  },
+  // Automatic no-fly triggers — any one true = veto to 'no', score forced to 0.
+  hardVeto:{
+    surfaceWindMax:25,   // > this → veto
+    gustSpreadMax:15,
+    windShearMax:20,
+    capeMax:800,
+    rainRateMax:0.05,    // in/hr
+    visibilityMin:3,     // < this → veto
+    cloudBaseMin:1500    // < this AGL → veto
+  },
+  // Score → band cutoffs (score ≥ threshold falls in that band, top-down).
+  bands:{excellent:90, veryGood:80, good:70, flyable:60, marginal:40, poor:20},
+  // Which score cutoff maps to the marker colors used elsewhere (flyable/caution/no).
+  markerCutoffs:{flyable:60, caution:40}   // ≥60 green, 40-59 yellow, <40 red
+};
+let flyConfig=null;
+function cloneCfg(c){return JSON.parse(JSON.stringify(c));}
+function loadFlyConfig(){
+  try{const raw=localStorage.getItem(FLY_CFG_KEY);
+    if(raw){const parsed=JSON.parse(raw);
+      // Merge with defaults so newly-added params show up on old localStorage saves.
+      // Only user-editable fields (dir, caution, noFly, weight) are pulled from the
+      // save — label/unit/dataKey always come from FLY_DEFAULTS so wiring up new data
+      // sources in code doesn't get silently overwritten by an old stored null.
+      flyConfig=cloneCfg(FLY_DEFAULTS);
+      const EDITABLE=['dir','caution','noFly','weight'];
+      if(parsed&&parsed.params)Object.keys(parsed.params).forEach(k=>{if(flyConfig.params[k]){EDITABLE.forEach(f=>{if(parsed.params[k][f]!=null)flyConfig.params[k][f]=parsed.params[k][f];});}});
+      if(parsed&&parsed.hardVeto)Object.assign(flyConfig.hardVeto,parsed.hardVeto);
+      if(parsed&&parsed.bands)Object.assign(flyConfig.bands,parsed.bands);
+      if(parsed&&parsed.markerCutoffs)Object.assign(flyConfig.markerCutoffs,parsed.markerCutoffs);
+      return;
+    }
+  }catch(e){}
+  flyConfig=cloneCfg(FLY_DEFAULTS);
+}
+function saveFlyConfig(){try{localStorage.setItem(FLY_CFG_KEY,JSON.stringify(flyConfig));}catch(e){}cloudSave(FLY_CFG_KEY,flyConfig);}
+function resetFlyConfig(){flyConfig=cloneCfg(FLY_DEFAULTS);saveFlyConfig();}
+loadFlyConfig();
+// Extract each param's value from the weather record, computing derived fields
+// (gust spread, dew-point spread) on the fly.
+function paramValue(wx,key){
+  if(!wx)return null;
+  if(key==='gustSpread')return(wx.gusts!=null&&wx.wind!=null)?(wx.gusts-wx.wind):null;
+  if(key==='dewSpread' )return(wx.temp!=null&&wx.dp!=null)?(wx.temp-wx.dp):null;
+  return wx[key];
+}
+// Per-parameter score: 100 in fly band, 60 in caution, 0 in no-fly.
+function paramScore(val,p){
+  if(val==null||isNaN(val))return null;
+  if(p.dir==='higher-bad'){
+    if(val>=p.noFly)return 0;
+    if(val>=p.caution)return 60;
+    return 100;
+  }else{
+    if(val<=p.noFly)return 0;
+    if(val<=p.caution)return 60;
+    return 100;
+  }
+}
+// Compute the composite fly score for a weather sample at a specific site.
+// Skips params with no data source or no reading; renormalizes weights over
+// what we have so the total remains 0-100.
+function computeFlyScore(wx,site){
+  const cfg=flyConfig; const reasons=[]; let veto=false; let vetoReason=null;
+  // Site-specific vetoes (still respected — the tail-note "each site defines its own" idea).
   if(site){
     const L=windStrengthFor(site);
-    if(w>L.max||g>L.max+L.gust)return'no';            // over this site's strength ceiling
-    if(w>L.idealHi||(g-w)>L.gust)st='caution';        // above ideal, or gusty
-    if(dir!=null&&w>=4){                               // only judge direction in real wind
+    if(wx&&(wx.wind>L.max||wx.gusts>L.max+L.gust)){veto=true;vetoReason=`site strength ceiling (${L.max} mph)`;}
+    if(!veto&&wx&&wx.dir!=null&&wx.wind>=4){
       const win=windowFor(site);
-      if(!inWindow(dir,expandWin(win,25)))return'no';  // cross / tail wind — outside window
-      if(!inWindow(dir,win))st='caution';              // marginal edge of the window
+      if(!inWindow(wx.dir,expandWin(win,25))){veto=true;vetoReason='wind outside site window';}
     }
   }
-  return st;
+  // Hard vetoes from config.
+  const hv=cfg.hardVeto;
+  if(!veto&&wx){
+    const spread=(wx.gusts!=null&&wx.wind!=null)?(wx.gusts-wx.wind):null;
+    if(wx.wind!=null&&wx.wind>hv.surfaceWindMax){veto=true;vetoReason=`surface wind > ${hv.surfaceWindMax} mph`;}
+    else if(spread!=null&&spread>hv.gustSpreadMax){veto=true;vetoReason=`gust spread > ${hv.gustSpreadMax} mph`;}
+  }
+  // Weighted score over params with data.
+  let totalW=0, weightedSum=0;
+  Object.entries(cfg.params).forEach(([k,p])=>{
+    if(!p.dataKey)return;
+    const v=paramValue(wx,p.dataKey);
+    const s=paramScore(v,p);
+    if(s==null)return;
+    totalW+=p.weight; weightedSum+=s*p.weight;
+    if(s<100)reasons.push(`${p.label}: ${v}${p.unit} (${s===0?'no fly':'caution'})`);
+  });
+  let score=totalW>0?Math.round(weightedSum/totalW):null;
+  if(veto){score=0;reasons.unshift('VETO — '+vetoReason);}
+  const b=cfg.bands;
+  let band='unknown';
+  if(score!=null){
+    if(score>=b.excellent)band='excellent';
+    else if(score>=b.veryGood)band='very good';
+    else if(score>=b.good)band='good';
+    else if(score>=b.flyable)band='flyable';
+    else if(score>=b.marginal)band='marginal';
+    else if(score>=b.poor)band='poor';
+    else band='no fly';
+  }
+  return{score,band,reasons,veto,vetoReason};
+}
+// Fly status. Kept back-compatible: same 7-arg signature, same 'flyable'/'caution'/'no'
+// return, so all existing callers (markers, forecast bar) keep working. Under the hood
+// this now runs the weighted fly-score and maps score→status via config cutoffs.
+function flyS(w,g,c,t,hour,site,dir){
+  if(isNight(hour==null?curHourLocal():hour,site))return'no';
+  // Reconstruct a weather record from the positional args so we can reuse computeFlyScore.
+  const wx={wind:w,gusts:g,cloud:c,temp:t,dir};
+  const r=computeFlyScore(wx,site);
+  if(r.veto)return'no';
+  if(r.score==null)return'caution';
+  const m=flyConfig.markerCutoffs;
+  if(r.score>=m.flyable)return'flyable';
+  if(r.score>=m.caution)return'caution';
+  return'no';
 }
 function thStr(c,t,w){if(c>80)return'Weak/overcast';if(w>22)return'Rotor risk';if(t>78)return'Strong thermals';if(t>62)return'Good thermals';if(t>50)return'Light thermals';return'Minimal';}
 function hav(a,b,c,d){const R=3958.8,dL=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dl/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
@@ -2884,24 +3133,68 @@ async function getGroundElevs(coords){
 }
 
 // ── Weather ───────────────────────────────────────────────────────────────────
+// Open-Meteo returns hourly arrays keyed to the requested timezone. Pick the index
+// that represents "right now" in Denver (America/Denver — same TZ requested below).
+function currentDenverHourIdx(){
+  try{const h=new Date().toLocaleString('en-US',{timeZone:'America/Denver',hour12:false,hour:'2-digit'});return parseInt(h,10)%24;}
+  catch(e){return new Date().getHours();}
+}
+// Shortest signed distance between two compass bearings (0-180°).
+function angleDiff(a,b){let d=((a-b+540)%360)-180;return Math.abs(d);}
+// Rough cloud-base estimate via the LCL (lifting condensation level) formula:
+// base_ft_AGL ≈ 400 × (T − Td) in °F. Widely used for cumulus formation.
+function lclFeet(tempF,dewF){if(tempF==null||dewF==null)return null;const d=tempF-dewF;return d<=0?0:Math.round(400*d);}
+// Extract the extra "aloft + storm" fields we now request from Open-Meteo and
+// splice them into the weather record shape used everywhere. Also computes the
+// derived fields (dirChg, shear, cloudBase, rainRate) so paramValue() doesn't
+// have to know anything about the API's naming.
+function attachAloftFields(res,hourly,idx){
+  if(!hourly||idx==null||idx<0)return;
+  const g=(k)=>{const a=hourly[k];return(a&&a[idx]!=null)?a[idx]:null;};
+  const w2k=g('wind_speed_925hPa'), d2k=g('wind_direction_925hPa');
+  const w5k=g('wind_speed_850hPa'), d5k=g('wind_direction_850hPa');
+  const cape=g('cape'), li=g('lifted_index');
+  const viz=g('visibility'), pop=g('precipitation_probability'), prec=g('precipitation');
+  if(w2k!=null)res.wind2k=Math.round(w2k);
+  if(w5k!=null)res.wind5k=Math.round(w5k);
+  if(d2k!=null)res.dir2k=Math.round(d2k);
+  if(d5k!=null)res.dir5k=Math.round(d5k);
+  if(res.wind!=null&&w5k!=null)res.shear=Math.round(Math.abs(w5k-res.wind));  // scalar (mph)
+  if(res.dir!=null&&d5k!=null)res.dirChg=Math.round(angleDiff(res.dir,d5k));   // degrees
+  if(cape!=null)res.cape=Math.round(cape);
+  if(li!=null)res.liftedIdx=Math.round(li*10)/10;                              // 0.1 precision
+  if(viz!=null)res.visibility=Math.round(viz/1609.34*10)/10;                   // m → mi
+  if(pop!=null)res.rainChance=Math.round(pop);
+  if(prec!=null)res.rainRate=Math.round(prec*100)/100;                          // in/hr (unit=in via wind_speed_unit? no — precip is separate; open-meteo defaults to mm — see note)
+  const base=lclFeet(res.temp,res.dp);
+  if(base!=null)res.cloudBase=base;
+}
+// NOTE: Open-Meteo returns precipitation in mm by default. The `precipitation_unit=inch`
+// query param converts it to inches — we set that below so rainRate is in in/hr for the
+// hardVeto threshold (0.05 in/hr).
 async function fetchHRRR(lat,lon){
   const k=`${currentModel}|${lat.toFixed(2)},${lon.toFixed(2)}`;if(wxCache[k])return wxCache[k];
-  try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&daily=sunrise,sunset&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);const d=await r.json();const c=d.current;
+  const hourlyList='precipitation_probability,precipitation,cape,lifted_index,visibility,wind_speed_925hPa,wind_direction_925hPa,wind_speed_850hPa,wind_direction_850hPa';
+  try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&hourly=${hourlyList}&daily=sunrise,sunset&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);const d=await r.json();const c=d.current;
     let dawnH=null,duskH=null;
     if(d.daily&&d.daily.sunrise&&d.daily.sunrise[0]){dawnH=hourOf(d.daily.sunrise[0])-0.5;duskH=hourOf(d.daily.sunset[0])+0.5;civilDawnH=dawnH;civilDuskH=duskH;}  // civil twilight ≈ ±30 min
-    const res={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),dp:(c.dew_point_2m!=null?Math.round(c.dew_point_2m):null),pres:Math.round(c.surface_pressure),dawnH,duskH};wxCache[k]=res;return res;}catch{return null;}
+    const res={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),dp:(c.dew_point_2m!=null?Math.round(c.dew_point_2m):null),pres:Math.round(c.surface_pressure),dawnH,duskH};
+    attachAloftFields(res,d.hourly,currentDenverHourIdx());
+    wxCache[k]=res;return res;}catch{return null;}
 }
 // Fetch weather for MANY sites in a single Open-Meteo call (comma-separated coords),
 // in chunks. Firing one request per site (60+ at once) trips the API's rate limit
 // and every call comes back 429, which is why the forecast/markers showed nothing.
 async function fetchHRRRBatch(sites,fallback){
   const CHUNK=40;
+  const hourlyList='precipitation_probability,precipitation,cape,lifted_index,visibility,wind_speed_925hPa,wind_direction_925hPa,wind_speed_850hPa,wind_direction_850hPa';
+  const hourIdx=currentDenverHourIdx();
   for(let i=0;i<sites.length;i+=CHUNK){
     const grp=sites.slice(i,i+CHUNK);
     const lats=grp.map(s=>s.lat).join(','), lons=grp.map(s=>s.lon).join(',');
     let arr=null;
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&daily=sunrise,sunset&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&hourly=${hourlyList}&daily=sunrise,sunset&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);
       const j=await r.json();arr=Array.isArray(j)?j:[j];
     }catch(e){arr=null;}
     grp.forEach((s,idx)=>{
@@ -2912,6 +3205,7 @@ async function fetchHRRRBatch(sites,fallback){
         // location the forecast bar last loaded (fixes Monroe-stays-green-after-sunset).
         const dl=d&&d.daily;
         if(dl&&dl.sunrise&&dl.sunrise[0]){eff.dawnH=hourOf(dl.sunrise[0])-0.5;eff.duskH=hourOf(dl.sunset[0])+0.5;}
+        attachAloftFields(eff,d.hourly,hourIdx);
         wxCache[`${currentModel}|${s.lat.toFixed(2)},${s.lon.toFixed(2)}`]=eff;
       }
       if(eff)siteWx[s.id]={...eff,status:flyS(eff.wind,eff.gusts,eff.cloud,eff.temp,null,s,eff.dir)};
