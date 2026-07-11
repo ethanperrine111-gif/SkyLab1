@@ -50,6 +50,12 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 .fc-model-sel:hover{background-color:#dbeafe;}
 .fc-model-sel option{color:#111;}
 #fc-head-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+/* Segmented toggle for forecast time resolution (1h / 30m / 15m). */
+#fc-res{display:inline-flex;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:2px;gap:2px;flex-shrink:0;}
+#fc-res button{background:transparent;color:rgba(255,255,255,.78);border:0;padding:3px 7px;font-size:11px;font-weight:800;letter-spacing:.2px;cursor:pointer;border-radius:7px;line-height:1;}
+#fc-res button:hover{color:#fff;}
+#fc-res button.on{background:#fff;color:#0f172a;box-shadow:0 1px 2px rgba(0,0,0,.18);}
+@media(max-width:768px){#fc-res button{padding:3px 6px;font-size:10.5px;}}
 #fc-toggle{display:block;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;line-height:1;}
 #fc-compare{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:4px 9px;font-size:12px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0;white-space:nowrap;}
 #fc-compare:hover{background:rgba(255,255,255,.22);}
@@ -77,18 +83,28 @@ body.fc-collapsed #forecast{display:none;}
 .fc-cell.now{background:rgba(37,99,235,.08);box-shadow:inset 2px 0 0 #2563eb,inset -2px 0 0 #2563eb;}
 /* Purple day-divider, drawn as a full-height line in .fc-data (see buildForecast) so it
    runs from the very top (Day/Model header rows) to the bottom of the grid. */
-.fc-dayline{position:absolute;top:0;bottom:0;width:2px;background:#a855f7;pointer-events:none;z-index:3;}
+.fc-dayline{position:absolute;top:0;bottom:0;width:1px;background:#94a3b8;opacity:.55;pointer-events:none;z-index:3;}
+body.dark .fc-dayline{background:#475569;opacity:.7;}
 /* Sunrise / sunset markers — thin dashed vertical line at the exact astronomical time,
    with a colored pill badge in the Day-header row. Sunrise is warm gold, sunset is deep violet. */
 .fc-sunmark{position:absolute;top:22px;bottom:0;width:1px;pointer-events:auto;z-index:2;opacity:.7;}
+.fc-sunmark:hover{opacity:1;z-index:11;}
 .fc-sunmark.sunrise{background:repeating-linear-gradient(to bottom,#f59e0b 0 4px,transparent 4px 8px);}
 .fc-sunmark.sunset{background:repeating-linear-gradient(to bottom,#7c3aed 0 4px,transparent 4px 8px);}
-.fc-sunmark::before{position:absolute;top:-19px;left:-9px;width:20px;height:14px;border-radius:7px;line-height:14px;text-align:center;font-size:9px;font-weight:800;color:#fff;box-shadow:0 0 0 1.5px #fff;pointer-events:none;font-family:system-ui,sans-serif;}
+.fc-sunmark::before{position:absolute;top:-19px;left:-9px;width:20px;height:14px;border-radius:7px;line-height:14px;text-align:center;font-size:9px;font-weight:800;color:#fff;box-shadow:0 0 0 1.5px #fff;pointer-events:auto;cursor:help;font-family:system-ui,sans-serif;}
 .fc-sunmark.sunrise::before{content:'▲';background:#f59e0b;}
 .fc-sunmark.sunset::before{content:'▼';background:#7c3aed;}
 body.dark .fc-sunmark{opacity:.85;}
 body.dark .fc-sunmark.sunrise::before{background:#fbbf24;color:#0f172a;}
 body.dark .fc-sunmark.sunset::before{background:#a78bfa;color:#0f172a;}
+/* Custom hover tooltip for the sunrise/sunset markers — shows the label and the exact minute. */
+.fc-suntip{position:absolute;top:2px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#0f172a;color:#fff;font-size:11px;font-weight:700;padding:5px 8px;border-radius:6px;box-shadow:0 3px 10px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .12s ease;z-index:12;font-family:system-ui,sans-serif;letter-spacing:.1px;line-height:1.35;text-align:center;}
+.fc-suntip::before{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:4px solid #0f172a;}
+.fc-suntip .fc-suntip-lbl{font-size:10px;font-weight:600;opacity:.85;text-transform:uppercase;letter-spacing:.4px;}
+.fc-suntip .fc-suntip-t{font-size:12px;font-weight:800;}
+.fc-sunmark:hover .fc-suntip{opacity:1;}
+body.dark .fc-suntip{background:#1e293b;box-shadow:0 3px 10px rgba(0,0,0,.6);}
+body.dark .fc-suntip::before{border-bottom-color:#1e293b;}
 .fc-data .fc-cell{cursor:pointer;}
 .fc-cell.wt-sel{box-shadow:inset 2px 0 0 #0ea5e9,inset -2px 0 0 #0ea5e9;}
 .fc-r-hr .fc-cell.wt-sel{color:#0ea5e9;font-weight:800;}
@@ -232,6 +248,10 @@ body.probe-off #ctrl-panel{top:8px;}
 .pplz{background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:7px 9px;margin-top:5px;font-size:11px;color:#1e40af;}
 .ppreach{background:#fefce8;border:1px solid #fde047;border-radius:7px;padding:5px 9px;font-size:11px;color:#713f12;margin-bottom:6px;font-weight:600;}
 .ppnote{font-size:10px;color:#aaa;margin-top:5px;line-height:1.4;}
+.pp-nofly-why{margin-top:5px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:6px 9px;font-size:11.5px;color:#991b1b;line-height:1.4;}
+.pp-nofly-why b{color:#7f1d1d;font-weight:800;margin-right:3px;}
+body.dark .pp-nofly-why{background:#450a0a;border-color:#7f1d1d;color:#fecaca;}
+body.dark .pp-nofly-why b{color:#fca5a5;}
 .pp-fc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin:8px 0 2px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .pp-fc-model{font-size:12px;font-weight:800;color:#1d4ed8;background:#eff6ff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232563eb' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;border:1.5px solid #2563eb;border-radius:8px;padding:5px 26px 5px 9px;cursor:pointer;text-transform:none;letter-spacing:0;-webkit-appearance:none;appearance:none;box-shadow:0 1px 2px rgba(37,99,235,.15);}
 .pp-fc-model:hover{background-color:#dbeafe;}
@@ -577,6 +597,27 @@ body.dark .fav-fc{background:#0f172a;border-color:#1e293b;}
 /* Desktop: menu bottom aligns with the my-location pin's top edge (br-controls bottom:12 + geo-btn height:42 = 54, minus 8 top offset → 100% - 62px). */
 #menu-panel{position:absolute;top:8px;left:8px;bottom:auto;z-index:800;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:10px;padding:9px 11px;font-size:11px;box-shadow:0 2px 12px rgba(0,0,0,.28);line-height:1.7;display:none;min-width:158px;max-width:230px;max-height:calc(100% - 62px - env(safe-area-inset-bottom,0px));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 #menu-panel.open{display:block;}
+/* Menu site-search: name/subtitle filter over LAUNCHES + LZs, with a compact result list. */
+#menu-search-wrap{position:relative;margin-bottom:4px;}
+#menu-search{width:100%;box-sizing:border-box;padding:7px 9px 7px 26px;font-size:12.5px;border:1px solid #cbd5e1;border-radius:8px;background:#fff url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 7px center;color:#0f172a;outline:none;transition:border-color .15s,box-shadow .15s;}
+#menu-search:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.18);}
+#menu-search-results{margin-top:4px;max-height:220px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;background:#fff;display:none;}
+#menu-search-results.open{display:block;}
+.mss-item{padding:7px 9px;font-size:12px;color:#0f172a;cursor:pointer;border-bottom:1px solid #f1f5f9;line-height:1.35;}
+.mss-item:last-child{border-bottom:none;}
+.mss-item:hover{background:#eff6ff;}
+.mss-item-n{font-weight:700;}
+.mss-item-s{font-size:10.5px;color:#64748b;margin-top:1px;}
+.mss-item-tag{display:inline-block;font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;margin-right:5px;vertical-align:1px;letter-spacing:.3px;}
+.mss-item-tag.launch{background:#dcfce7;color:#166534;}
+.mss-item-tag.lz{background:#dbeafe;color:#1e40af;}
+.mss-empty{padding:9px;font-size:11px;color:#94a3b8;text-align:center;}
+body.dark #menu-search{background-color:#0f172a;color:#e2e8f0;border-color:#334155;}
+body.dark #menu-search-results{background:#0f172a;border-color:#334155;}
+body.dark .mss-item{color:#e2e8f0;border-color:#1e293b;}
+body.dark .mss-item:hover{background:#1e293b;}
+body.dark .mss-item-s{color:#94a3b8;}
+body.dark .mss-empty{color:#64748b;}
 #menu-panel .lp-sec{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3af;margin:8px 0 3px;font-weight:700;}
 #menu-panel .lp-sec:first-child{margin-top:0;}
 #menu-panel .lp-div{height:1px;background:rgba(0,0,0,.1);margin:8px 0 4px;}
@@ -624,6 +665,24 @@ body.dark .edi:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.
 .lzedit-body{padding:6px 13px 14px;}
 body.dark .lzedit{background:#0f172a;border-color:#1e3a8a;}
 body.dark .lzedit>summary{background:#13243f;color:#bfdbfe;}
+/* Per-launch fly-score overrides: a compact table inside the launch editor. Blank inputs
+   fall back to the global thresholds (shown as placeholders). */
+.fov-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px;}
+.fov-tbl th{font-size:9px;text-transform:uppercase;letter-spacing:.35px;color:#64748b;font-weight:700;padding:5px 4px;text-align:left;border-bottom:1px solid #e2e8f0;background:#f8fafc;}
+.fov-tbl th:nth-child(2),.fov-tbl th:nth-child(3){text-align:center;width:70px;}
+.fov-tbl td{padding:4px 3px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+.fov-tbl .fov-lbl{font-weight:600;color:#0f172a;font-size:11.5px;line-height:1.25;}
+.fov-tbl .fov-unit{color:#94a3b8;font-weight:500;margin-left:3px;font-size:10px;}
+.fov-i{width:100%;box-sizing:border-box;padding:4px 5px;font-size:11.5px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;color:#0f172a;text-align:center;font-family:inherit;}
+.fov-i::placeholder{color:#94a3b8;font-style:italic;}
+.fov-i:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.15);}
+.fov-i.on{background:#eff6ff;border-color:#93c5fd;font-weight:700;color:#1d4ed8;}
+body.dark .fov-tbl th{color:#94a3b8;background:#0b1220;border-color:#334155;}
+body.dark .fov-tbl td{border-color:#1e293b;}
+body.dark .fov-tbl .fov-lbl{color:#e2e8f0;}
+body.dark .fov-i{background:#0b1220;color:#e2e8f0;border-color:#334155;}
+body.dark .fov-i::placeholder{color:#64748b;}
+body.dark .fov-i.on{background:#13243f;border-color:#1e40af;color:#bfdbfe;}
 body.dark .lzedit>summary:hover{background:#1e3a8a;}
 body.dark .lzedit[open]>summary{border-bottom-color:#1e293b;}
 .lzedit select[multiple]{height:auto;padding:4px;}
@@ -790,6 +849,11 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
       <span id="fc-loc">Salt Lake City</span>
     </div>
     <div id="fc-head-actions">
+      <div id="fc-res" title="Forecast time resolution">
+        <button data-r="60" class="on" onclick="setFcInterval(60)">1h</button>
+        <button data-r="30" onclick="setFcInterval(30)">30m</button>
+        <button data-r="15" onclick="setFcInterval(15)">15m</button>
+      </div>
       <button id="fc-compare" onclick="toggleModelCompare()" title="Compare weather models side by side">⚖ Compare</button>
       <select id="model-select" class="fc-model-sel" title="Weather model" onchange="setModel(this.value)">
         <option value="gfs_hrrr">HRRR</option>
@@ -911,6 +975,10 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
       <div class="wv-probe" id="wvprobe">↖ hover map for wind</div>
     </div>
     <div id="menu-panel">
+      <div id="menu-search-wrap">
+        <input type="search" id="menu-search" placeholder="Search sites..." autocomplete="off" oninput="siteSearch()" onkeydown="siteSearchKey(event)"/>
+        <div id="menu-search-results"></div>
+      </div>
       <button class="edbtn" style="background:#2563eb;color:#fff;border-color:#2563eb;font-weight:700;" onclick="openTour();toggleMenu();">🧭 Take the tour</button>
       <div class="lp-div"></div>
       <div class="lp-sec">Display</div>
@@ -1029,33 +1097,33 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
 <script>
 // ── DATA ─────────────────────────────────────────────────────────────────────
 const LAUNCHES=[
-  {id:'pom_s',name:'POM – South Side',sub:'Lehi (Flight Park)',lat:40.4567,lon:-111.9027,alt:5148,lzAlt:4834,rating:'P2',facing:180,lzLat:40.4542,lzLon:-111.9006,hazards:['Midday turbulence','Traffic congestion at peak hours'],radio:'146.560 MHz',bestWindow:'First 3 hrs after sunrise, last 2 hrs before sunset',desc:"Utah's primary training site. SSE–SSW winds (160°–200°). Heavy use by all skill levels; strong midday turbulence — best within 3 hrs after sunrise and 2 hrs before sunset. PG ideal wind 10–16 mph, max 18 mph with 5 mph gusts. Upper and lower LZs; PGs must avoid HG landing zone marked with pink whiskers. Radio: 146.560 MHz.",lzBio:"Salt Lake County Flight Park. Green grass area with paved parking. Upper and lower LZ areas designated. Paragliders must avoid hang glider landing zone marked with pink whiskers. Elev 4,834 ft."},
-  {id:'pom_n',name:'POM – North Side',sub:'Draper (Flight Park)',lat:40.4745,lon:-111.8928,alt:5100,lzAlt:4834,rating:'P2',facing:350,lzLat:40.4567,lzLon:-111.9027,hazards:['Midday turbulence','Rotor near ridge','Wind gradient on descent'],radio:'146.560 MHz',bestWindow:'Early or late — avoid strong midday turbulence',desc:"North/NW ridge soaring at 5,100 ft. PG ideal wind 12–16 mph, max 18 mph with 5 mph gusts. Lower bench produces strong midday turbulence; rotor effects near ridge line and wind gradient during descent. Traffic congestion during peak hours. Radio: 146.560 MHz.",lzBio:"Salt Lake County Flight Park — shared with POM South. Green grass area with paved parking at 4,834 ft."},
-  {id:'cherry',name:'Cherry Canyon',sub:'Draper, UT',lat:40.515992,lon:-111.817091,alt:7110,lzAlt:5000,rating:'P3',facing:270,lzLat:40.507,lzLon:-111.875,hazards:['Rattlesnakes','No emergency services','Shifting upper winds'],access:'2.5 mi uphill hike, 2,400 ft gain',bestWindow:'Morning, before midday thermals build',desc:"Hike-and-fly in Wasatch NF requiring a 2.5-mile uphill carry with 2,400 ft gain. Two launches: North (NNE–NNW, ideal 5–8 mph) and West (WNW–WSW, ideal 5–8 mph). Morning light winds often build into thermic midday. Advanced ground handling recommended due to slope and potential cross winds. Multi-use recreation area with austere conditions.",lzBio:"Dirt road between tree and gate south of trailhead. Described as an extremely demanding landing place. Alternative mesa above trail for less experienced pilots. No emergency access. Elev ~5,000 ft."},
+  {id:'pom_s',name:'POM – South Side',sub:'Lehi (Flight Park)',lat:40.4567,lon:-111.9027,alt:5148,lzAlt:4834,rating:'P2',facing:180,winds:{idealLo:10,idealHi:16,max:18,gust:5},wind:[157.5,202.5],lzLat:40.4542,lzLon:-111.9006,hazards:['Midday turbulence','Traffic congestion at peak hours'],radio:'146.560 MHz',bestWindow:'First 3 hrs after sunrise, last 2 hrs before sunset',desc:"Utah's primary training site. SSE–SSW winds (160°–200°). Heavy use by all skill levels; strong midday turbulence — best within 3 hrs after sunrise and 2 hrs before sunset. PG ideal wind 10–16 mph, max 18 mph with 5 mph gusts. Upper and lower LZs; PGs must avoid HG landing zone marked with pink whiskers. Radio: 146.560 MHz.",lzBio:"Salt Lake County Flight Park. Green grass area with paved parking. Upper and lower LZ areas designated. Paragliders must avoid hang glider landing zone marked with pink whiskers. Elev 4,834 ft."},
+  {id:'pom_n',name:'POM – North Side',sub:'Draper (Flight Park)',lat:40.4745,lon:-111.8928,alt:5100,lzAlt:4834,rating:'P2',facing:350,winds:{idealLo:12,idealHi:16,max:18,gust:5},wind:[315,0],lzLat:40.4567,lzLon:-111.9027,hazards:['Midday turbulence','Rotor near ridge','Wind gradient on descent'],radio:'146.560 MHz',bestWindow:'Early or late — avoid strong midday turbulence',desc:"North/NW ridge soaring at 5,100 ft. PG ideal wind 12–16 mph, max 18 mph with 5 mph gusts. Lower bench produces strong midday turbulence; rotor effects near ridge line and wind gradient during descent. Traffic congestion during peak hours. Radio: 146.560 MHz.",lzBio:"Salt Lake County Flight Park — shared with POM South. Green grass area with paved parking at 4,834 ft."},
+  {id:'cherry',name:'Cherry Canyon',sub:'Draper, UT',lat:40.515992,lon:-111.817091,alt:7110,lzAlt:5000,rating:'P3',facing:270,winds:{idealLo:5,idealHi:8,max:9,gust:5},wind:[247.5,292.5],lzLat:40.507,lzLon:-111.875,hazards:['Rattlesnakes','No emergency services','Shifting upper winds'],access:'2.5 mi uphill hike, 2,400 ft gain',bestWindow:'Morning, before midday thermals build',desc:"Hike-and-fly in Wasatch NF requiring a 2.5-mile uphill carry with 2,400 ft gain. Two launches: North (NNE–NNW, ideal 5–8 mph) and West (WNW–WSW, ideal 5–8 mph). Morning light winds often build into thermic midday. Advanced ground handling recommended due to slope and potential cross winds. Multi-use recreation area with austere conditions.",lzBio:"Dirt road between tree and gate south of trailhead. Described as an extremely demanding landing place. Alternative mesa above trail for less experienced pilots. No emergency access. Elev ~5,000 ft."},
   {id:'the_g',name:"The 'G'",sub:'Pleasant Grove, UT',lat:40.3711,lon:-111.702,alt:5840,lzAlt:4800,rating:'P2',facing:270,lzLat:40.365,lzLon:-111.735,desc:"Small grassy knoll below the giant white 'G'. West-facing with light thermal activity.",lzBio:"Open field below the G. Elev ~4,800 ft."},
-  {id:'camels',name:"Camel's",sub:'Springville, UT',lat:40.1826,lon:-111.5684,alt:7954,lzAlt:5500,rating:'P3',facing:270,lzLat:40.178,lzLon:-111.580,hazards:['Transmission towers','Midday turbulence','Infrequently flown'],glideReq:2.6,desc:"High-altitude mountain thermal site at 7,954 ft in Uintah NF. Launch drops steeply to east, south, and west. W–S winds; PG ideal 6–8 mph, max 10 mph with 2 mph gusts. Min 2.6:1 glide ratio for the single LZ. Infrequently used — technically demanding.",lzBio:"Jr High athletic field, 8 acres. Requires minimum 2.6:1 glide ratio in calm conditions. School access restricted weekdays 8 AM–5 PM. Transmission infrastructure nearby."},
-  {id:'commodore',name:'Commodore',sub:'Stockton, UT',lat:40.3899,lon:-112.2846,alt:8808,lzAlt:5300,rating:'P3',facing:270,lzLat:40.395,lzLon:-112.290,hazards:['Severe wind shear','Abandoned mines','4WD required'],access:'4WD · 7 mi washboard dirt road, 3,500 ft gain from Stockton',desc:"High-altitude mountain thermal at 8,808 ft near Stockton. Upper launch (PG ideal 4 mph, max 10) and Lower launch (PG ideal 10 mph, max 14). W–S winds. 4WD required via 7-mi washboard dirt road with 3,500 ft gain from Stockton. Expect severe shear when winds shift from south to north.",lzBio:"Broad valley floor north of Highway 73. Open desert terrain. Transmission towers and abandoned mines in the area."},
+  {id:'camels',name:"Camel's",sub:'Springville, UT',lat:40.1826,lon:-111.5684,alt:7954,lzAlt:5500,rating:'P3',facing:270,winds:{idealLo:6,idealHi:8,max:10,gust:2},wind:[180,270],lzLat:40.178,lzLon:-111.580,hazards:['Transmission towers','Midday turbulence','Infrequently flown'],glideReq:2.6,desc:"High-altitude mountain thermal site at 7,954 ft in Uintah NF. Launch drops steeply to east, south, and west. W–S winds; PG ideal 6–8 mph, max 10 mph with 2 mph gusts. Min 2.6:1 glide ratio for the single LZ. Infrequently used — technically demanding.",lzBio:"Jr High athletic field, 8 acres. Requires minimum 2.6:1 glide ratio in calm conditions. School access restricted weekdays 8 AM–5 PM. Transmission infrastructure nearby."},
+  {id:'commodore',name:'Commodore',sub:'Stockton, UT',lat:40.3899,lon:-112.2846,alt:8808,lzAlt:5300,rating:'P3',facing:270,winds:{idealLo:4,idealHi:4,max:10,gust:4},wind:[180,270],lzLat:40.395,lzLon:-112.290,hazards:['Severe wind shear','Abandoned mines','4WD required'],access:'4WD · 7 mi washboard dirt road, 3,500 ft gain from Stockton',desc:"High-altitude mountain thermal at 8,808 ft near Stockton. Upper launch (PG ideal 4 mph, max 10) and Lower launch (PG ideal 10 mph, max 14). W–S winds. 4WD required via 7-mi washboard dirt road with 3,500 ft gain from Stockton. Expect severe shear when winds shift from south to north.",lzBio:"Broad valley floor north of Highway 73. Open desert terrain. Transmission towers and abandoned mines in the area."},
   {id:'buffalo_pk',name:'Buffalo Peak',sub:'Squaw Peak Rd, Provo',lat:40.28408,lon:-111.614253,alt:7874,lzAlt:4850,rating:'P3',facing:290,lzLat:40.275,lzLon:-111.646,access:'Hike up from Squaw Peak Rd',desc:"Hike from Squaw Peak Rd. W/NW winds. LZ at Rock Canyon Park.",lzBio:"Rock Canyon Park. Open athletic fields. Elev ~4,850 ft."},
   {id:'rock_canyon',name:'Rock Canyon Launch',sub:'Provo, UT',lat:40.269563,lon:-111.623685,alt:6358,lzAlt:4900,rating:'P3',facing:270,lzLat:40.267,lzLon:-111.645,desc:"Speed-wing and paragliding. West-facing. LZ at Rock Canyon Park.",lzBio:"Rock Canyon Park. Shared with Buffalo Peak. Open athletic fields at ~4,900 ft."},
   {id:'mahogany',name:'Mahogany Ridge',sub:'Wasatch foothills, SLC',lat:40.426005,lon:-111.719857,alt:8783,lzAlt:5200,rating:'P3',facing:270,lzLat:40.420,lzLon:-111.760,desc:"Hike-and-fly at 8,783 ft. Light west/SW flow.",lzBio:"Open area in the Wasatch foothills. Elev ~5,200 ft."},
-  {id:'crawford',name:"Crawford's Ridge",sub:'Randolph, UT',lat:41.6738,lon:-111.0948,alt:7682,lzAlt:6450,rating:'P2',facing:270,lzLat:41.669444,lzLon:-111.115278,hazards:['4WD required','Midday turbulence','Rotor behind ridge','Wind gradient near valley'],access:'4WD year-round; chains in snow season',desc:"High-altitude thermal site at 7,682 ft on BLM land in the Crawford Mountains. Ridge runs nearly N–S, producing 2,000–3,000+ ft above launch in ridge lift. W–SW winds; PG ideal 6–8 mph, max 12 mph with 4 mph gusts. 4WD required year-round; chains in snow season.",lzBio:"Pasture Gate LZ and Lone Tree LZ. Valley floor pastures below the ridge. Wind gradient near the valley floor. Elev ~6,450 ft."},
-  {id:'francis',name:'Francis Peak',sub:'Farmington, UT',lat:41.0275,lon:-111.8383,alt:9154,lzAlt:4300,rating:'P3',facing:260,lzLat:41.007778,lzLon:-111.913056,hazards:['SLC Class B airspace at 10,500 ft','Severe rotor in N/S flow','Active radar at peak'],radio:'146.560 MHz',airspace:'SLC Class B floor 10,500 ft MSL',vertical:4854,bestWindow:'Mid-morning, before midday thermic turbulence builds',desc:"W–WSW facing launch at 9,154 ft with a 63% slope. Setup area 100 ft below the peak along the road. WNW–SSW flyable; PG ideal 6–8 mph, max 10 mph with 4 mph gusts. ~4,850 ft vertical to LZ. High-altitude thermic turbulence especially midday. Salt Lake International Class B airspace begins at 10,500 ft MSL. Radio: 146.560 MHz.",lzBio:"Knowlton School athletic field and Hess Farm hayfields north of Lagoon park at US 89 and Shepard Lane, Farmington. Elev ~4,300 ft. ~4,850 ft vertical from launch."},
-  {id:'the_v',name:'The V',sub:'Centerville, UT',lat:40.9110,lon:-111.8458,alt:6344,lzAlt:4600,rating:'P2',facing:270,lzLat:40.910556,lzLon:-111.876389,hazards:['Transmission lines between launch and LZ','Active gun range','GA aircraft overhead'],desc:"West launch at 6,344 ft (NW–SW, P2, ideal 5–7 mph, max 10) and North launch (NNW–N, P4 only, ideal 8 mph, max 10). 1,744 ft vertical. Transmission lines and towers between launch and landing zones. Active gun range and general aviation aircraft overhead.",lzBio:"Two options: Firebreak LZ — unimproved open land criss-crossed with dirt-bike trails and sparse shrubs, min 5,200 ft MSL needed. School LZ — 11-acre athletic field, flat, open, well-drained; unavailable during school hours; approach from east or north preferred."},
+  {id:'crawford',name:"Crawford's Ridge",sub:'Randolph, UT',lat:41.6738,lon:-111.0948,alt:7682,lzAlt:6450,rating:'P2',facing:270,winds:{idealLo:6,idealHi:8,max:12,gust:4},wind:[225,270],lzLat:41.669444,lzLon:-111.115278,hazards:['4WD required','Midday turbulence','Rotor behind ridge','Wind gradient near valley'],access:'4WD year-round; chains in snow season',desc:"High-altitude thermal site at 7,682 ft on BLM land in the Crawford Mountains. Ridge runs nearly N–S, producing 2,000–3,000+ ft above launch in ridge lift. W–SW winds; PG ideal 6–8 mph, max 12 mph with 4 mph gusts. 4WD required year-round; chains in snow season.",lzBio:"Pasture Gate LZ and Lone Tree LZ. Valley floor pastures below the ridge. Wind gradient near the valley floor. Elev ~6,450 ft."},
+  {id:'francis',name:'Francis Peak',sub:'Farmington, UT',lat:41.0275,lon:-111.8383,alt:9154,lzAlt:4300,rating:'P3',facing:260,winds:{idealLo:6,idealHi:8,max:10,gust:4},wind:[202.5,292.5],lzLat:41.007778,lzLon:-111.913056,hazards:['SLC Class B airspace at 10,500 ft','Severe rotor in N/S flow','Active radar at peak'],radio:'146.560 MHz',airspace:'SLC Class B floor 10,500 ft MSL',vertical:4854,bestWindow:'Mid-morning, before midday thermic turbulence builds',desc:"W–WSW facing launch at 9,154 ft with a 63% slope. Setup area 100 ft below the peak along the road. WNW–SSW flyable; PG ideal 6–8 mph, max 10 mph with 4 mph gusts. ~4,850 ft vertical to LZ. High-altitude thermic turbulence especially midday. Salt Lake International Class B airspace begins at 10,500 ft MSL. Radio: 146.560 MHz.",lzBio:"Knowlton School athletic field and Hess Farm hayfields north of Lagoon park at US 89 and Shepard Lane, Farmington. Elev ~4,300 ft. ~4,850 ft vertical from launch."},
+  {id:'the_v',name:'The V',sub:'Centerville, UT',lat:40.9110,lon:-111.8458,alt:6344,lzAlt:4600,rating:'P2',facing:270,winds:{idealLo:5,idealHi:7,max:10,gust:4},wind:[225,315],lzLat:40.910556,lzLon:-111.876389,hazards:['Transmission lines between launch and LZ','Active gun range','GA aircraft overhead'],desc:"West launch at 6,344 ft (NW–SW, P2, ideal 5–7 mph, max 10) and North launch (NNW–N, P4 only, ideal 8 mph, max 10). 1,744 ft vertical. Transmission lines and towers between launch and landing zones. Active gun range and general aviation aircraft overhead.",lzBio:"Two options: Firebreak LZ — unimproved open land criss-crossed with dirt-bike trails and sparse shrubs, min 5,200 ft MSL needed. School LZ — 11-acre athletic field, flat, open, well-drained; unavailable during school hours; approach from east or north preferred."},
   {id:'bigbeacon',name:'Big Beacon (Mt Wire)',sub:'Emigration Canyon, SLC',lat:40.770833,lon:-111.799444,alt:7047,lzAlt:5100,rating:'P2',facing:270,lzLat:40.7625,lzLon:-111.821389,desc:"Multi-directional hike-up at 7,047 ft. 1,947 ft vertical.",lzBio:"Valley floor below Emigration Canyon. Elev ~5,100 ft."},
-  {id:'grandeur',name:'Grandeur Peak',sub:'Millcreek Canyon, SLC',lat:40.7068,lon:-111.7787,alt:6308,lzAlt:5100,rating:'P3',facing:270,lzLat:40.6927,lzLon:-111.8278,hazards:['Midday thermals','Rattlesnakes','Residential overflight'],access:'1 mi steep hike, 1,300 ft gain',desc:"Mountain thermal at 6,308 ft with three launch areas along a ridgeline and plenty of setup room. Steep 1-mile hike with 1,300 ft gain. Upper North (WNW–WSW), North (NW–SW, ideal 5–8 mph), and South (W–SW) launches. Midday thermal turbulence common. Rattlesnakes along the trail.",lzBio:"Eastwood Elementary School athletic fields in Millcreek. Landing requires overflight through residential neighborhoods. Elev ~5,100 ft. 1,200 ft vertical from launch."},
+  {id:'grandeur',name:'Grandeur Peak',sub:'Millcreek Canyon, SLC',lat:40.7068,lon:-111.7787,alt:6308,lzAlt:5100,rating:'P3',facing:270,winds:{idealLo:5,idealHi:8,max:9,gust:6},wind:[225,315],lzLat:40.6927,lzLon:-111.8278,hazards:['Midday thermals','Rattlesnakes','Residential overflight'],access:'1 mi steep hike, 1,300 ft gain',desc:"Mountain thermal at 6,308 ft with three launch areas along a ridgeline and plenty of setup room. Steep 1-mile hike with 1,300 ft gain. Upper North (WNW–WSW), North (NW–SW, ideal 5–8 mph), and South (W–SW) launches. Midday thermal turbulence common. Rattlesnakes along the trail.",lzBio:"Eastwood Elementary School athletic fields in Millcreek. Landing requires overflight through residential neighborhoods. Elev ~5,100 ft. 1,200 ft vertical from launch."},
   {id:'olympus',name:'Mt Olympus',sub:'Wasatch Blvd, SLC',lat:40.661111,lon:-111.798889,alt:5524,lzAlt:4900,rating:'P4',facing:270,lzLat:40.659,lzLon:-111.794,desc:"P4 only. West-facing thermal site. Experienced pilots fly Olympus → POM.",lzBio:"Open area near Wasatch Blvd. Elev ~4,900 ft."},
   {id:'midfinger',name:'Middle Finger Ridge',sub:'Herriman, UT',lat:40.486806,lon:-112.035,alt:5500,lzAlt:5231,rating:'P2',facing:270,lzLat:40.488333,lzLon:-112.034722,desc:"Alternate to POM in cross/strong winds. West-facing.",lzBio:"Open area near Herriman. Elev 5,231 ft."},
-  {id:'jupiter',name:'Jupiter Peak',sub:'Park City, UT',lat:40.6133,lon:-111.5399,alt:9980,lzAlt:9000,rating:'P3',facing:250,lzLat:40.5978,lzLon:-111.5831,hazards:['High density altitude','Steep launch','Narrow launch window'],radio:'146.560 MHz',bestWindow:'11 AM–12:30 PM — a 30 min window or less',desc:"High-altitude mountain thermal at 9,980 ft. WSW–SSE flyable; PG ideal 6–8 mph, max 12 mph with 5 mph gusts. Climb rates of 1,000 fpm as early as 10 AM. Optimal launch window 11 AM–12:30 PM lasting 30 min or less before conditions deteriorate. Half-mile hike makes it primarily a PG site. Radio: 146.560 MHz.",lzBio:"Two options: Meadow LZ — 14-acre open parcel east of launch, gently sloping south from valley road. PC Hill LZ — 7-acre soccer complex (North 40 Playing Fields) at the western base of Park City."},
+  {id:'jupiter',name:'Jupiter Peak',sub:'Park City, UT',lat:40.6133,lon:-111.5399,alt:9980,lzAlt:9000,rating:'P3',facing:250,winds:{idealLo:6,idealHi:8,max:12,gust:5},wind:[157.5,247.5],lzLat:40.5978,lzLon:-111.5831,hazards:['High density altitude','Steep launch','Narrow launch window'],radio:'146.560 MHz',bestWindow:'11 AM–12:30 PM — a 30 min window or less',desc:"High-altitude mountain thermal at 9,980 ft. WSW–SSE flyable; PG ideal 6–8 mph, max 12 mph with 5 mph gusts. Climb rates of 1,000 fpm as early as 10 AM. Optimal launch window 11 AM–12:30 PM lasting 30 min or less before conditions deteriorate. Half-mile hike makes it primarily a PG site. Radio: 146.560 MHz.",lzBio:"Two options: Meadow LZ — 14-acre open parcel east of launch, gently sloping south from valley road. PC Hill LZ — 7-acre soccer complex (North 40 Playing Fields) at the western base of Park City."},
   {id:'snowbird',name:'Hidden Peak / Snowbird',sub:'Little Cottonwood Canyon',lat:40.560556,lon:-111.645278,alt:10980,lzAlt:8280,rating:'P4',facing:270,lzLat:40.580833,lzLon:-111.653056,access:'Tram access (P4, invite only)',desc:"P4 by invite only. Tram access. 10,980 ft.",lzBio:"Canyon floor near Snowbird resort. Elev ~8,280 ft."},
-  {id:'inspo',name:'Inspo',sub:'Inspiration Point, Provo, UT',lat:40.3013,lon:-111.6258,alt:6667,lzAlt:4853,rating:'P3',facing:265,lzLat:40.2954,lzLon:-111.651,hazards:['Dense suburbs below','No mini-wings','Rotor activity'],desc:"High-altitude mountain thermal at 6,667 ft in Uintah NF. WNW–SSW flyable; PG ideal 6–8 mph, max 10 mph with 4 mph gusts. Dense suburban neighborhoods below with limited bailout options — not suitable for mini-wings. Midday thermic turbulence and common rotor activity. Not recommended during strong summer thunderstorm activity.",lzBio:"Two options: School LZ — elementary school playground (paragliders preferred, bailout option). Church LZ — 6-acre athletic field west of Latter-day Saint chapel (hang gliders preferred). Both 1.3–1.8 mi SW of launch. Elev ~4,853 ft."},
-  {id:'y_mtn',name:'The Y',sub:'BYU / Provo, UT',lat:40.2482,lon:-111.6197,alt:6283,lzAlt:4616,rating:'P3',facing:270,lzLat:40.2461,lzLon:-111.640,hazards:['Two transmission line sets','Thermic turbulence','Min 4.2:1 glide required'],glideReq:4.2,access:'1 mi switchback hike (BYU property)',desc:"Mountain thermal at 6,283 ft with a 1-mile switchback hike on BYU property above the large stone monogram. W winds preferred, NW–SW flyable; PG ideal 6–8 mph, max 12 mph with 4 mph gusts. Challenging site with significant turbulence in thermic conditions. Two transmission wire/tower sets between launch and LZ. Bigfoot LZ permanently closed.",lzBio:"Kiwanis Park — open athletic fields in Provo. Minimum 4.2:1 glide ratio needed to reach safely. Two transmission wire/tower sets between launch and LZ. Bigfoot LZ is permanently closed. Elev 4,616 ft."},
+  {id:'inspo',name:'Inspo',sub:'Inspiration Point, Provo, UT',lat:40.3013,lon:-111.6258,alt:6667,lzAlt:4853,rating:'P3',facing:265,winds:{idealLo:6,idealHi:8,max:10,gust:4},wind:[202.5,292.5],lzLat:40.2954,lzLon:-111.651,hazards:['Dense suburbs below','No mini-wings','Rotor activity'],desc:"High-altitude mountain thermal at 6,667 ft in Uintah NF. WNW–SSW flyable; PG ideal 6–8 mph, max 10 mph with 4 mph gusts. Dense suburban neighborhoods below with limited bailout options — not suitable for mini-wings. Midday thermic turbulence and common rotor activity. Not recommended during strong summer thunderstorm activity.",lzBio:"Two options: School LZ — elementary school playground (paragliders preferred, bailout option). Church LZ — 6-acre athletic field west of Latter-day Saint chapel (hang gliders preferred). Both 1.3–1.8 mi SW of launch. Elev ~4,853 ft."},
+  {id:'y_mtn',name:'The Y',sub:'BYU / Provo, UT',lat:40.2482,lon:-111.6197,alt:6283,lzAlt:4616,rating:'P3',facing:270,winds:{idealLo:6,idealHi:8,max:12,gust:4},wind:[225,315],lzLat:40.2461,lzLon:-111.640,hazards:['Two transmission line sets','Thermic turbulence','Min 4.2:1 glide required'],glideReq:4.2,access:'1 mi switchback hike (BYU property)',desc:"Mountain thermal at 6,283 ft with a 1-mile switchback hike on BYU property above the large stone monogram. W winds preferred, NW–SW flyable; PG ideal 6–8 mph, max 12 mph with 4 mph gusts. Challenging site with significant turbulence in thermic conditions. Two transmission wire/tower sets between launch and LZ. Bigfoot LZ permanently closed.",lzBio:"Kiwanis Park — open athletic fields in Provo. Minimum 4.2:1 glide ratio needed to reach safely. Two transmission wire/tower sets between launch and LZ. Bigfoot LZ is permanently closed. Elev 4,616 ft."},
   {id:'west_mtn',name:'West Mountain',sub:'Benjamin, UT',lat:40.1005,lon:-111.8216,alt:6457,lzAlt:4550,rating:'P2',facing:90,lzLat:40.100278,lzLon:-111.796389,hazards:['Rotors in W wind','Cyclic thermic turbulence','Power lines on perimeter'],desc:"East-facing morning site at 6,457 ft. Favors east or north wind; west winds produce rotors and downflow. PG ideal 5–7 mph, max 10 mph. Strong cyclic thermic turbulence midday. Launch areas poorly marked with sparse vegetation and sharp rocks. Avoid tailwind launches. Radio: 146.560 MHz.",lzBio:"Big Pasture LZ — 22-acre fenced hayfield with firm, stable surface. Power lines on south and west perimeters. Hay bales and livestock possible. Elev ~4,550 ft."},
   {id:'lake_mtn',name:'Lake Mountain',sub:'Saratoga Springs, UT',lat:40.280306,lon:-111.935194,alt:7602,lzAlt:4900,rating:'P2',facing:90,lzLat:40.311389,lzLon:-111.909444,desc:"Morning thermal at 7,602 ft. East-facing. 2,700 ft vertical. Utah Lake views.",lzBio:"Open area near Saratoga Springs. Elev ~4,900 ft."},
   {id:'nebo',name:'Mt Nebo',sub:'Nephi, UT',lat:39.821972,lon:-111.760556,alt:11870,lzAlt:4962,rating:'P3',facing:270,lzLat:39.816944,lzLon:-111.856667,desc:"Highest Wasatch peak at 11,870 ft. West-facing. 6,909 ft vertical.",lzBio:"Mona City Park. Open fields. Elev 4,962 ft."},
-  {id:'horse_hv',name:'Horse Heaven',sub:'Juab County, UT',lat:39.49374,lon:-111.83614,alt:7538,lzAlt:5060,rating:'P3',facing:270,lzLat:39.507222,lzLon:-111.871556,hazards:['4WD required','No emergency services','Dense sagebrush LZ','50 ft transmission towers'],access:'4WD required · no emergency services',desc:"Uintah NF at 7,538 ft. West launch: large open slope below the road, NW–SW, optimal with a north component. East launch: 800 yards past West, steep/short/rocky over dense scrub oak, SSW–ESE. PG ideal 6–8 mph, max 10 mph with 2 mph gusts. High density altitude in summer. Road requires 4WD; impassable in snow.",lzBio:"Broad, flat area north of the second gate on public land. Dense, waist-high sagebrush throughout. Dirt road landings possible if winds permit. 50-foot transmission towers parallel the roadway. No emergency services available."},
-  {id:'cove',name:'Cove Launch',sub:'Richfield, UT',lat:38.634167,lon:-112.060833,alt:8700,lzAlt:5360,rating:'P3',facing:270,lzLat:38.618956,lzLon:-112.115687,desc:"Spectacular flying arena 3,000 ft above Sevier Valley at 8,700 ft. Launches on North, South, and West faces — flights in all directions possible. Extended sledder flights, soaring along dramatic cliff faces with regular boosts to 17,999 ft. Min 5.0 glide ratio. North Point: ideal 12 mph (1–25°). West: ideal 8 mph (260–280°). South: ideal 10 mph (170–195°). High-altitude high-desert mountain operations.",lzBio:"Sevier Valley floor. Open fields 12 mi SE of Richfield. Shared with Monroe Peak. Elev ~5,360 ft. Min 5.0 glide ratio from Cove launch."},
-  {id:'monroe_pk',name:'Monroe Peak',sub:'Monroe, UT',lat:38.5414,lon:-112.0733,alt:11171,lzAlt:5447,rating:'P3',facing:225,lzLat:38.618956,lzLon:-112.115687,hazards:['Snow-blocked most of year','Supplemental O₂ above 12,000 ft'],desc:"High-altitude mountain launch at 11,171 ft — Utah's #1 XC site. SW facing (210–240° ideal, 200–280° acceptable). 6,000 ft vertical, 5.8 mi glide to LZ. PG ideal 8 kts, max 12 kts with 5 kt gusts. Flown June–November; snow-blocked otherwise. Morning flights preferred; evening often too strong. Supplemental O₂ recommended above 12,000 ft. Min 5.4:1 glide ratio. 2026 FAI Pan-Am host.",lzBio:"Monroe City — N–S running grass strip with packing area, public restroom, and large open field. 5.8 miles from Monroe Peak launch. Shared with Cove. Elev 5,447 ft."},
-  {id:'mt_edna',name:'Mt Edna',sub:'Marysvale, UT',lat:38.38575,lon:-112.336889,alt:11700,lzAlt:6100,rating:'P3',facing:225,lzLat:38.385754,lzLon:-112.33224,glideReq:5.5,access:"Utah's highest drive-up launch",desc:"Utah's highest drive-up launch at 11,700 ft. Four launch directions: North (315–45°, min 6.0 glide), SW (210–240°), East (70–110°), South (160–200°) — all min 5.5 glide. PG ideal 6 kts, max 12 kts. Primarily morning-only due to early thermals and afternoon valley winds.",lzBio:"Valley floor near Marysvale. Elev ~6,100 ft. 5,600 ft vertical from launch. Min 5.5 glide ratio (6.0 from north launch)."},
+  {id:'horse_hv',name:'Horse Heaven',sub:'Juab County, UT',lat:39.49374,lon:-111.83614,alt:7538,lzAlt:5060,rating:'P3',facing:270,winds:{idealLo:6,idealHi:8,max:10,gust:2},wind:[225,315],lzLat:39.507222,lzLon:-111.871556,hazards:['4WD required','No emergency services','Dense sagebrush LZ','50 ft transmission towers'],access:'4WD required · no emergency services',desc:"Uintah NF at 7,538 ft. West launch: large open slope below the road, NW–SW, optimal with a north component. East launch: 800 yards past West, steep/short/rocky over dense scrub oak, SSW–ESE. PG ideal 6–8 mph, max 10 mph with 2 mph gusts. High density altitude in summer. Road requires 4WD; impassable in snow.",lzBio:"Broad, flat area north of the second gate on public land. Dense, waist-high sagebrush throughout. Dirt road landings possible if winds permit. 50-foot transmission towers parallel the roadway. No emergency services available."},
+  {id:'cove',name:'Cove Launch',sub:'Richfield, UT',lat:38.634167,lon:-112.060833,alt:8700,lzAlt:5360,rating:'P3',facing:270,winds:{idealLo:6,idealHi:6,max:12,gust:3},wind:[225,315],lzLat:38.618956,lzLon:-112.115687,desc:"Spectacular flying arena 3,000 ft above Sevier Valley at 8,700 ft. Launches on North, South, and West faces — flights in all directions possible. Extended sledder flights, soaring along dramatic cliff faces with regular boosts to 17,999 ft. Min 5.0 glide ratio. North Point: ideal 12 mph (1–25°). West: ideal 8 mph (260–280°). South: ideal 10 mph (170–195°). High-altitude high-desert mountain operations.",lzBio:"Sevier Valley floor. Open fields 12 mi SE of Richfield. Shared with Monroe Peak. Elev ~5,360 ft. Min 5.0 glide ratio from Cove launch."},
+  {id:'monroe_pk',name:'Monroe Peak',sub:'Monroe, UT',lat:38.5414,lon:-112.0733,alt:11171,lzAlt:5447,rating:'P3',facing:225,winds:{idealLo:8,idealHi:8,max:12,gust:5},wind:[200,280],lzLat:38.618956,lzLon:-112.115687,hazards:['Snow-blocked most of year','Supplemental O₂ above 12,000 ft'],desc:"High-altitude mountain launch at 11,171 ft — Utah's #1 XC site. SW facing (210–240° ideal, 200–280° acceptable). 6,000 ft vertical, 5.8 mi glide to LZ. PG ideal 8 kts, max 12 kts with 5 kt gusts. Flown June–November; snow-blocked otherwise. Morning flights preferred; evening often too strong. Supplemental O₂ recommended above 12,000 ft. Min 5.4:1 glide ratio. 2026 FAI Pan-Am host.",lzBio:"Monroe City — N–S running grass strip with packing area, public restroom, and large open field. 5.8 miles from Monroe Peak launch. Shared with Cove. Elev 5,447 ft."},
+  {id:'mt_edna',name:'Mt Edna',sub:'Marysvale, UT',lat:38.38575,lon:-112.336889,alt:11700,lzAlt:6100,rating:'P3',facing:225,winds:{idealLo:6,idealHi:6,max:12,gust:5},wind:[190,270],lzLat:38.385754,lzLon:-112.33224,glideReq:5.5,access:"Utah's highest drive-up launch",desc:"Utah's highest drive-up launch at 11,700 ft. Four launch directions: North (315–45°, min 6.0 glide), SW (210–240°), East (70–110°), South (160–200°) — all min 5.5 glide. PG ideal 6 kts, max 12 kts. Primarily morning-only due to early thermals and afternoon valley winds.",lzBio:"Valley floor near Marysvale. Elev ~6,100 ft. 5,600 ft vertical from launch. Min 5.5 glide ratio (6.0 from north launch)."},
   {id:'mollies',name:"Mollie's Nipple",sub:'Hurricane, UT',lat:37.127778,lon:-113.298056,alt:4510,lzAlt:3300,rating:'P2',facing:270,lzLat:37.123333,lzLon:-113.309167,desc:"30-mile west-facing ridge. Good winter flying site.",lzBio:"Open desert below the ridge. Elev ~3,300 ft."},
   {id:'brianhead',name:'Brian Head Peak',sub:'Brian Head, UT',lat:37.681111,lon:-112.830,alt:11307,lzAlt:10500,rating:'P3',facing:180,lzLat:37.671389,lzLon:-112.832222,desc:"South-facing alpine launch at 11,307 ft. Smooth south wind. Beautiful alpine setting.",lzBio:"Alpine meadow below Brian Head Peak. Elev ~10,500 ft."},
   {id:'wm_stg',name:'West Mtn (St George)',sub:'St George, UT',lat:37.155556,lon:-113.883333,alt:7685,lzAlt:4514,rating:'P3',facing:225,lzLat:37.170278,lzLon:-113.930556,desc:"SW-facing thermal site at 7,685 ft. 3,000+ ft vertical.",lzBio:"Valley floor near St George. Elev 4,514 ft."},
@@ -1070,7 +1138,32 @@ const EXTRA_LZS=[
 ];
 const ALL_LZS=[...LZS,...EXTRA_LZS];
 
-let wxCache={}, siteWx={}, slcWx=null;
+// wxCache holds per-site current-conditions keyed by `${model}|${lat.toFixed(2)},${lon.toFixed(2)}`.
+// Hydrated from localStorage on boot (entries older than the TTL are dropped) and re-saved after
+// batch/single fetches — so a page reload doesn't re-fire every launch's weather call.
+// (Its localStorage key is distinct from WX_CACHE_KEY below, which stores a different fallback snapshot.)
+const WX_URL_CACHE_KEY='skylab_wxurlcache_v1';
+const WX_URL_CACHE_TTL=30*60*1000;
+let wxCache=(()=>{
+  try{
+    const raw=JSON.parse(localStorage.getItem(WX_URL_CACHE_KEY)||'{}');
+    const now=Date.now(),out={};
+    Object.keys(raw).forEach(k=>{const e=raw[k];if(e&&e.ts&&(now-e.ts)<WX_URL_CACHE_TTL)out[k]=e.res;});
+    return out;
+  }catch(e){return{};}
+})();
+let _wxSaveTimer=null;
+function persistWxCache(){
+  clearTimeout(_wxSaveTimer);
+  _wxSaveTimer=setTimeout(()=>{
+    try{
+      const now=Date.now(),out={};
+      Object.keys(wxCache).forEach(k=>{out[k]={res:wxCache[k],ts:now};});
+      localStorage.setItem(WX_URL_CACHE_KEY,JSON.stringify(out));
+    }catch(e){}
+  },700);
+}
+let siteWx={}, slcWx=null;
 let flightLayer=null, flightRAF=null, lfFlight=[], siteRatio={};
 let flightSite=null, flightPlan=null, flightRatio=null, fadedLZId=null;
 // During a flight sim, dim the destination LZ badge so the landing zone (and the glider touching
@@ -1106,7 +1199,9 @@ const CUSTOM_LAUNCH_KEY='updraft_customlaunch_v1'; // user-added takeoffs (full 
 //        create policy "read"   on skylab_state for select using (true);
 //        create policy "insert" on skylab_state for insert with check (true);
 //        create policy "update" on skylab_state for update using (true);
-//   3. Settings → API → paste the Project URL and the anon public key here:
+//   3. Enable Realtime so admin edits push live to every open browser:
+//        alter publication supabase_realtime add table skylab_state;
+//   4. Settings → API → paste the Project URL and the anon public key here:
 const SUPABASE_URL='https://zfzayopcdswmkwgugyqp.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_W6hy8Ev6a9e14ycny11YPw__sMmWAWZ';   // publishable (safe for the browser) — NEVER put the secret key here
 let sbClient=null;
@@ -1115,10 +1210,15 @@ function initBackend(){
   try{sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){sbClient=null;}
 }
 const _cloudTimers={};
+// Records the last time WE upserted a given key, so the Realtime subscription can
+// suppress the echo of our own writes and avoid a "rebuild loop" when the change
+// bounces back to us via Postgres.
+const _cloudSelfWrite={};
 function cloudSave(key,value){
   if(!sbClient)return;
   clearTimeout(_cloudTimers[key]);                                    // debounce rapid edits
   _cloudTimers[key]=setTimeout(()=>{
+    _cloudSelfWrite[key]=Date.now();
     try{sbClient.from('skylab_state').upsert({key,value,updated_at:new Date().toISOString()}).then(()=>{},()=>{});}catch(e){}
   },600);
 }
@@ -1130,8 +1230,86 @@ async function hydrateFromCloud(){
     if(Array.isArray(data))data.forEach(r=>{try{localStorage.setItem(r.key,JSON.stringify(r.value));}catch(e){}});
   }catch(e){}
 }
+// ── Realtime sync ────────────────────────────────────────────────────────────
+// When admin makes an edit and cloudSave() upserts a row in skylab_state, Supabase
+// Realtime pushes that row to every other open browser. We intercept the payload,
+// write it to localStorage, and re-run just enough of the loaders to update the
+// live UI (markers, LZs, fly-score, deletions) — no page reload needed.
+// Requires the SQL step 3 in the setup block above to enable Realtime on the table.
+function applyCloudUpdate(key,value){
+  // Ignore the echo of our own recent write — cloudSave upserts, which re-fires the
+  // Realtime event back at us; without this guard the UI would rebuild after every
+  // keystroke in the launch editor.
+  const t=_cloudSelfWrite[key];
+  if(t&&Date.now()-t<4000)return;
+  try{localStorage.setItem(key,JSON.stringify(value));}catch(e){}
+  if(key===LAUNCH_POS_KEY){
+    // A launch's position, name, wind window, flyOverrides, etc. changed.
+    loadLaunchPos();
+    if(typeof recolorMarkers==='function')recolorMarkers();
+    if(typeof currentLaunchId!=='undefined'&&currentLaunchId){const s=LAUNCHES.find(L=>L.id===currentLaunchId);if(s&&typeof onLaunchClick==='function')onLaunchClick(s,null);}
+  }else if(key===CUSTOM_LAUNCH_KEY){
+    // Custom takeoffs were added or removed elsewhere. Reconcile the LAUNCHES array
+    // and re-paint markers. Reload the incoming array from localStorage since we
+    // already wrote it above; loadCustomLaunches only ADDS, so we manually prune too.
+    const incoming=Array.isArray(value)?value:[];
+    const incomingIds=new Set(incoming.map(s=>s.id));
+    for(let i=LAUNCHES.length-1;i>=0;i--){
+      if(LAUNCHES[i].custom&&!incomingIds.has(LAUNCHES[i].id)){
+        const id=LAUNCHES[i].id;
+        const mk=(typeof launchMarkerMap!=='undefined')?launchMarkerMap[id]:null;
+        if(mk&&mk.remove)try{mk.remove();}catch(e){}
+        if(typeof launchMarkerMap!=='undefined')delete launchMarkerMap[id];
+        if(typeof launchElMap    !=='undefined')delete launchElMap[id];
+        LAUNCHES.splice(i,1);
+      }
+    }
+    incoming.forEach(s=>{if(!LAUNCHES.some(L=>L.id===s.id)){LAUNCHES.push(s);if(typeof createLaunchMarker==='function')createLaunchMarker(s);}});
+    if(typeof recolorMarkers==='function')recolorMarkers();
+  }else if(key===DELETED_LAUNCH_KEY){
+    // Someone deleted a base launch. Remove it locally so it disappears from the map.
+    const ids=Array.isArray(value)?value:[];
+    ids.forEach(id=>{
+      const mk=(typeof launchMarkerMap!=='undefined')?launchMarkerMap[id]:null;
+      if(mk&&mk.remove)try{mk.remove();}catch(e){}
+      if(typeof launchMarkerMap!=='undefined')delete launchMarkerMap[id];
+      if(typeof launchElMap    !=='undefined')delete launchElMap[id];
+      for(let i=LAUNCHES.length-1;i>=0;i--){if(LAUNCHES[i].id===id)LAUNCHES.splice(i,1);}
+    });
+  }else if(key===LZ_STORE_KEY){
+    // LZs were moved, renamed, added, deleted, re-linked, or had boundaries drawn.
+    lzStore=Array.isArray(value)?value:[];
+    if(typeof applyConnections==='function')applyConnections();
+    if(typeof buildLZMarkers==='function')buildLZMarkers();
+    if(typeof drawConnectors==='function')drawConnectors();
+    if(typeof drawLZZones   ==='function')drawLZZones();
+  }else if(key===FLY_CFG_KEY){
+    // Global fly-score thresholds changed. Re-score + recolor every launch, and if
+    // a launch popup is open, rebuild it so the override panel's placeholders (which
+    // read from the global thresholds) refresh instead of showing stale numbers.
+    loadFlyConfig();
+    LAUNCHES.forEach(s=>{const w=siteWx[s.id];if(w)siteWx[s.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,s,w.dir)};});
+    if(typeof recolorMarkers==='function')recolorMarkers();
+    if(typeof currentLaunchId!=='undefined'&&currentLaunchId){const s=LAUNCHES.find(L=>L.id===currentLaunchId);if(s&&typeof onLaunchClick==='function')onLaunchClick(s,null);}
+    // If the ⚙ Fly-score threshold editor itself is open, re-render its rows so its
+    // inputs match the pushed values instead of the values the user was staring at.
+    if(typeof renderFlyConfigEditor==='function'&&document.getElementById('flycfg-overlay')?.classList.contains('open'))renderFlyConfigEditor();
+  }
+  // Favs are per-user (FAV_KEY) — intentionally ignored in the realtime handler.
+}
+function initRealtime(){
+  if(!sbClient||typeof sbClient.channel!=='function')return;
+  try{
+    sbClient.channel('skylab_state_changes')
+      .on('postgres_changes',{event:'*',schema:'public',table:'skylab_state'},payload=>{
+        const row=(payload&&(payload.new||payload.record))||{};
+        if(row.key)applyCloudUpdate(row.key,row.value);
+      })
+      .subscribe();
+  }catch(e){}
+}
 // Fields a launch edit may change (beyond position) — persisted for every launch, built-in or custom.
-const LAUNCH_EDIT_FIELDS=['name','facing','alt','lzAlt','desc','wind','bestWindow','access','airspace','radio','glideReq'];
+const LAUNCH_EDIT_FIELDS=['name','facing','alt','lzAlt','desc','wind','bestWindow','access','airspace','radio','glideReq','flyOverrides'];
 function saveLaunchPos(){const m={};LAUNCHES.forEach(s=>{const o={lat:s.lat,lon:s.lon};LAUNCH_EDIT_FIELDS.forEach(f=>{if(s[f]!=null)o[f]=s[f];});m[s.id]=o;});try{localStorage.setItem(LAUNCH_POS_KEY,JSON.stringify(m));}catch(e){}cloudSave(LAUNCH_POS_KEY,m);}
 function loadLaunchPos(){try{const m=JSON.parse(localStorage.getItem(LAUNCH_POS_KEY));if(!m)return;LAUNCHES.forEach(s=>{const o=m[s.id];if(!o)return;
   if(Array.isArray(o)){s.lat=o[0];s.lon=o[1];return;}                 // legacy [lat,lon]
@@ -1172,11 +1350,16 @@ function updateFavBtnCount(){const b=document.getElementById('fav-btn');if(b)b.t
 // ── Favorites overlay: full-screen list, each favorite with its own forecast bar ──
 async function fetchSeriesAt(lat,lon,model,days){
   const hPa=windAltHPa();
-  const u=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
-    `&hourly=temperature_2m,precipitation_probability,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+
-    (hPa?`,wind_speed_${hPa}hPa,wind_direction_${hPa}hPa`:'')+
-    `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}&past_days=1`;
-  const r=await fetch(u);return r.json();
+  const key=`fsa|${(+lat).toFixed(3)},${(+lon).toFixed(3)}|${model}|${hPa||'sfc'}|${days}`;
+  return apiCached(key,10*60*1000,async()=>{
+    const u=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
+      `&hourly=temperature_2m,precipitation_probability,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+
+      (hPa?`,wind_speed_${hPa}hPa,wind_direction_${hPa}hPa`:'')+
+      `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}&past_days=1`;
+    const r=await fetch(u);const j=await r.json();
+    if(!j||j.error||!j.hourly)return null;
+    return j;
+  });
 }
 function favSiteCardHTML(site){
   const w=siteWx[site.id];
@@ -1218,7 +1401,43 @@ async function loadFavForecast(site){
   const trimmed=series.slice(0,336);if(daily)trimmed.daily=daily;
   try{buildForecast(wrap,trimmed,{temp:'°F',rain:'Rain%',dir:'Direction'});}finally{fcTarget=prev;}
 }
-async function loadAllFavForecasts(favs){for(const s of favs){await loadFavForecast(s);}}   // sequential — avoids Open-Meteo rate limits
+// Warm the fetchSeriesAt cache with ONE Open-Meteo call that batches every favorite's
+// coordinates (comma-separated lat/lon). After this, each per-card loadFavForecast() call
+// hits the cache instead of firing its own request — cuts N favorites from 1-2N calls to 1-2.
+async function fetchSeriesBatch(sites,model,days){
+  if(!sites||!sites.length)return;
+  const hPa=windAltHPa();
+  // If every site already has a fresh cached response, skip the batch fetch entirely.
+  const allCached=sites.every(s=>apiCacheGet(`fsa|${(+s.lat).toFixed(3)},${(+s.lon).toFixed(3)}|${model}|${hPa||'sfc'}|${days}`,10*60*1000)!==undefined);
+  if(allCached)return;
+  const lats=sites.map(s=>s.lat).join(','),lons=sites.map(s=>s.lon).join(',');
+  let u=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}`+
+    `&hourly=temperature_2m,precipitation_probability,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+
+    (hPa?`,wind_speed_${hPa}hPa,wind_direction_${hPa}hPa`:'')+
+    `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}&past_days=1`;
+  try{
+    const j=await(await fetch(u)).json();
+    // Bail out on rate-limit / error payloads instead of caching them per-site.
+    if(!j||j.error)return;
+    const arr=Array.isArray(j)?j:[j];
+    // Seed the per-site cache using the SAME key shape fetchSeriesAt would produce, so
+    // the subsequent per-card fetches short-circuit through apiCached(). Skip entries
+    // that came back without hourly data — those aren't usable forecasts.
+    sites.forEach((s,i)=>{
+      const item=arr[i];
+      if(item&&!item.error&&item.hourly){
+        apiCacheSet(`fsa|${(+s.lat).toFixed(3)},${(+s.lon).toFixed(3)}|${model}|${hPa||'sfc'}|${days}`,item);
+      }
+    });
+  }catch(e){/* batch failed — per-card loaders will fall through to individual fetches */}
+}
+async function loadAllFavForecasts(favs){
+  if(!favs||!favs.length)return;
+  // One batched call warms the cache for every favorite; HRRR needs a GFS batch too to extend past ~48h.
+  await fetchSeriesBatch(favs,currentModel,16);
+  if(currentModel==='gfs_hrrr')await fetchSeriesBatch(favs,'gfs_seamless',16);
+  for(const s of favs){await loadFavForecast(s);}
+}
 function openFavorites(){
   const menu=document.getElementById('menu-panel');if(menu)menu.classList.remove('open');
   const favs=LAUNCHES.filter(s=>isFav(s.id));
@@ -1677,17 +1896,28 @@ async function enrichWxWind(){
     .sort((p,q)=>((p.lat-cy)**2+(p.lon-cx)**2)-((q.lat-cy)**2+(q.lon-cx)**2)).slice(0,70);
   if(!pick.length)return;
   const key=p=>p.id||(p.lat+','+p.lon);
+  // Cache the current-wind map keyed by the sorted set of picked station IDs.
+  // Panning inside the same cluster of stations → serves from cache (no refetch).
+  const sig='wxw|'+pick.map(key).sort().join(',');
   try{
-    const lats=pick.map(p=>p.lat.toFixed(4)).join(','),lons=pick.map(p=>p.lon.toFixed(4)).join(',');
-    const j=await(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=mph&timezone=America%2FDenver`)).json();
-    const arr=Array.isArray(j)?j:[j],wind={};
-    pick.forEach((p,i)=>{const c=arr[i]&&arr[i].current;if(c&&c.wind_speed_10m!=null)wind[key(p)]={spd:Math.round(c.wind_speed_10m),dir:Math.round(((c.wind_direction_10m||0)+180)%360)};});
-    src.setData({type:'FeatureCollection',features:all.map(p=>{const wv=wind[key(p)],props={label:p.name||'',sid:p.id||''};if(wv){props.spd=wv.spd;props.dir=wv.dir;}return{type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:props};})});
+    const wind=await apiCached(sig,5*60*1000,async()=>{
+      const lats=pick.map(p=>p.lat.toFixed(4)).join(','),lons=pick.map(p=>p.lon.toFixed(4)).join(',');
+      const j=await(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=mph&timezone=America%2FDenver`)).json();
+      const arr=Array.isArray(j)?j:[j],w={};
+      pick.forEach((p,i)=>{const c=arr[i]&&arr[i].current;if(c&&c.wind_speed_10m!=null)w[key(p)]={spd:Math.round(c.wind_speed_10m),dir:Math.round(((c.wind_direction_10m||0)+180)%360)};});
+      return w;
+    });
+    src.setData({type:'FeatureCollection',features:all.map(p=>{const wv=wind&&wind[key(p)],props={label:p.name||'',sid:p.id||''};if(wv){props.spd=wv.spd;props.dir=wv.dir;}return{type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:props};})});
   }catch(e){}
 }
 function bindWxRefresh(){
   if(!mlMap||mlMap.__wxBound)return;mlMap.__wxBound=true;
-  mlMap.on('moveend',()=>{const cb=document.getElementById('ov-wx');if(!cb||!cb.checked)return;clearTimeout(wxWindTimer);wxWindTimer=setTimeout(enrichWxWind,500);});
+  mlMap.on('moveend',()=>{const cb=document.getElementById('ov-wx');if(!cb||!cb.checked)return;
+    // Skip pan-triggered station refreshes while a launch/LZ popup is open — the sidebar
+    // covers most of the map, so those stations aren't visible anyway. The user's next
+    // interaction after closing the popup will land in the moveend path and refetch.
+    if(openPopup)return;
+    clearTimeout(wxWindTimer);wxWindTimer=setTimeout(enrichWxWind,500);});
 }
 // Windsock graphic for weather stations (pole + striped orange/white sock).
 const VANE_SVG='<svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><line x1="5" y1="3" x2="5" y2="23" stroke="#475569" stroke-width="2" stroke-linecap="round"/><polygon points="5,4 22,7 22,10 5,12" fill="#f97316"/><polygon points="10,5 13,5.5 13,11 10,11.5" fill="#fff"/><polygon points="17,6 19.5,6.4 19.5,10.3 17,10.7" fill="#fff"/></svg>';
@@ -2050,32 +2280,60 @@ function windCanvas(){if(!windState.cv){windState.cv=document.getElementById('wi
 function resizeWindCanvas(){const c=windCanvas();if(!c)return;const r=c.getBoundingClientRect();c.width=r.width;c.height=r.height;}
 function projectLL(lat,lon){try{if(useMapLibre&&mlMap){const p=mlMap.project([lon,lat]);return[p.x,p.y];}if(lfMap){const p=lfMap.latLngToContainerPoint([lat,lon]);return[p.x,p.y];}}catch(e){}return null;}
 function mapBounds(){try{if(useMapLibre&&mlMap){const b=mlMap.getBounds();return{w:b.getWest(),s:b.getSouth(),e:b.getEast(),n:b.getNorth()};}if(lfMap){const b=lfMap.getBounds();return{w:b.getWest(),s:b.getSouth(),e:b.getEast(),n:b.getNorth()};}}catch(e){}return null;}
+// ── Open-Meteo call-cache ────────────────────────────────────────────────────
+// One tiny TTL cache used by every fetch path (forecast strip, compare panel, wind
+// grid, wx-station overlay). Keeps identical requests within the TTL from re-hitting
+// the API — the Open-Meteo free tier is quota-based, and repeat clicks / map pans
+// were burning most of it. Not persisted across reloads (kept in-memory so it can
+// also hold Promises for in-flight de-duping).
+const _apiCache={};
+function apiCacheGet(key,ttlMs){
+  const e=_apiCache[key];
+  if(!e)return undefined;
+  if(Date.now()-e.ts>ttlMs){delete _apiCache[key];return undefined;}
+  return e.val;
+}
+function apiCacheSet(key,val){_apiCache[key]={val,ts:Date.now()};}
+// De-dupe: if a fetch with the same key is already in flight, return that Promise
+// so we don't fire two parallel requests for identical data.
+const _apiInflight={};
+async function apiCached(key,ttlMs,producer){
+  const hit=apiCacheGet(key,ttlMs);if(hit!==undefined)return hit;
+  if(_apiInflight[key])return _apiInflight[key];
+  const p=(async()=>{try{const v=await producer();if(v!=null)apiCacheSet(key,v);return v;}finally{delete _apiInflight[key];}})();
+  _apiInflight[key]=p;return p;
+}
 // timeISO (optional, America/Denver local e.g. "2026-06-22T15:00") selects a forecast hour;
 // omit it for live "current" wind.
 async function fetchWindGrid(timeISO){
   const b=mapBounds();if(!b)return null;
   const cols=7,rows=5,lats=[],lons=[];   // 35 points (was 80) — far lighter on the Open-Meteo quota
   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){lats.push((b.s+(b.n-b.s)*r/(rows-1)).toFixed(3));lons.push((b.w+(b.e-b.w)*c/(cols-1)).toFixed(3));}
-  try{
-    const [spVar,dirVar]=windLevelTokens();
-    let url=`https://api.open-meteo.com/v1/forecast?latitude=${lats.join(',')}&longitude=${lons.join(',')}&wind_speed_unit=ms`;
-    if(timeISO){
-      const today=new Date();today.setHours(0,0,0,0);
-      const dd=Math.max(1,Math.min(16,Math.ceil((new Date(timeISO)-today)/864e5)+1));
-      url+=`&hourly=${spVar},${dirVar}&timezone=America%2FDenver&past_days=1&forecast_days=${dd}`;
-    }else url+=`&current=${spVar},${dirVar}`;
-    const j=await(await fetch(url)).json();
-    const arr=Array.isArray(j)?j:[j],u=[],v=[];
-    arr.forEach(o=>{
-      let sp=0,dir=0;
-      if(timeISO){const h=o.hourly;let k=h&&h.time?h.time.indexOf(timeISO):-1;
-        if(k<0&&h&&h.time)k=h.time.findIndex(t=>t.slice(0,13)===timeISO.slice(0,13));
-        if(k>=0){sp=(h[spVar]&&h[spVar][k])||0;dir=(h[dirVar]&&h[dirVar][k])||0;}}
-      else{const cu=o.current||{};sp=cu[spVar]||0;dir=cu[dirVar]||0;}
-      const rad=dir*Math.PI/180;u.push(-sp*Math.sin(rad));v.push(-sp*Math.cos(rad));});
-    if(u.length!==cols*rows)return null;
-    return{cols,rows,w:b.w,s:b.s,e:b.e,n:b.n,u,v};
-  }catch(e){return null;}
+  const [spVar,dirVar]=windLevelTokens();
+  // Cache key: bounds (2-decimal so tiny drag jitter is the same cell), level, live-or-hour.
+  const bk=`${b.w.toFixed(2)},${b.s.toFixed(2)},${b.e.toFixed(2)},${b.n.toFixed(2)}`;
+  const key=`wg|${bk}|${spVar}|${timeISO||'live'}`;
+  return apiCached(key,5*60*1000,async()=>{
+    try{
+      let url=`https://api.open-meteo.com/v1/forecast?latitude=${lats.join(',')}&longitude=${lons.join(',')}&wind_speed_unit=ms`;
+      if(timeISO){
+        const today=new Date();today.setHours(0,0,0,0);
+        const dd=Math.max(1,Math.min(16,Math.ceil((new Date(timeISO)-today)/864e5)+1));
+        url+=`&hourly=${spVar},${dirVar}&timezone=America%2FDenver&past_days=1&forecast_days=${dd}`;
+      }else url+=`&current=${spVar},${dirVar}`;
+      const j=await(await fetch(url)).json();
+      const arr=Array.isArray(j)?j:[j],u=[],v=[];
+      arr.forEach(o=>{
+        let sp=0,dir=0;
+        if(timeISO){const h=o.hourly;let k=h&&h.time?h.time.indexOf(timeISO):-1;
+          if(k<0&&h&&h.time)k=h.time.findIndex(t=>t.slice(0,13)===timeISO.slice(0,13));
+          if(k>=0){sp=(h[spVar]&&h[spVar][k])||0;dir=(h[dirVar]&&h[dirVar][k])||0;}}
+        else{const cu=o.current||{};sp=cu[spVar]||0;dir=cu[dirVar]||0;}
+        const rad=dir*Math.PI/180;u.push(-sp*Math.sin(rad));v.push(-sp*Math.cos(rad));});
+      if(u.length!==cols*rows)return null;
+      return{cols,rows,w:b.w,s:b.s,e:b.e,n:b.n,u,v};
+    }catch(e){return null;}
+  });
 }
 function windAt(g,lat,lon){
   const fx=(lon-g.w)/(g.e-g.w)*(g.cols-1),fy=(lat-g.s)/(g.n-g.s)*(g.rows-1);
@@ -2170,25 +2428,26 @@ const FLY_CFG_KEY='updraft_flycfg_v1';
 const FLY_DEFAULTS={
   version:1,
   params:{
-    surfaceWind :{label:'Surface Wind',           unit:'mph',   dir:'higher-bad', caution:15, noFly:20, weight:25, dataKey:'wind'},
-    gustSpread  :{label:'Gust Spread (gust − avg)',unit:'mph',  dir:'higher-bad', caution:5,  noFly:10, weight:20, dataKey:'gustSpread'},
-    windAloft2k :{label:'~2,500 ft Wind (925 hPa)',unit:'mph',  dir:'higher-bad', caution:18, noFly:25, weight:8,  dataKey:'wind2k'},
-    windAloft5k :{label:'~5,000 ft Wind (850 hPa)',unit:'mph',  dir:'higher-bad', caution:22, noFly:30, weight:7,  dataKey:'wind5k'},
-    windDirChg  :{label:'Wind Dir Change (sfc→5k)',unit:'°',    dir:'higher-bad', caution:20, noFly:45, weight:5,  dataKey:'dirChg'},
-    windShear   :{label:'Vertical Wind Shear',     unit:'mph',  dir:'higher-bad', caution:10, noFly:15, weight:10, dataKey:'shear'},
+    surfaceWind :{label:'Surface Wind',           unit:'mph',   dir:'higher-bad', caution:15, noFly:20, weight:22, dataKey:'wind'},
+    windOffAxis :{label:'Wind Off-Axis (vs launch window)',unit:'°',dir:'higher-bad',caution:15, noFly:25, weight:15, dataKey:'windOffAxis'},
+    gustSpread  :{label:'Gust Spread (gust − avg)',unit:'mph',  dir:'higher-bad', caution:5,  noFly:10, weight:18, dataKey:'gustSpread'},
+    windAloft2k :{label:'925 hPa Wind (~2,500 ft MSL)',unit:'mph', dir:'higher-bad', caution:18, noFly:25, weight:7,  dataKey:'wind2k'},
+    windAloft5k :{label:'850 hPa Wind (~5,000 ft MSL)',unit:'mph', dir:'higher-bad', caution:22, noFly:30, weight:6,  dataKey:'wind5k'},
+    windDirChg  :{label:'Wind Dir Change (sfc→5k)',unit:'°',    dir:'higher-bad', caution:45, noFly:90, weight:4,  dataKey:'dirChg'},
+    windShear   :{label:'Vertical Wind Shear',     unit:'mph',  dir:'higher-bad', caution:10, noFly:15, weight:9,  dataKey:'shear'},
     thermals    :{label:'Thermal Strength',        unit:'fpm',  dir:'higher-bad', caution:600,noFly:900,weight:10, dataKey:null},
-    cape        :{label:'CAPE',                    unit:'J/kg', dir:'higher-bad', caution:200,noFly:500,weight:6,  dataKey:'cape'},
+    cape        :{label:'CAPE',                    unit:'J/kg', dir:'higher-bad', caution:300,noFly:700,weight:5,  dataKey:'cape'},
     liftedIdx   :{label:'Lifted Index',            unit:'',     dir:'lower-bad',  caution:0,  noFly:-2, weight:4,  dataKey:'liftedIdx'},
     cloudCover  :{label:'Cloud Cover',             unit:'%',    dir:'higher-bad', caution:60, noFly:85, weight:3,  dataKey:'cloud'},
     cloudBase   :{label:'Cloud Base (LCL est.)',   unit:'ft AGL',dir:'lower-bad', caution:4000,noFly:2500,weight:3,dataKey:'cloudBase'},
     rainChance  :{label:'Rain Chance',             unit:'%',    dir:'higher-bad', caution:20, noFly:40, weight:3,  dataKey:'rainChance'},
     visibility  :{label:'Visibility',              unit:'mi',   dir:'lower-bad',  caution:10, noFly:5,  weight:2,  dataKey:'visibility'},
-    humidity    :{label:'Relative Humidity',       unit:'%',    dir:'higher-bad', caution:70, noFly:90, weight:2,  dataKey:'rh'},
-    dewSpread   :{label:'Dew Point Spread',        unit:'°F',   dir:'lower-bad',  caution:5,  noFly:2,  weight:2,  dataKey:'dewSpread'}
+    humidity    :{label:'Relative Humidity',       unit:'%',    dir:'higher-bad', caution:70, noFly:90, weight:1,  dataKey:'rh'},
+    dewSpread   :{label:'Dew Point Spread',        unit:'°F',   dir:'lower-bad',  caution:5,  noFly:2,  weight:3,  dataKey:'dewSpread'}
   },
   // Automatic no-fly triggers — any one true = veto to 'no', score forced to 0.
   hardVeto:{
-    surfaceWindMax:25,   // > this → veto
+    surfaceWindMax:22,   // > this → veto
     gustSpreadMax:15,
     windShearMax:20,
     capeMax:800,
@@ -2225,11 +2484,21 @@ function saveFlyConfig(){try{localStorage.setItem(FLY_CFG_KEY,JSON.stringify(fly
 function resetFlyConfig(){flyConfig=cloneCfg(FLY_DEFAULTS);saveFlyConfig();}
 loadFlyConfig();
 // Extract each param's value from the weather record, computing derived fields
-// (gust spread, dew-point spread) on the fly.
-function paramValue(wx,key){
+// (gust spread, dew-point spread, off-axis wind) on the fly.
+function paramValue(wx,key,site){
   if(!wx)return null;
   if(key==='gustSpread')return(wx.gusts!=null&&wx.wind!=null)?(wx.gusts-wx.wind):null;
   if(key==='dewSpread' )return(wx.temp!=null&&wx.dp!=null)?(wx.temp-wx.dp):null;
+  if(key==='windOffAxis'){
+    // Degrees the wind bearing sits OUTSIDE the launch's own directional window (0 = inside).
+    // Requires a site and a real wind. Below 3 mph we can't trust the reported direction, so skip.
+    if(!site||wx.dir==null||wx.wind==null||wx.wind<3)return null;
+    const win=windowFor(site);
+    if(inWindow(wx.dir,win))return 0;
+    const dLo=Math.min(((wx.dir-win[0]+360)%360),((win[0]-wx.dir+360)%360));
+    const dHi=Math.min(((wx.dir-win[1]+360)%360),((win[1]-wx.dir+360)%360));
+    return Math.min(dLo,dHi);
+  }
   return wx[key];
 }
 // Per-parameter score: 100 in fly band, 60 in caution, 0 in no-fly.
@@ -2245,11 +2514,23 @@ function paramScore(val,p){
     return 100;
   }
 }
+// Merge a site's per-launch fly-score overrides on top of the global config.
+// `site.flyOverrides.params[k]` may override any of {dir,caution,noFly,weight}.
+// `site.flyOverrides.hardVeto` may override any of the hard-veto keys.
+// Anything not overridden falls through to the global flyConfig.
+function effectiveFlyCfg(site){
+  if(!site||!site.flyOverrides)return flyConfig;
+  const ov=site.flyOverrides;
+  const merged={...flyConfig,params:{...flyConfig.params},hardVeto:{...flyConfig.hardVeto}};
+  if(ov.params){Object.entries(ov.params).forEach(([k,vals])=>{if(merged.params[k]&&vals)merged.params[k]={...merged.params[k],...vals};});}
+  if(ov.hardVeto)merged.hardVeto={...merged.hardVeto,...ov.hardVeto};
+  return merged;
+}
 // Compute the composite fly score for a weather sample at a specific site.
 // Skips params with no data source or no reading; renormalizes weights over
 // what we have so the total remains 0-100.
 function computeFlyScore(wx,site){
-  const cfg=flyConfig; const reasons=[]; let veto=false; let vetoReason=null;
+  const cfg=effectiveFlyCfg(site); const reasons=[]; let veto=false; let vetoReason=null;
   // Site-specific vetoes (still respected — the tail-note "each site defines its own" idea).
   if(site){
     const L=windStrengthFor(site);
@@ -2270,11 +2551,11 @@ function computeFlyScore(wx,site){
   let totalW=0, weightedSum=0;
   Object.entries(cfg.params).forEach(([k,p])=>{
     if(!p.dataKey)return;
-    const v=paramValue(wx,p.dataKey);
+    const v=paramValue(wx,p.dataKey,site);
     const s=paramScore(v,p);
     if(s==null)return;
     totalW+=p.weight; weightedSum+=s*p.weight;
-    if(s<100)reasons.push(`${p.label}: ${v}${p.unit} (${s===0?'no fly':'caution'})`);
+    if(s<100)reasons.push(`${p.label}: ${p.dataKey==='windOffAxis'?Math.round(v)+'° outside window':v+p.unit} (${s===0?'no fly':'caution'})`);
   });
   let score=totalW>0?Math.round(weightedSum/totalW):null;
   if(veto){score=0;reasons.unshift('VETO — '+vetoReason);}
@@ -2638,6 +2919,22 @@ function clearAll(){clearFlight();}
 
 // ── Popup HTML ────────────────────────────────────────────────────────────────
 function bdg(s){const m={flyable:['#d1fae5','#065f46','✓ Flyable now'],caution:['#fef3c7','#92400e','⚠ Use caution'],no:['#fee2e2','#991b1b','✗ No fly']}[s]||['#f3f4f6','#374151','— Loading'];return`<span class="ppb" style="background:${m[0]};color:${m[1]};">${m[2]}</span>`;}
+// Human-readable reason a launch is currently no-fly, shown under the badge in the launch popup.
+// Checks strongest → weakest: TFR, night, computed veto, then lowest-scoring param below the marker cutoff.
+function noFlyReason(site,w){
+  if(site&&site.inTFR){
+    const r=site.tfrInfo?tfrReason(site.tfrInfo):null;
+    return r?`Inside active TFR — ${r.label}`:'Inside an active TFR';
+  }
+  if(isNight(curHourLocal(),site))return 'Outside civil daylight (before dawn / after dusk)';
+  if(!w)return null;
+  const r=computeFlyScore(w,site);
+  if(r.vetoReason){const t=r.vetoReason;return t.charAt(0).toUpperCase()+t.slice(1);}
+  const bad=(r.reasons||[]).filter(x=>/\(no fly\)$/i.test(x));
+  if(bad.length)return bad[0].replace(/\s*\(no fly\)$/i,'');
+  if(r.score!=null){const cut=(flyConfig.markerCutoffs||{}).caution;return `Fly-score ${r.score}${cut!=null?` (below no-fly cutoff of ${cut})`:''}`;}
+  return 'Conditions currently no-fly';
+}
 function wxG(w){if(!w)return`<div class="ppg"><div class="ppc"><div class="ppcl">Wind</div><div class="ppcv">Loading...</div></div><div class="ppc"><div class="ppcl">Gusts</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Direction</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Temp</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Clouds</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Thermals</div><div class="ppcv">—</div></div></div>`;return`<div class="ppg"><div class="ppc"><div class="ppcl">Wind</div><div class="ppcv">${w.wind} mph</div></div><div class="ppc"><div class="ppcl">Gusts</div><div class="ppcv">${w.gusts} mph</div></div><div class="ppc"><div class="ppcl">Direction</div><div class="ppcv">${d2c(w.dir)} (${w.dir}°)</div></div><div class="ppc"><div class="ppcl">Temp</div><div class="ppcv">${w.temp}°F</div></div><div class="ppc"><div class="ppcl">Clouds</div><div class="ppcv">${w.cloud}%</div></div><div class="ppc"><div class="ppcl">Thermals</div><div class="ppcv" style="font-size:10px;">${thStr(w.cloud,w.temp,w.wind)}</div></div></div>`;}
 // Structured "About this launch" block. Uses discrete fields when present (elevations,
 // vertical, glide needed, best window, access, airspace, radio, hazards) and falls back to the
@@ -2927,12 +3224,16 @@ async function loadShadeTiming(id,btn){
   }
 }
 function launchPop(site,w){
-  const s=w?flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir):'caution';
+  // TFR is a hard no-fly and takes precedence over the weather-based fly-score, so the badge
+  // matches the map marker and my noFlyReason() block below will explain why.
+  const s=(site&&site.inTFR)?'no':(w?flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir):'caution');
   const dir=`<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to trailhead</a>`;
   const bio=siteBioHTML(site);
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div>${windCompassSVG(site,stCol,40,w)}</div>${bdg(s)}${wxG(w)}${windAltSliderHTML()}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  const nf=(s==='no')?noFlyReason(site,w):null;
+  const nfHTML=nf?`<div class="pp-nofly-why"><b>Why:</b> ${nf}</div>`:'';
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div>${windCompassSVG(site,stCol,40,w)}</div>${bdg(s)}${nfHTML}${wxG(w)}${windAltSliderHTML()}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
@@ -3180,7 +3481,7 @@ async function fetchHRRR(lat,lon){
     if(d.daily&&d.daily.sunrise&&d.daily.sunrise[0]){dawnH=hourOf(d.daily.sunrise[0])-0.5;duskH=hourOf(d.daily.sunset[0])+0.5;civilDawnH=dawnH;civilDuskH=duskH;}  // civil twilight ≈ ±30 min
     const res={wind:Math.round(c.wind_speed_10m),gusts:Math.round(c.wind_gusts_10m),dir:Math.round(c.wind_direction_10m),cloud:Math.round(c.cloud_cover),temp:Math.round(c.temperature_2m),app:Math.round(c.apparent_temperature),rh:Math.round(c.relative_humidity_2m),dp:(c.dew_point_2m!=null?Math.round(c.dew_point_2m):null),pres:Math.round(c.surface_pressure),dawnH,duskH};
     attachAloftFields(res,d.hourly,currentDenverHourIdx());
-    wxCache[k]=res;return res;}catch{return null;}
+    wxCache[k]=res;persistWxCache();return res;}catch{return null;}
 }
 // Fetch weather for MANY sites in a single Open-Meteo call (comma-separated coords),
 // in chunks. Firing one request per site (60+ at once) trips the API's rate limit
@@ -3189,6 +3490,16 @@ async function fetchHRRRBatch(sites,fallback){
   const CHUNK=40;
   const hourlyList='precipitation_probability,precipitation,cape,lifted_index,visibility,wind_speed_925hPa,wind_direction_925hPa,wind_speed_850hPa,wind_direction_850hPa';
   const hourIdx=currentDenverHourIdx();
+  // Serve any already-cached site from wxCache (localStorage-hydrated), only network-fetch the rest.
+  // This is what makes a page reload cheap: the batch below skips every site we still have on disk.
+  const need=[];
+  sites.forEach(s=>{
+    const k=`${currentModel}|${s.lat.toFixed(2)},${s.lon.toFixed(2)}`;
+    const c=wxCache[k];
+    if(c){siteWx[s.id]={...c,status:flyS(c.wind,c.gusts,c.cloud,c.temp,null,s,c.dir)};}
+    else need.push(s);
+  });
+  sites=need;
   for(let i=0;i<sites.length;i+=CHUNK){
     const grp=sites.slice(i,i+CHUNK);
     const lats=grp.map(s=>s.lat).join(','), lons=grp.map(s=>s.lon).join(',');
@@ -3211,6 +3522,7 @@ async function fetchHRRRBatch(sites,fallback){
       if(eff)siteWx[s.id]={...eff,status:flyS(eff.wind,eff.gusts,eff.cloud,eff.temp,null,s,eff.dir)};
     });
   }
+  persistWxCache();
 }
 function setModel(m){
   if(m==='__compare__'){
@@ -3292,15 +3604,23 @@ function modelSelectHTML(){return`<select class="nb-model" title="Weather model"
 const COMPARE_MODELS=[['gfs_hrrr','HRRR'],['gfs_seamless','GFS'],['ecmwf_ifs025','ECMWF'],['icon_seamless','ICON'],['meteofrance_seamless','MeteoFr'],['gem_seamless','GEM']];
 let cmpData=null,cmpAxis=[],rocketOn=false,cmpSelT=null;   // cmpSelT = clicked forecast hour the map pin shows
 async function fetchCompareModel(model,label){
-  try{
-    const u=`https://api.open-meteo.com/v1/forecast?latitude=${fcTarget.lat}&longitude=${fcTarget.lon}`+
-      `&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m&timezone=America%2FDenver&wind_speed_unit=mph&models=${model}&forecast_days=14`;
-    const j=await(await fetch(u)).json();const h=j&&j.hourly;if(!h||!h.time)return{label,byTime:{}};
-    const byTime={};
-    for(let i=0;i<h.time.length;i++){const ws=h.wind_speed_10m[i];if(ws==null)continue;
-      byTime[h.time[i]]={wind:Math.round(ws),gust:Math.round(h.wind_gusts_10m?.[i]??ws),dir:Math.round(h.wind_direction_10m?.[i]??0)};}
-    return{label,byTime};
-  }catch(e){return{label,byTime:{}};}
+  // 5-min TTL: reopening the compare panel or clicking a nearby site within that window
+  // reuses the same six model responses instead of re-firing them.
+  const key=`cmp|${fcTarget.lat.toFixed(3)},${fcTarget.lon.toFixed(3)}|${model}`;
+  const cached=await apiCached(key,5*60*1000,async()=>{
+    try{
+      const u=`https://api.open-meteo.com/v1/forecast?latitude=${fcTarget.lat}&longitude=${fcTarget.lon}`+
+        `&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m&timezone=America%2FDenver&wind_speed_unit=mph&models=${model}&forecast_days=14`;
+      const j=await(await fetch(u)).json();const h=j&&j.hourly;
+      // Rate-limit / empty response — don't cache; next call will retry when the quota resets.
+      if(!j||j.error||!h||!h.time)return null;
+      const byTime={};
+      for(let i=0;i<h.time.length;i++){const ws=h.wind_speed_10m[i];if(ws==null)continue;
+        byTime[h.time[i]]={wind:Math.round(ws),gust:Math.round(h.wind_gusts_10m?.[i]??ws),dir:Math.round(h.wind_direction_10m?.[i]??0)};}
+      return{byTime};
+    }catch(e){return null;}
+  });
+  return{label,byTime:(cached&&cached.byTime)||{}};
 }
 // Cache the last good comparison so it still works when the API rate-limits us.
 const CMP_CACHE_KEY='skylab_cmpcache_v1';
@@ -3538,6 +3858,17 @@ function renderNow(w,label){
 let fcSeries=[];
 const FC_TARGET_H=14*24;   // aim for ~14 days of hours
 let fcTarget={lat:40.52,lon:-111.87,label:'Salt Lake City',site:null};   // which site the forecast bar is showing
+// Forecast time resolution in minutes. 60 = hourly (default). 30/15 additionally
+// pulls Open-Meteo minutely_15 and thins/keeps its steps; cloud/pop/wind-aloft
+// still come from the containing hour since those aren't in the minutely feed.
+let fcInterval=60;
+function setFcInterval(n){
+  n=parseInt(n,10)||60;if(n!==60&&n!==30&&n!==15)n=60;
+  if(fcInterval===n){document.querySelectorAll('#fc-res button').forEach(b=>{b.classList.toggle('on',+b.dataset.r===n);});return;}
+  fcInterval=n;
+  document.querySelectorAll('#fc-res button').forEach(b=>{b.classList.toggle('on',+b.dataset.r===n);});
+  loadForecast();
+}
 // True when the forecast is pointed at any site with an allowable-wind facing — real launches AND
 // ad-hoc "fly from here" pins both count. Only "My location" (site null, e.g. the boot-up current-
 // location forecast) fails this, so that's the one case where we drop the Fly/No-Fly verdict +
@@ -3558,25 +3889,60 @@ function setForecastSite(lat,lon,label,site){
 }
 async function fetchSeries(model,days){
   const hPa=windAltHPa();
-  const u=`https://api.open-meteo.com/v1/forecast?latitude=${fcTarget.lat}&longitude=${fcTarget.lon}`+
-    `&hourly=temperature_2m,precipitation_probability,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+   // last three drive the live Thermals row
-    (hPa?`,wind_speed_${hPa}hPa,wind_direction_${hPa}hPa`:'')+
-    `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}&past_days=1`;
-  const r=await fetch(u);return r.json();
+  // Key by every URL-affecting input. Same site + same model + same interval + same
+  // altitude within 10 minutes → served from memory (fixes the "click same site twice = 2 fetches" waste).
+  const key=`fs|${fcTarget.lat.toFixed(3)},${fcTarget.lon.toFixed(3)}|${model}|${fcInterval}|${hPa||'sfc'}|${days}`;
+  return apiCached(key,10*60*1000,async()=>{
+    let u=`https://api.open-meteo.com/v1/forecast?latitude=${fcTarget.lat}&longitude=${fcTarget.lon}`+
+      `&hourly=temperature_2m,precipitation_probability,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+   // last three drive the live Thermals row
+      (hPa?`,wind_speed_${hPa}hPa,wind_direction_${hPa}hPa`:'');
+    // Sub-hourly: also pull the 15-min feed for the fast-changing surface values.
+    // cloud_cover and precipitation_probability aren't in minutely_15 — those still come from the hourly row.
+    if(fcInterval<60){
+      u+=`&minutely_15=temperature_2m,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cape`;
+    }
+    u+=`&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}&past_days=1`;
+    const r=await fetch(u);const j=await r.json();
+    // Don't poison the cache with rate-limit / error payloads (e.g. {error:true, reason:...}).
+    if(!j||j.error||!j.hourly)return null;
+    return j;
+  });
 }
 function entriesFrom(j,label){
   const h=j&&j.hourly;if(!h||!h.time)return[];
   const hPa=windAltHPa(),saA=hPa&&h['wind_speed_'+hPa+'hPa'],daA=hPa&&h['wind_direction_'+hPa+'hPa'];
-  const out=[];
+  // Build hourly entries first — used as-is for 60-min mode and as the cloud/pop/wind-aloft
+  // back-fill for sub-hourly, since minutely_15 doesn't carry those fields.
+  const hourly=[];
   for(let i=0;i<h.time.length;i++){
     const ws=h.wind_speed_10m[i];if(ws==null)continue;        // model ran out of range
-    out.push({t:h.time[i],model:label,
+    hourly.push({t:h.time[i],model:label,
       wind:Math.round(ws),gust:Math.round(h.wind_gusts_10m[i]??ws),dir:Math.round(h.wind_direction_10m[i]??0),
       windAlt:(saA&&saA[i]!=null)?Math.round(saA[i]):null,dirAlt:(daA&&daA[i]!=null)?Math.round(daA[i]):null,
       temp:Math.round(h.temperature_2m[i]),app:Math.round(h.apparent_temperature?.[i]??h.temperature_2m[i]),
       rh:Math.round(h.relative_humidity_2m?.[i]??0),cloud:Math.round(h.cloud_cover[i]??0),
       precip:h.precipitation?.[i]??0,pop:Math.round(h.precipitation_probability?.[i]??0),pres:Math.round(h.surface_pressure?.[i]??0),
       pbl:h.boundary_layer_height?.[i]??null,cape:h.cape?.[i]??null,li:h.lifted_index?.[i]??null});
+  }
+  if(fcInterval>=60||!j.minutely_15||!j.minutely_15.time)return hourly;
+  // Sub-hourly: iterate minutely_15 (which is on a fixed 15-min grid) and, for 30-min mode,
+  // keep every second sample. Back-fill hour-scoped fields from the containing hour.
+  const m=j.minutely_15;
+  const step=fcInterval===15?1:2;
+  const hMap={};hourly.forEach(e=>{hMap[e.t.slice(0,13)]=e;});
+  const out=[];
+  for(let i=0;i<m.time.length;i+=step){
+    const ws=m.wind_speed_10m?.[i];if(ws==null)continue;
+    const t=m.time[i];
+    const hh=hMap[t.slice(0,13)]||{};
+    const temp=m.temperature_2m?.[i];
+    out.push({t,model:label,
+      wind:Math.round(ws),gust:Math.round(m.wind_gusts_10m?.[i]??ws),dir:Math.round(m.wind_direction_10m?.[i]??hh.dir??0),
+      windAlt:hh.windAlt??null,dirAlt:hh.dirAlt??null,
+      temp:Math.round(temp??hh.temp??0),app:Math.round(temp??hh.app??hh.temp??0),
+      rh:hh.rh??0,cloud:hh.cloud??0,
+      precip:m.precipitation?.[i]??0,pop:hh.pop??0,pres:hh.pres??0,
+      pbl:hh.pbl??null,cape:m.cape?.[i]??hh.cape??null,li:hh.li??null});
   }
   return out;
 }
@@ -3736,9 +4102,14 @@ const FC_DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satu
 function buildForecast(container,series,labels){
   if(!container)return;
   if(!series||!series.length){container.innerHTML='<div class="nb-load" style="color:#64748b;padding:10px;">Forecast unavailable</div>';return;}
+  // Cell width scales down as we pack more cells per hour, so the strip stays a similar total width.
+  const fcwByInterval={60:null,30:'42px',15:'36px'};   // 15-min labels are 5+ chars, so keep the cell wide enough to read them
+  const cw=fcwByInterval[fcInterval];
+  if(cw)container.style.setProperty('--fcw',cw);else container.style.removeProperty('--fcw');
   const now=Date.now();
   let nowIdx=-1;
-  series.forEach((e,i)=>{if(nowIdx<0&&new Date(e.t).getTime()>=now-30*60*1000)nowIdx=i;});
+  const nowWin=Math.max(15,fcInterval)*60*1000/2;   // half a cell back — snaps to the closest slot
+  series.forEach((e,i)=>{if(nowIdx<0&&new Date(e.t).getTime()>=now-nowWin)nowIdx=i;});
   // group consecutive hours by calendar day
   const groups=[];
   series.forEach(e=>{const d=new Date(e.t),key=d.toDateString();const last=groups[groups.length-1];
@@ -3759,9 +4130,15 @@ function buildForecast(container,series,labels){
   const windVals=[],gustVals=[],flyCols=[];
   const siteHasWindow=fcSiteHasWindow();   // real flying site → show wedge + Fly/No-Fly; else just the arrow
   series.forEach((e,i)=>{
-    const d=new Date(e.t),hr=d.getHours();
-    const ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
-    const fs=flyS(e.wind,e.gust,e.cloud,e.temp,hr,fcTarget.site,e.dir);   // flyability stays on surface wind
+    const d=new Date(e.t),hr=d.getHours(),mn=d.getMinutes();
+    const pad=n=>n<10?'0'+n:''+n;
+    let ap;
+    if(mn===0)ap=hr===0?'12a':hr<12?hr+'a':hr===12?'12p':(hr-12)+'p';
+    else{
+      const h12=((hr+11)%12)+1,suf=hr<12?'a':'p';
+      ap=`${h12}:${pad(mn)}${suf}`;
+    }
+    const fs=flyS(e.wind,e.gust,e.cloud,e.temp,hr+mn/60,fcTarget.site,e.dir);   // flyability stays on surface wind
     const dc={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[fs];
     // When an altitude is selected, the Wind/Direction rows show winds aloft (falls back to
     // surface if the model has no data at that level for this hour).
@@ -3822,22 +4199,29 @@ function buildForecast(container,series,labels){
     // Sunrise / sunset markers — positioned at the exact astronomical minute (fractional column).
     if(series.daily&&(series.daily.sunrise||series.daily.sunset)){
       const t0=dataEl0._fcT0,maxX=series.length*_cw;
+      const cph=60/fcInterval;   // cells per hour — 1 hourly, 2 for 30-min, 4 for 15-min
       const addSun=(iso,cls,lbl)=>{
         if(!iso)return;
         const t=new Date(iso).getTime();
         if(!isFinite(t))return;
-        const x=((t-t0)/3600000)*_cw;
+        // +0.5 → centre of the current cell, matching .fc-nowline so the line lands on the exact minute
+        // (Open-Meteo returns per-minute sunrise/sunset), not just the cell's left edge.
+        const x=((t-t0)/3600000*cph+0.5)*_cw;
         if(x<0||x>maxX)return;
         const m=document.createElement('div');
         m.className='fc-sunmark '+cls;
         m.style.left=x+'px';
         const d=new Date(iso),hh=d.getHours(),mm=d.getMinutes();
         const h12=((hh+11)%12)+1,ap=hh<12?'AM':'PM';
-        m.title=`${lbl} ${h12}:${String(mm).padStart(2,'0')} ${ap}`;
+        const timeStr=`${h12}:${String(mm).padStart(2,'0')} ${ap}`;
+        const tip=document.createElement('div');
+        tip.className='fc-suntip';
+        tip.innerHTML=`<div class="fc-suntip-lbl">${lbl}</div><div class="fc-suntip-t">${timeStr}</div>`;
+        m.appendChild(tip);
         dataEl0.appendChild(m);
       };
-      (series.daily.sunrise||[]).forEach(iso=>addSun(iso,'sunrise','Sunrise'));
-      (series.daily.sunset||[]).forEach(iso=>addSun(iso,'sunset','Sunset'));
+      (series.daily.sunrise||[]).forEach(iso=>addSun(iso,'sunrise','Civil sunrise'));
+      (series.daily.sunset||[]).forEach(iso=>addSun(iso,'sunset','Civil sunset'));
     }
   }
   // wire scroll: keep the now-column near the left, and update the frozen Model name.
@@ -3865,8 +4249,9 @@ function buildForecast(container,series,labels){
 function positionNowLine(dataEl){
   if(!dataEl||!dataEl._fcT0)return;
   const nl=dataEl.querySelector('.fc-nowline');if(!nl)return;
-  const idx=(Date.now()-dataEl._fcT0)/3600000;        // fractional hours from the first column
-  const x=(idx+0.5)*dataEl._fcColW;                    // +0.5 → centre of the hour cell
+  const cph=60/fcInterval;                             // cells per hour: 1 / 2 / 4
+  const idx=(Date.now()-dataEl._fcT0)/3600000*cph;     // fractional cells from the first column
+  const x=(idx+0.5)*dataEl._fcColW;                    // +0.5 → centre of the current cell
   const w=dataEl.scrollWidth||dataEl.offsetWidth||0;
   if(x<0||(w&&x>w)){nl.style.display='none';return;}
   nl.style.display='';nl.style.left=Math.round(x)+'px';   // whole pixel — a fractional left blurs/kinks the 2px line under anti-aliasing
@@ -3915,7 +4300,7 @@ function renderForecast(series){
   buildForecast(fcEl,series,{temp:'°F',rain:'Rain %',dir:'Wind dir'});
   // Also render the mini forecast inside an open launch/LZ popup, if present.
   const ppWrap=document.querySelector('.pp-fc-wrap');
-  if(ppWrap&&!ppWrap.classList.contains('pp-cmp')){const mini=series.slice(0,336);if(daily)mini.daily=daily;buildForecast(ppWrap,mini,{temp:'°F',rain:'Rain%',dir:'Direction'});}
+  if(ppWrap&&!ppWrap.classList.contains('pp-cmp')){const mini=series.slice(0,Math.round(336*60/fcInterval));if(daily)mini.daily=daily;buildForecast(ppWrap,mini,{temp:'°F',rain:'Rain%',dir:'Direction'});}
 }
 // "Now" button: smooth-scroll every visible forecast back to the current-hour column.
 function forecastNow(){
@@ -4922,6 +5307,50 @@ async function promptAdminLogin(){
 }
 // ── Menu (map key + LZ tools) ─────────────────────────────────────────────────
 function toggleMenu(){document.getElementById('menu-panel').classList.toggle('open');}
+// Menu site-search: live filter over LAUNCHES + LZs (name + subtitle, case-insensitive).
+// Clicking a result closes the menu, flies to the pin, and pops its detail sidebar.
+function _mssMatch(q,site){
+  const s=q.toLowerCase();
+  return (site.name||'').toLowerCase().includes(s) || (site.sub||'').toLowerCase().includes(s);
+}
+function siteSearch(){
+  const inp=document.getElementById('menu-search'); if(!inp)return;
+  const box=document.getElementById('menu-search-results'); if(!box)return;
+  const q=(inp.value||'').trim();
+  if(!q){box.classList.remove('open');box.innerHTML='';return;}
+  const launches=LAUNCHES.filter(s=>_mssMatch(q,s)).slice(0,8);
+  const lzSrc=(typeof lzStore!=='undefined'&&Array.isArray(lzStore)&&lzStore.length)?lzStore:ALL_LZS;
+  const lzs=lzSrc.filter(s=>_mssMatch(q,s)).slice(0,6);
+  if(!launches.length&&!lzs.length){box.innerHTML=`<div class="mss-empty">No matches</div>`;box.classList.add('open');return;}
+  const rows=[];
+  launches.forEach(s=>rows.push(`<div class="mss-item" data-id="${s.id}" data-kind="launch"><span class="mss-item-tag launch">▲</span><span class="mss-item-n">${s.name}</span><div class="mss-item-s">${s.sub||''}</div></div>`));
+  lzs.forEach(s=>rows.push(`<div class="mss-item" data-id="${s.id}" data-kind="lz"><span class="mss-item-tag lz">■ LZ</span><span class="mss-item-n">${s.name}</span><div class="mss-item-s">${s.sub||''}</div></div>`));
+  box.innerHTML=rows.join('');
+  box.classList.add('open');
+  box.querySelectorAll('.mss-item').forEach(el=>{
+    el.addEventListener('click',()=>goToSearchHit(el.dataset.id,el.dataset.kind));
+  });
+}
+function siteSearchKey(ev){
+  if(ev.key==='Escape'){const inp=ev.target;inp.value='';siteSearch();inp.blur();return;}
+  if(ev.key==='Enter'){const first=document.querySelector('#menu-search-results .mss-item');if(first){ev.preventDefault();goToSearchHit(first.dataset.id,first.dataset.kind);}}
+}
+function goToSearchHit(id,kind){
+  const inp=document.getElementById('menu-search'); if(inp){inp.value='';siteSearch();}
+  const panel=document.getElementById('menu-panel'); if(panel&&panel.classList.contains('open'))toggleMenu();
+  if(kind==='launch'){
+    const launch=LAUNCHES.find(s=>s.id===id); if(!launch)return;
+    if(useMapLibre&&mlMap)mlMap.flyTo({center:[launch.lon,launch.lat],zoom:13.5,pitch:45,essential:true});
+    else if(lfMap)lfMap.setView([launch.lat,launch.lon],13);
+    setTimeout(()=>onLaunchClick(launch,null),useMapLibre?700:200);
+  }else{
+    const z=(typeof lzStore!=='undefined'&&lzStore.find)?lzStore.find(x=>x.id===id):null;
+    const t=z||ALL_LZS.find(s=>s.id===id); if(!t)return;
+    if(useMapLibre&&mlMap)mlMap.flyTo({center:[t.lon,t.lat],zoom:13.5,pitch:45,essential:true});
+    else if(lfMap)lfMap.setView([t.lat,t.lon],13);
+    setTimeout(()=>onLZClick(t,null),useMapLibre?700:200);
+  }
+}
 // ── Forecast collapse (mobile) — reclaim the table's height for the map ────────
 function resizeActiveMap(){try{if(useMapLibre&&mlMap)mlMap.resize();else if(lfMap)lfMap.invalidateSize();}catch(e){}}
 function toggleForecast(){
@@ -5031,7 +5460,23 @@ function flashSaved(b){if(!b)return;const t=b.textContent;b.textContent='✓ Sav
 function launchEditorHTML(site){
   if(!isAdmin)return '';
   const win=windowFor(site);
-  return`<details class="lzedit"><summary class="lzedit-t">✎ Edit this takeoff</summary><div class="lzedit-body"><label class="edl">Name</label><input class="edi" id="led-name" value="${(site.name||'').replace(/"/g,'&quot;')}"/><div class="edrow"><div style="flex:1"><label class="edl">Facing (°)</label><input class="edi" id="led-facing" type="number" min="0" max="359" value="${site.facing}"/></div><div style="flex:1"><label class="edl">Altitude (ft)</label><input class="edi" id="led-alt" type="number" value="${site.alt}"/></div></div><label class="edl">Allowable wind direction (° wind blows FROM)</label><div class="edrow"><div style="flex:1"><label class="edl">From</label><input class="edi" id="led-windfrom" type="number" min="0" max="359" value="${Math.round(win[0])}"/></div><div style="flex:1"><label class="edl">To (clockwise)</label><input class="edi" id="led-windto" type="number" min="0" max="359" value="${Math.round(win[1])}"/></div></div><div class="ppnote" style="margin-top:2px;margin-bottom:4px;">e.g. From 202 → To 292 = a SW–W window. Drives the green wedge on the pin and the fly/no-fly check.</div><div class="edrow"><div style="flex:1"><label class="edl">LZ altitude (ft)</label><input class="edi" id="led-lzalt" type="number" value="${site.lzAlt!=null?site.lzAlt:''}"/></div><div style="flex:1"><label class="edl">Glide needed (x:1)</label><input class="edi" id="led-glide" type="number" step="0.1" value="${site.glideReq!=null?site.glideReq:''}"/></div></div><label class="edl">Best window</label><input class="edi" id="led-best" value="${(site.bestWindow||'').replace(/"/g,'&quot;')}" placeholder="e.g. Mornings, before midday thermals"/><label class="edl">Access</label><input class="edi" id="led-access" value="${(site.access||'').replace(/"/g,'&quot;')}" placeholder="e.g. 4WD, 2 mi hike, 1,500 ft gain"/><label class="edl">Airspace</label><input class="edi" id="led-airspace" value="${(site.airspace||'').replace(/"/g,'&quot;')}" placeholder="e.g. Class B floor 10,500 ft MSL"/><label class="edl">Radio</label><input class="edi" id="led-radio" value="${(site.radio||'').replace(/"/g,'&quot;')}" placeholder="e.g. 146.560 MHz"/><label class="edl">Bio / notes</label><textarea class="edi" id="led-desc" rows="3">${(site.desc||'').replace(/</g,'&lt;')}</textarea><button class="edbtn" id="led-move">✥ Move pin</button><button class="edbtn save" id="led-save">💾 Save changes</button><button class="edbtn danger" id="led-del">🗑 Delete takeoff</button><div class="ppnote" style="margin-top:6px;">Move pin: drag the takeoff on the map, then click lock. Facing drives the glide cone.</div></div></details>`;
+  return`<details class="lzedit"><summary class="lzedit-t">✎ Edit this takeoff</summary><div class="lzedit-body"><label class="edl">Name</label><input class="edi" id="led-name" value="${(site.name||'').replace(/"/g,'&quot;')}"/><div class="edrow"><div style="flex:1"><label class="edl">Facing (°)</label><input class="edi" id="led-facing" type="number" min="0" max="359" value="${site.facing}"/></div><div style="flex:1"><label class="edl">Altitude (ft)</label><input class="edi" id="led-alt" type="number" value="${site.alt}"/></div></div><label class="edl">Allowable wind direction (° wind blows FROM)</label><div class="edrow"><div style="flex:1"><label class="edl">From</label><input class="edi" id="led-windfrom" type="number" min="0" max="359" value="${Math.round(win[0])}"/></div><div style="flex:1"><label class="edl">To (clockwise)</label><input class="edi" id="led-windto" type="number" min="0" max="359" value="${Math.round(win[1])}"/></div></div><div class="ppnote" style="margin-top:2px;margin-bottom:4px;">e.g. From 202 → To 292 = a SW–W window. Drives the green wedge on the pin and the fly/no-fly check.</div><div class="edrow"><div style="flex:1"><label class="edl">LZ altitude (ft)</label><input class="edi" id="led-lzalt" type="number" value="${site.lzAlt!=null?site.lzAlt:''}"/></div><div style="flex:1"><label class="edl">Glide needed (x:1)</label><input class="edi" id="led-glide" type="number" step="0.1" value="${site.glideReq!=null?site.glideReq:''}"/></div></div><label class="edl">Best window</label><input class="edi" id="led-best" value="${(site.bestWindow||'').replace(/"/g,'&quot;')}" placeholder="e.g. Mornings, before midday thermals"/><label class="edl">Access</label><input class="edi" id="led-access" value="${(site.access||'').replace(/"/g,'&quot;')}" placeholder="e.g. 4WD, 2 mi hike, 1,500 ft gain"/><label class="edl">Airspace</label><input class="edi" id="led-airspace" value="${(site.airspace||'').replace(/"/g,'&quot;')}" placeholder="e.g. Class B floor 10,500 ft MSL"/><label class="edl">Radio</label><input class="edi" id="led-radio" value="${(site.radio||'').replace(/"/g,'&quot;')}" placeholder="e.g. 146.560 MHz"/><label class="edl">Bio / notes</label><textarea class="edi" id="led-desc" rows="3">${(site.desc||'').replace(/</g,'&lt;')}</textarea>${launchFlyOverridesHTML(site)}<button class="edbtn" id="led-move">✥ Move pin</button><button class="edbtn save" id="led-save">💾 Save changes</button><button class="edbtn danger" id="led-del">🗑 Delete takeoff</button><div class="ppnote" style="margin-top:6px;">Move pin: drag the takeoff on the map, then click lock. Facing drives the glide cone.</div></div></details>`;
+}
+// Per-launch fly-score overrides — a compact table inside the launch editor.
+// Blank inputs mean "use the global threshold" (shown as a greyed placeholder).
+// Only params with a live data source are shown; overriding one only affects THIS launch.
+function launchFlyOverridesHTML(site){
+  const ov=(site.flyOverrides&&site.flyOverrides.params)||{};
+  const rows=Object.entries(flyConfig.params).map(([k,p])=>{
+    if(!p.dataKey)return '';
+    const o=ov[k]||{};
+    const cv=o.caution!=null?o.caution:'';
+    const nv=o.noFly  !=null?o.noFly  :'';
+    return `<tr><td class="fov-lbl">${p.label}${p.unit?`<span class="fov-unit">${p.unit}</span>`:''}</td>`+
+      `<td><input class="fov-i${cv!==''?' on':''}" type="number" step="any" data-fk="${k}" data-ff="caution" placeholder="${p.caution}" value="${cv}"/></td>`+
+      `<td><input class="fov-i${nv!==''?' on':''}" type="number" step="any" data-fk="${k}" data-ff="noFly"  placeholder="${p.noFly}"  value="${nv}"/></td></tr>`;
+  }).join('');
+  return `<details class="lzedit" style="margin-top:8px;"><summary class="lzedit-t">⚙ Fly-score overrides for this launch</summary><div class="lzedit-body"><div class="ppnote" style="margin-top:0;">Blank = use the global threshold (shown greyed out). Any value here overrides fly/no-fly for <b>this launch only</b>.</div><table class="fov-tbl"><thead><tr><th>Parameter</th><th>Caution</th><th>No fly</th></tr></thead><tbody>${rows}</tbody></table><button class="edbtn" id="fov-reset" style="margin-top:8px;">↺ Clear all overrides for this launch</button></div></details>`;
 }
 function wireLaunchEditor(site){
   const nameEl=document.getElementById('led-name');if(!nameEl)return;
@@ -5054,6 +5499,44 @@ function wireLaunchEditor(site){
   document.getElementById('led-move').onclick=()=>toggleMoveLaunch(site.id);
   document.getElementById('led-save').onclick=e=>{saveLaunchPos();saveCustomLaunches();flashSaved(e.target);};
   wireConfirmDelete(document.getElementById('led-del'),'🗑 Delete takeoff',()=>deleteLaunch(site));
+  wireLaunchFlyOverrides(site);
+}
+// Wire the per-launch fly-score override inputs — each edit persists, then re-scores
+// this launch and recolors its pin so the change is visible immediately.
+function wireLaunchFlyOverrides(site){
+  const tbl=document.querySelector('.fov-tbl');if(!tbl)return;
+  const setOv=(k,f,val)=>{
+    site.flyOverrides=site.flyOverrides||{};
+    site.flyOverrides.params=site.flyOverrides.params||{};
+    site.flyOverrides.params[k]=site.flyOverrides.params[k]||{};
+    if(val===''||val==null||isNaN(val))delete site.flyOverrides.params[k][f];
+    else site.flyOverrides.params[k][f]=val;
+    // Prune empty branches so the saved object stays tidy.
+    if(!Object.keys(site.flyOverrides.params[k]).length)delete site.flyOverrides.params[k];
+    if(!Object.keys(site.flyOverrides.params).length)delete site.flyOverrides.params;
+    if(!site.flyOverrides.params&&!site.flyOverrides.hardVeto)delete site.flyOverrides;
+    saveLaunchPos();saveCustomLaunches();
+    const w=siteWx[site.id];if(w)siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};
+    recolorMarkers();
+  };
+  tbl.querySelectorAll('input.fov-i').forEach(el=>{
+    el.addEventListener('input',()=>{
+      const k=el.dataset.fk,f=el.dataset.ff;
+      const raw=el.value.trim();
+      const v=raw===''?'':parseFloat(raw);
+      el.classList.toggle('on',raw!=='');
+      setOv(k,f,v);
+    });
+  });
+  const rst=document.getElementById('fov-reset');
+  if(rst)rst.onclick=()=>{
+    if(!site.flyOverrides)return;
+    delete site.flyOverrides;
+    saveLaunchPos();saveCustomLaunches();
+    tbl.querySelectorAll('input.fov-i').forEach(el=>{el.value='';el.classList.remove('on');});
+    const w=siteWx[site.id];if(w)siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};
+    recolorMarkers();
+  };
 }
 // Pins are locked by default; this enables dragging for one LZ until you lock it again.
 function toggleMovePin(lz){
@@ -5160,7 +5643,10 @@ async function retryLiveWeather(){
 }
 
 async function loadWeather(){
-  wxCache={};siteWx={};
+  // Don't clear wxCache — it was rehydrated from localStorage on boot and the fetchers
+  // downstream will refuse stale entries via their per-key TTLs. Clearing here would
+  // undo the cross-reload savings we just paid for.
+  siteWx={};
   const slc=await fetchHRRR(40.52,-111.87);if(slc){slcWx=slc;updateVane(slc,'SLC Wind');}
   loadForecast();   // background: long detailed scrollable forecast (auto-switches models for range)
   await fetchHRRRBatch([...LAUNCHES,...lzStore].filter(s=>s.lat&&s.lon), slc);
@@ -5227,6 +5713,7 @@ function cullGhostMarkers(){
   applyAdminUI();      // reflect stored admin state on <body> and the menu button
   initBackend();       // connect to Supabase if configured
   await hydrateFromCloud(); // pull any cloud-saved edits into localStorage before the loaders read it
+  initRealtime();      // subscribe to live admin edits so open tabs update without a reload
   loadCustomLaunches();// user-added takeoffs (localStorage) appended to LAUNCHES
   applyDeletedLaunches();// prune any base launches the user previously deleted (persisted across devices via cloud sync)
   loadFavs();          // starred sites (localStorage / cloud)
