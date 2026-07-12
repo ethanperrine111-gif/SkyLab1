@@ -44,8 +44,8 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 #refresh-btn{background:white;border:none;border-radius:16px;padding:5px 12px;font-size:12px;font-weight:700;color:#2563eb;cursor:pointer;flex-shrink:0;}
 .nb-load{color:#64748b;font-size:12px;padding:11px 16px;}
 /* ── Forecast header (selected-site name + weather model) ─────────────────── */
-#fc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0f172a;flex-shrink:0;padding:calc(6px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 6px calc(12px + env(safe-area-inset-left,0px));z-index:10;border-bottom:1px solid rgba(255,255,255,.06);}
-#fc-loc{font-size:14px;font-weight:800;color:#fff;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#fc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0f172a;flex-shrink:0;padding:calc(6px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 6px calc(12px + env(safe-area-inset-left,0px));z-index:10;border-bottom:1px solid rgba(255,255,255,.06);min-width:0;overflow:hidden;}
+#fc-loc{font-size:32px;line-height:1;font-weight:800;color:#fff;letter-spacing:.2px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;text-align:center;min-width:0;flex:1 1 auto;max-width:100%;padding-bottom:.18em;}   /* line-height:1 + descender padding keeps 'y'/'g'/'p' from clipping; JS fitFcLoc() shrinks to fit */
 /* Top-bar weather-model dropdown — same geometry and depth as the floating map controls
    (.cbtn / #layers-btn): 9 px radius, subtle border, quiet drop-shadow, glassy blur.
    Blue accent colour is kept for the label so the "HRRR / ECMWF / …" name still reads
@@ -60,7 +60,7 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 #fc-res button{background:transparent;color:rgba(255,255,255,.78);border:0;padding:3px 7px;font-size:11px;font-weight:800;letter-spacing:.2px;cursor:pointer;border-radius:7px;line-height:1;}
 #fc-res button:hover{color:#fff;}
 #fc-res button.on{background:#fff;color:#0f172a;box-shadow:0 1px 2px rgba(0,0,0,.18);}
-@media(max-width:768px){#fc-res button{padding:3px 6px;font-size:10.5px;}}
+@media(max-width:768px){#fc-res{display:none !important;}}
 /* Menu-scoped variant of the 15 / 30m / 1h forecast-resolution toggle. Same button
    styling as the top-bar #fc-res, but lives inside #menu-panel — the top-bar copy is
    hidden on mobile to keep the header row from wrapping. */
@@ -886,7 +886,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   /* Header: bigger, with a collapse toggle for the forecast table */
   #fc-toggle{display:block;}
   body.fc-collapsed #forecast{display:none;}   /* collapse only applies on mobile */
-  #fc-loc{font-size:15px;}
+  /* #fc-loc mobile: base rule already sets 32px + shrink-to-fit — no mobile-specific override needed */
   #fc-head{padding:calc(8px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 8px calc(12px + env(safe-area-inset-left,0px));}
   /* Bigger layers tap target on phones (width is synced to the wind box in JS) */
   #trow .cbtn{height:40px;font-size:14px;}
@@ -924,7 +924,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #compass{top:8px;}
   /* Floating panels: never overflow the viewport, scroll if tall */
   /* Mobile: full-screen menu sheet so it feels like a proper drawer, not a floating card */
-  #menu-panel{top:0;left:0;right:0;bottom:0;width:100vw;height:100dvh;max-width:none;max-height:none;border-radius:0;padding:calc(52px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px));}
+  #menu-panel{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;border-radius:0;padding:calc(52px + env(safe-area-inset-top,0px)) 16px calc(48px + env(safe-area-inset-bottom,0px));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
   #menu-close-x{display:flex;}
   /* On mobile, fold Compare into the Weather Models dropdown (bottom option) to free up the top bar for the location. */
   #fc-compare,.nb-compare{display:none;}
@@ -3991,6 +3991,38 @@ function fitModelSelect(sel){
   sel.style.width=Math.ceil(tw+9+26+3)+'px';
 }
 function fitAllModelSelects(){document.querySelectorAll('#model-select,.nb-model,.pp-fc-model').forEach(fitModelSelect);}
+// Mobile: shrink the #fc-loc title as needed so the site name fills the gap between the buttons
+// at the max button-box height, but never pushes them off-screen. Desktop is a no-op — the base
+// CSS (14px, static) already fits.
+function fitFcLoc(){
+  const el=document.getElementById('fc-loc');if(!el||!el.textContent)return;
+  const MAX=32,MIN=11;
+  // Measure OFFSCREEN via canvas — never touch el's current fontSize until we know the
+  // final value, so the user never sees an oversized flash before the shrink.
+  const parent=el.parentElement,head=parent&&parent.parentElement;
+  if(!parent||!head)return;
+  const hcs=getComputedStyle(head),pcs=getComputedStyle(parent);
+  const hPad=parseFloat(hcs.paddingLeft)+parseFloat(hcs.paddingRight);
+  const hGap=parseFloat(hcs.gap)||0;
+  const pGap=parseFloat(pcs.gap)||0;
+  // Slot available to the parent (#fc-left) inside #fc-head = head content width minus
+  // the OTHER top-level children (#fc-head-actions) and the gap between them.
+  let sibHeadW=0;const hKids=[...head.children].filter(c=>c!==parent);
+  hKids.forEach(c=>{sibHeadW+=c.offsetWidth;});
+  const parentSlot=head.clientWidth - hPad - sibHeadW - hGap*hKids.length;
+  // Space left for #fc-loc inside the parent slot after its siblings (buttons) + gaps.
+  let sibParentW=0;const pKids=[...parent.children].filter(c=>c!==el);
+  pKids.forEach(c=>{sibParentW+=c.offsetWidth;});
+  const avail=parentSlot - sibParentW - pGap*pKids.length;
+  if(avail<=0){el.style.fontSize=MIN+'px';return;}
+  const cs=getComputedStyle(el);
+  const font=cs.fontWeight+' '+MAX+'px '+cs.fontFamily;
+  if(!fitFcLoc._ctx)fitFcLoc._ctx=document.createElement('canvas').getContext('2d');
+  fitFcLoc._ctx.font=font;
+  const need=fitFcLoc._ctx.measureText(el.textContent).width;
+  const size=need<=avail?MAX:Math.max(MIN,Math.floor(MAX*avail/need));
+  el.style.fontSize=size+'px';
+}
 function updateVane(w,label){if(!w)return;_lastVane={w,label};if(label)document.getElementById('wvt').textContent=label;document.getElementById('varrow').setAttribute('transform',`rotate(${w.dir},34,34)`);document.getElementById('vspeed').textContent=cvWind(w.wind)+' '+windU();document.getElementById('vdir').textContent=d2c(w.dir)+' wind';document.getElementById('vgust').textContent='Gust '+(w.gusts!=null?cvWind(w.gusts):'—')+' '+windU();const sc=flyS(w.wind,w.gusts??w.wind,w.cloud??0,w.temp??60);document.getElementById('wind-vane').style.borderTopColor=sc==='flyable'?'#22c55e':sc==='caution'?'#facc15':'#ef4444';syncCtrlPanel();}  // re-match the 2D/Layers row after the wind box resizes with live data
 // Cursor wind probe — debounced + grid-cached current wind wherever the mouse rests.
 let probeTimer=null, probeCache={}, lastProbeKey=null, probeOn=false;
@@ -4382,7 +4414,7 @@ function entriesFrom(j,label){
   return out;
 }
 async function loadForecast(){
-  const loc=document.getElementById('fc-loc');if(loc)loc.textContent=fcTarget.label;
+  const loc=document.getElementById('fc-loc');if(loc){loc.textContent=fcTarget.label;fitFcLoc();}
   let jsel=null;try{jsel=await fetchSeries(currentModel,16);}catch(e){}
   if(jsel&&jsel.daily&&jsel.daily.sunrise&&jsel.daily.sunrise[0]){civilDawnH=hourOf(jsel.daily.sunrise[0])-0.5;civilDuskH=hourOf(jsel.daily.sunset[0])+0.5;}
   let series=entriesFrom(jsel,MODEL_LABELS[currentModel]||currentModel);
@@ -5527,7 +5559,7 @@ function closeSidebar(){
   // Mobile: the forecast strip was display:none while the popup was open, so any scrollLeft
   // set by buildForecast during that time didn't stick. Restore the "now" column after it's
   // visible again — otherwise the strip reappears scrolled to the far-left (yesterday).
-  requestAnimationFrame(()=>{const s=document.querySelector('#forecast .fc-scroll');if(s&&s._nowLeft!=null)s.scrollLeft=s._nowLeft;});
+  requestAnimationFrame(()=>{const s=document.querySelector('#forecast .fc-scroll');if(s&&s._nowLeft!=null)s.scrollLeft=s._nowLeft;fitFcLoc();});
 }
 // Mobile: swipe the detail panel to the right to dismiss it (it slides in from the right).
 // Horizontal-only: a mostly-vertical drag is left to the panel's own scrolling.
@@ -6242,7 +6274,7 @@ function cullGhostMarkers(){
     probeOn=false;document.body.classList.add('probe-off');const pb=document.getElementById('probe-btn');if(pb){pb.classList.remove('active');pb.textContent='🌬 Cursor wind: off';}
   }
   updateXhair();
-  window.addEventListener('resize',()=>{clearTimeout(window._rsz);window._rsz=setTimeout(()=>{resizeActiveMap();syncCtrlPanel();updateXhair();},200);});
+  window.addEventListener('resize',()=>{clearTimeout(window._rsz);window._rsz=setTimeout(()=>{resizeActiveMap();syncCtrlPanel();updateXhair();fitFcLoc();},200);});
   applyAdminUI();      // reflect stored admin state on <body> and the menu button
   initBackend();       // connect to Supabase if configured
   await hydrateFromCloud(); // pull any cloud-saved edits into localStorage before the loaders read it
@@ -6287,6 +6319,7 @@ function cullGhostMarkers(){
   openSiteFromHash(); // if opened via a shared #site=<id> link, fly there and open it
   if(!(location.hash||'').match(/site=/)){autoGeoOnBoot();}// map boots on the default Utah overview; once the browser resolves (or grants) location, fly in to the real fix
   syncCtrlPanel();setTimeout(syncCtrlPanel,400);window.addEventListener('load',syncCtrlPanel);
+  fitFcLoc();window.addEventListener('load',fitFcLoc);
   syncUnitBtns();   // highlight the saved unit choices in the menu
   fitAllModelSelects();   // size the model dropdown(s) to the selected word
 })();
