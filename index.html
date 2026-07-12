@@ -46,8 +46,13 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 /* ── Forecast header (selected-site name + weather model) ─────────────────── */
 #fc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0f172a;flex-shrink:0;padding:calc(6px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 6px calc(12px + env(safe-area-inset-left,0px));z-index:10;border-bottom:1px solid rgba(255,255,255,.06);}
 #fc-loc{font-size:14px;font-weight:800;color:#fff;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.fc-model-sel{font-size:12px;font-weight:800;color:#1d4ed8;background:#eff6ff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232563eb' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;border:1.5px solid #2563eb;border-radius:8px;padding:5px 26px 5px 9px;cursor:pointer;flex-shrink:0;text-transform:none;letter-spacing:0;-webkit-appearance:none;appearance:none;box-shadow:0 1px 2px rgba(37,99,235,.15);}
-.fc-model-sel:hover{background-color:#dbeafe;}
+/* Top-bar weather-model dropdown — same geometry and depth as the floating map controls
+   (.cbtn / #layers-btn): 9 px radius, subtle border, quiet drop-shadow, glassy blur.
+   Blue accent colour is kept for the label so the "HRRR / ECMWF / …" name still reads
+   as the active model at a glance against the dark header. */
+.fc-model-sel{font-size:12px;font-weight:800;color:#1d4ed8;background:#eff6ff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232563eb' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;border:1px solid rgba(37,99,235,.35);border-radius:9px;padding:6px 26px 6px 11px;cursor:pointer;flex-shrink:0;text-transform:none;letter-spacing:0;-webkit-appearance:none;appearance:none;box-shadow:0 1px 4px rgba(15,23,42,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:background-color .15s,border-color .15s;font-family:inherit;}
+.fc-model-sel:hover{background-color:#dbeafe;border-color:#2563eb;}
+.fc-model-sel:focus{outline:none;border-color:#2563eb;}
 .fc-model-sel option{color:#111;}
 #fc-head-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
 /* Segmented toggle for forecast time resolution (1h / 30m / 15m). */
@@ -56,6 +61,19 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 #fc-res button:hover{color:#fff;}
 #fc-res button.on{background:#fff;color:#0f172a;box-shadow:0 1px 2px rgba(0,0,0,.18);}
 @media(max-width:768px){#fc-res button{padding:3px 6px;font-size:10.5px;}}
+/* Menu-scoped variant of the 15 / 30m / 1h forecast-resolution toggle. Same button
+   styling as the top-bar #fc-res, but lives inside #menu-panel — the top-bar copy is
+   hidden on mobile to keep the header row from wrapping. */
+#menu-fc-res{display:flex;gap:4px;padding:2px;background:#e2e8f0;border:1px solid #cbd5e1;border-radius:9px;margin:4px 0 2px;}
+#menu-fc-res button{flex:1;background:transparent;color:#334155;border:0;padding:6px 8px;font-size:12px;font-weight:800;letter-spacing:.2px;cursor:pointer;border-radius:7px;line-height:1;font-family:inherit;}
+#menu-fc-res button:hover{color:#0f172a;background:rgba(255,255,255,.6);}
+#menu-fc-res button.on{background:#fff;color:#0f172a;box-shadow:0 1px 2px rgba(0,0,0,.14);}
+body.dark #menu-fc-res{background:#1e293b;border-color:#334155;}
+body.dark #menu-fc-res button{color:#cbd5e1;}
+body.dark #menu-fc-res button.on{background:#0f172a;color:#f1f5f9;}
+/* Desktop keeps the toggle in the header; mobile hides the header copy and shows the menu copy. */
+@media(max-width:768px){#fc-head-actions #fc-res{display:none;}}
+@media(min-width:769px){#menu-fc-res-row{display:none;}}
 #fc-toggle{display:block;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;line-height:1;}
 #fc-compare{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:4px 9px;font-size:12px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0;white-space:nowrap;}
 #fc-compare:hover{background:rgba(255,255,255,.22);}
@@ -141,7 +159,7 @@ body.dark .fc-mseg.switch{background:#1e3a8a;color:#e2e8f0;border-left-color:#3b
 /* rain */
 .fc-r-rain{height:16px;}.fc-r-rain .fc-cell{font-size:9px;font-weight:700;color:#0284c7;}
 /* wind + gusts (coloured cells) */
-.fc-r-wind .fc-cell,.fc-r-gust .fc-cell{font-size:11px;font-weight:700;color:#0f172a;border-right:none;background:transparent;}
+.fc-r-wind .fc-cell,.fc-r-gust .fc-cell{font-size:11px;font-weight:700;color:#0f172a;border-right:1px solid rgba(255,255,255,.35);background:transparent;}
 .fc-r-wind{height:20px;}.fc-r-gust{height:20px;}
 .fc-r-gust .fc-cell{font-weight:600;color:#334155;}
 /* wind direction arrows */
@@ -248,14 +266,34 @@ body.probe-off #ctrl-panel{top:8px;}
 .pplz{background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:7px 9px;margin-top:5px;font-size:11px;color:#1e40af;}
 .ppreach{background:#fefce8;border:1px solid #fde047;border-radius:7px;padding:5px 9px;font-size:11px;color:#713f12;margin-bottom:6px;font-weight:600;}
 .ppnote{font-size:10px;color:#aaa;margin-top:5px;line-height:1.4;}
+/* Fly-status badge row: the badge itself plus a small "?" toggle that reveals the reason
+   panel below (togglePpWhy). Reason lives in a separate block that starts hidden and
+   fades in when the button is clicked. Bottom-aligned so the "?" sits flush with the
+   base of the "No Fly" pill (the pill has its own 7 px margin-bottom that we neutralize
+   here — otherwise the taller circular button would drop below the pill's baseline). */
+.pp-badge-row{display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.pp-badge-row .ppb{margin-bottom:0;}
+.pp-why-btn{flex:0 0 auto;width:20px;height:20px;border-radius:50%;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-weight:800;font-style:normal;font-family:inherit;font-size:13px;line-height:1;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;}
+.pp-why-btn:hover{background:#fee2e2;}
+.pp-why-btn[aria-expanded="true"]{background:#991b1b;color:#fef2f2;border-color:#991b1b;}
+body.dark .pp-why-btn{background:#450a0a;border-color:#7f1d1d;color:#fecaca;}
+body.dark .pp-why-btn:hover{background:#5a1010;}
+body.dark .pp-why-btn[aria-expanded="true"]{background:#fecaca;color:#450a0a;border-color:#fecaca;}
 .pp-nofly-why{margin-top:5px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:6px 9px;font-size:11.5px;color:#991b1b;line-height:1.4;}
 .pp-nofly-why b{color:#7f1d1d;font-weight:800;margin-right:3px;}
 body.dark .pp-nofly-why{background:#450a0a;border-color:#7f1d1d;color:#fecaca;}
 body.dark .pp-nofly-why b{color:#fca5a5;}
 .pp-fc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin:8px 0 2px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.pp-fc-model{font-size:12px;font-weight:800;color:#1d4ed8;background:#eff6ff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232563eb' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;border:1.5px solid #2563eb;border-radius:8px;padding:5px 26px 5px 9px;cursor:pointer;text-transform:none;letter-spacing:0;-webkit-appearance:none;appearance:none;box-shadow:0 1px 2px rgba(37,99,235,.15);}
-.pp-fc-model:hover{background-color:#dbeafe;}
-body.dark .pp-fc-model{background-color:#1e3a8a;color:#dbeafe;border-color:#3b82f6;}
+/* Weather-model dropdown in the popup — shaped and finished like the map's floating
+   #layers-btn / .cbtn (9 px radius, subtle border, soft drop-shadow, glassy blur) so it
+   reads as part of the same control family. Colours stay the neutral slate/light palette
+   the popup already uses — only the geometry and depth are copied from the layer button. */
+.pp-fc-model{font-family:inherit;font-size:12px;font-weight:700;color:#0f172a;background:#f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;border:1px solid #e2e8f0;border-radius:9px;padding:6px 26px 6px 11px;cursor:pointer;text-transform:none;letter-spacing:0;-webkit-appearance:none;appearance:none;box-shadow:0 1px 4px rgba(15,23,42,.08);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:background-color .15s,border-color .15s,transform .1s;}
+.pp-fc-model:hover{background-color:#f1f5f9;border-color:#cbd5e1;}
+.pp-fc-model:focus{outline:none;border-color:#94a3b8;}
+body.dark .pp-fc-model{background-color:#0f172a;color:#e2e8f0;border-color:#1e293b;box-shadow:0 1px 4px rgba(0,0,0,.35);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");}
+body.dark .pp-fc-model:hover{background-color:#1e293b;border-color:#334155;}
+body.dark .pp-fc-model:focus{border-color:#64748b;}
 .pp-fc-wrap{display:flex;overflow:hidden;border-radius:8px;border:1px solid #e2e8f0;background:#fff;--fcw:38px;--fcl:64px;margin-bottom:7px;}
 /* When the site menu's forecast slot is showing the model comparison instead of the 2-week strip. */
 .pp-fc-wrap.pp-cmp{display:block;overflow-x:auto;}
@@ -419,6 +457,75 @@ body.dark .ppwind-note{color:#94a3b8;}
 #glide-mobile .gm-lbl{white-space:nowrap;}
 #glide-mobile .gm-range{writing-mode:vertical-lr;direction:rtl;width:26px;height:170px;accent-color:#22c55e;}
 #glide-mobile .gm-done{border:none;background:#22c55e;color:#fff;border-radius:14px;padding:7px 12px;font-weight:800;cursor:pointer;}
+/* Compact horizontal weather-altitude slider — lives inside the site popup, under the
+   2-Week Forecast bar. Track floor = LZ altitude (ground), top = WALT_MAX (18k ft).
+   Layout is stacked so labels never overlap:
+     · Header row (single line):  🌬 Weather altitude · MSL · above-launch
+     · Launch marker + label ABOVE the rail (green pip drops down onto the rail)
+     · Horizontal range rail
+     · LZ marker + label BELOW the rail, sharing that row with 850/700 hPa ticks
+   Labels are edge-clamped inline so they can't spill outside the .wh-panel box. */
+.wh-panel{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px 10px;margin-top:10px;overflow:hidden;}
+body.dark .wh-panel{background:#0f172a;border-color:#1e293b;}
+.wh-hdr-row{display:flex;align-items:baseline;flex-wrap:nowrap;gap:6px;font-size:10.5px;line-height:1.2;margin-bottom:2px;white-space:nowrap;overflow:hidden;}
+.wh-hdr{color:#0369a1;font-weight:800;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+body.dark .wh-hdr{color:#7dd3fc;}
+.wh-msl{font-weight:800;color:#0f172a;font-size:11.5px;flex:0 0 auto;margin-left:auto;}
+body.dark .wh-msl{color:#f1f5f9;}
+.wh-msl small{font-weight:700;color:#64748b;font-size:9px;margin-left:2px;letter-spacing:.3px;}
+.wh-surf-tag{color:#0284c7;font-weight:800;font-size:9px;letter-spacing:.5px;margin-left:3px;}
+body.dark .wh-surf-tag{color:#7dd3fc;}
+.wh-agl{font-weight:700;color:#b45309;font-size:10.5px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.wh-agl.at{color:#059669;}
+body.dark .wh-agl{color:#fbbf24;}
+body.dark .wh-agl.at{color:#22c55e;}
+/* --thumb: exact half-width of the styled range thumb below, so pct=0 and pct=100 line
+   up with where the thumb visually parks at min and max. That's what makes pip lines
+   land right under the snapped thumb — the row's coordinate system is inset by the
+   thumb radius, so a pct calculated as (v-floor)/range maps identically to the thumb's
+   own interpolation. Keep the number in sync with the ::-*-slider-thumb width below. */
+.wh-track-wrap{position:relative;padding:26px 0 26px;--thumb:8px;}
+/* Rows above (launch) and below (LZ + pressure ticks) the rail. Both are inset by the
+   thumb radius so their pct coordinates align with the range thumb's snap positions. */
+.wh-row-top,.wh-row-bot{position:absolute;left:var(--thumb);right:var(--thumb);height:16px;pointer-events:none;}
+.wh-row-top{top:2px;}
+.wh-row-bot{bottom:2px;height:18px;}
+/* Marker LINE — a thin vertical connector drawn at the exact percent position. Extends
+   generously so it OVERLAPS into the label box on one end and reaches the rail on the
+   other; where pip and label overlap the label paints on top, giving a clean "attached"
+   look with no visible gap between box and line. Overflow:visible is fine — the panel's
+   own overflow clips anything that escaped. */
+.wh-mline{position:absolute;width:2px;border-radius:1px;transform:translateX(-50%);}
+.wh-row-top .wh-mline{top:5px;height:30px;}
+.wh-row-bot .wh-mline{bottom:5px;height:30px;}
+.wh-mline-launch{background:#22c55e;}
+.wh-mline-lz{background:#0ea5e9;}
+.wh-mline-tick{background:#94a3b8;height:8px;}
+.wh-row-top .wh-mline-tick{top:14px;height:8px;}
+.wh-row-bot .wh-mline-tick{bottom:14px;height:8px;}
+body.dark .wh-mline-tick{background:#475569;}
+/* Marker LABEL — positioned inline; the render code writes left/right/transform so the
+   label anchors to the panel's left or right edge whenever the marker sits near it. */
+.wh-lbl{position:absolute;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:4px;white-space:nowrap;user-select:none;pointer-events:auto;cursor:pointer;max-width:100%;box-sizing:border-box;}
+.wh-row-top .wh-lbl{top:0;}
+.wh-row-bot .wh-lbl{bottom:0;}
+.wh-lbl-launch{color:#166534;background:#dcfce7;border:1px solid #86efac;}
+.wh-lbl-lz{color:#1e40af;background:#dbeafe;border:1px solid #93c5fd;}
+body.dark .wh-lbl-launch{color:#bbf7d0;background:rgba(22,101,52,.6);border-color:#166534;}
+body.dark .wh-lbl-lz{color:#bae6fd;background:rgba(12,74,110,.65);border-color:#1e40af;}
+.wh-lbl:hover{filter:brightness(1.05);}
+.wh-tick-lbl{position:absolute;bottom:0;font-size:8.5px;color:#64748b;font-weight:700;white-space:nowrap;pointer-events:none;}
+body.dark .wh-tick-lbl{color:#94a3b8;}
+/* Rail — dimensions are fixed here (rather than relying on accent-color defaults) so the
+   thumb's exact half-width matches --thumb above and the pip lines land under the thumb.
+   16px thumb → --thumb:8px. Change one, change the other. */
+.wh-range{width:100%;box-sizing:border-box;margin:0;padding:0;display:block;position:relative;z-index:1;height:20px;background:transparent;-webkit-appearance:none;appearance:none;cursor:pointer;}
+.wh-range::-webkit-slider-runnable-track{height:6px;background:#cbd5e1;border-radius:3px;border:none;}
+.wh-range::-moz-range-track{height:6px;background:#cbd5e1;border-radius:3px;border:none;}
+.wh-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#0369a1;border:2px solid #fff;box-shadow:0 1px 3px rgba(15,23,42,.35);margin-top:-5px;cursor:pointer;}
+.wh-range::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#0369a1;border:2px solid #fff;box-shadow:0 1px 3px rgba(15,23,42,.35);cursor:pointer;}
+body.dark .wh-range::-webkit-slider-runnable-track{background:#334155;}
+body.dark .wh-range::-moz-range-track{background:#334155;}
 #sb-body{padding:13px;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 #sb-body::-webkit-scrollbar{display:none;}
 #sidebar .pp{min-width:0;max-width:none;}
@@ -492,7 +599,7 @@ body.dark .sun-note{color:#94a3b8;}
 /* Top-bar Favorites button */
 #fav-btn{flex-shrink:0;background:rgba(255,255,255,.12);color:#fcd34d;border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:5px 9px;cursor:pointer;font-size:14px;font-weight:800;line-height:1;}
 /* Keep every top-bar control the same height so the row lines up. */
-#menu-btn,#fav-btn,#fc-toggle,#fc-compare{height:32px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;}
+#menu-btn,#fav-btn,#fc-toggle,#fc-compare,#fc-res{height:32px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;}
 .fc-model-sel{height:32px;box-sizing:border-box;}
 #fav-btn:hover{background:rgba(255,255,255,.2);}
 /* Full-screen Favorites overlay */
@@ -1011,6 +1118,14 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
       <div class="lr"><div class="ls" style="background:rgba(34,197,94,.25);border:1.5px dashed #16a34a;"></div>LZ field boundary</div>
       <div class="lp-div"></div>
       <div class="lp-sec">Weather</div>
+      <div id="menu-fc-res-row">
+        <div class="lp-h2" style="margin-bottom:2px;">Forecast resolution</div>
+        <div id="menu-fc-res" title="Forecast time resolution">
+          <button data-r="60" class="on" onclick="setFcInterval(60)">1h</button>
+          <button data-r="30" onclick="setFcInterval(30)">30m</button>
+          <button data-r="15" onclick="setFcInterval(15)">15m</button>
+        </div>
+      </div>
       <button class="edbtn" onclick="openModelsInfo();">🌦 About weather models</button>
       <div class="lp-div"></div>
       <div class="lp-sec">Owner</div>
@@ -1097,44 +1212,44 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
 <script>
 // ── DATA ─────────────────────────────────────────────────────────────────────
 const LAUNCHES=[
-  {id:'pom_s',name:'POM – South Side',sub:'Lehi (Flight Park)',lat:40.4567,lon:-111.9027,alt:5148,lzAlt:4834,rating:'P2',facing:180,winds:{idealLo:10,idealHi:16,max:18,gust:5},wind:[157.5,202.5],lzLat:40.4542,lzLon:-111.9006,hazards:['Midday turbulence','Traffic congestion at peak hours'],radio:'146.560 MHz',bestWindow:'First 3 hrs after sunrise, last 2 hrs before sunset',desc:"Utah's primary training site. SSE–SSW winds (160°–200°). Heavy use by all skill levels; strong midday turbulence — best within 3 hrs after sunrise and 2 hrs before sunset. PG ideal wind 10–16 mph, max 18 mph with 5 mph gusts. Upper and lower LZs; PGs must avoid HG landing zone marked with pink whiskers. Radio: 146.560 MHz.",lzBio:"Salt Lake County Flight Park. Green grass area with paved parking. Upper and lower LZ areas designated. Paragliders must avoid hang glider landing zone marked with pink whiskers. Elev 4,834 ft."},
-  {id:'pom_n',name:'POM – North Side',sub:'Draper (Flight Park)',lat:40.4745,lon:-111.8928,alt:5100,lzAlt:4834,rating:'P2',facing:350,winds:{idealLo:12,idealHi:16,max:18,gust:5},wind:[315,0],lzLat:40.4567,lzLon:-111.9027,hazards:['Midday turbulence','Rotor near ridge','Wind gradient on descent'],radio:'146.560 MHz',bestWindow:'Early or late — avoid strong midday turbulence',desc:"North/NW ridge soaring at 5,100 ft. PG ideal wind 12–16 mph, max 18 mph with 5 mph gusts. Lower bench produces strong midday turbulence; rotor effects near ridge line and wind gradient during descent. Traffic congestion during peak hours. Radio: 146.560 MHz.",lzBio:"Salt Lake County Flight Park — shared with POM South. Green grass area with paved parking at 4,834 ft."},
-  {id:'cherry',name:'Cherry Canyon',sub:'Draper, UT',lat:40.515992,lon:-111.817091,alt:7110,lzAlt:5000,rating:'P3',facing:270,winds:{idealLo:5,idealHi:8,max:9,gust:5},wind:[247.5,292.5],lzLat:40.507,lzLon:-111.875,hazards:['Rattlesnakes','No emergency services','Shifting upper winds'],access:'2.5 mi uphill hike, 2,400 ft gain',bestWindow:'Morning, before midday thermals build',desc:"Hike-and-fly in Wasatch NF requiring a 2.5-mile uphill carry with 2,400 ft gain. Two launches: North (NNE–NNW, ideal 5–8 mph) and West (WNW–WSW, ideal 5–8 mph). Morning light winds often build into thermic midday. Advanced ground handling recommended due to slope and potential cross winds. Multi-use recreation area with austere conditions.",lzBio:"Dirt road between tree and gate south of trailhead. Described as an extremely demanding landing place. Alternative mesa above trail for less experienced pilots. No emergency access. Elev ~5,000 ft."},
-  {id:'the_g',name:"The 'G'",sub:'Pleasant Grove, UT',lat:40.3711,lon:-111.702,alt:5840,lzAlt:4800,rating:'P2',facing:270,lzLat:40.365,lzLon:-111.735,desc:"Small grassy knoll below the giant white 'G'. West-facing with light thermal activity.",lzBio:"Open field below the G. Elev ~4,800 ft."},
-  {id:'camels',name:"Camel's",sub:'Springville, UT',lat:40.1826,lon:-111.5684,alt:7954,lzAlt:5500,rating:'P3',facing:270,winds:{idealLo:6,idealHi:8,max:10,gust:2},wind:[180,270],lzLat:40.178,lzLon:-111.580,hazards:['Transmission towers','Midday turbulence','Infrequently flown'],glideReq:2.6,desc:"High-altitude mountain thermal site at 7,954 ft in Uintah NF. Launch drops steeply to east, south, and west. W–S winds; PG ideal 6–8 mph, max 10 mph with 2 mph gusts. Min 2.6:1 glide ratio for the single LZ. Infrequently used — technically demanding.",lzBio:"Jr High athletic field, 8 acres. Requires minimum 2.6:1 glide ratio in calm conditions. School access restricted weekdays 8 AM–5 PM. Transmission infrastructure nearby."},
-  {id:'commodore',name:'Commodore',sub:'Stockton, UT',lat:40.3899,lon:-112.2846,alt:8808,lzAlt:5300,rating:'P3',facing:270,winds:{idealLo:4,idealHi:4,max:10,gust:4},wind:[180,270],lzLat:40.395,lzLon:-112.290,hazards:['Severe wind shear','Abandoned mines','4WD required'],access:'4WD · 7 mi washboard dirt road, 3,500 ft gain from Stockton',desc:"High-altitude mountain thermal at 8,808 ft near Stockton. Upper launch (PG ideal 4 mph, max 10) and Lower launch (PG ideal 10 mph, max 14). W–S winds. 4WD required via 7-mi washboard dirt road with 3,500 ft gain from Stockton. Expect severe shear when winds shift from south to north.",lzBio:"Broad valley floor north of Highway 73. Open desert terrain. Transmission towers and abandoned mines in the area."},
-  {id:'buffalo_pk',name:'Buffalo Peak',sub:'Squaw Peak Rd, Provo',lat:40.28408,lon:-111.614253,alt:7874,lzAlt:4850,rating:'P3',facing:290,lzLat:40.275,lzLon:-111.646,access:'Hike up from Squaw Peak Rd',desc:"Hike from Squaw Peak Rd. W/NW winds. LZ at Rock Canyon Park.",lzBio:"Rock Canyon Park. Open athletic fields. Elev ~4,850 ft."},
-  {id:'rock_canyon',name:'Rock Canyon Launch',sub:'Provo, UT',lat:40.269563,lon:-111.623685,alt:6358,lzAlt:4900,rating:'P3',facing:270,lzLat:40.267,lzLon:-111.645,desc:"Speed-wing and paragliding. West-facing. LZ at Rock Canyon Park.",lzBio:"Rock Canyon Park. Shared with Buffalo Peak. Open athletic fields at ~4,900 ft."},
-  {id:'mahogany',name:'Mahogany Ridge',sub:'Wasatch foothills, SLC',lat:40.426005,lon:-111.719857,alt:8783,lzAlt:5200,rating:'P3',facing:270,lzLat:40.420,lzLon:-111.760,desc:"Hike-and-fly at 8,783 ft. Light west/SW flow.",lzBio:"Open area in the Wasatch foothills. Elev ~5,200 ft."},
-  {id:'crawford',name:"Crawford's Ridge",sub:'Randolph, UT',lat:41.6738,lon:-111.0948,alt:7682,lzAlt:6450,rating:'P2',facing:270,winds:{idealLo:6,idealHi:8,max:12,gust:4},wind:[225,270],lzLat:41.669444,lzLon:-111.115278,hazards:['4WD required','Midday turbulence','Rotor behind ridge','Wind gradient near valley'],access:'4WD year-round; chains in snow season',desc:"High-altitude thermal site at 7,682 ft on BLM land in the Crawford Mountains. Ridge runs nearly N–S, producing 2,000–3,000+ ft above launch in ridge lift. W–SW winds; PG ideal 6–8 mph, max 12 mph with 4 mph gusts. 4WD required year-round; chains in snow season.",lzBio:"Pasture Gate LZ and Lone Tree LZ. Valley floor pastures below the ridge. Wind gradient near the valley floor. Elev ~6,450 ft."},
-  {id:'francis',name:'Francis Peak',sub:'Farmington, UT',lat:41.0275,lon:-111.8383,alt:9154,lzAlt:4300,rating:'P3',facing:260,winds:{idealLo:6,idealHi:8,max:10,gust:4},wind:[202.5,292.5],lzLat:41.007778,lzLon:-111.913056,hazards:['SLC Class B airspace at 10,500 ft','Severe rotor in N/S flow','Active radar at peak'],radio:'146.560 MHz',airspace:'SLC Class B floor 10,500 ft MSL',vertical:4854,bestWindow:'Mid-morning, before midday thermic turbulence builds',desc:"W–WSW facing launch at 9,154 ft with a 63% slope. Setup area 100 ft below the peak along the road. WNW–SSW flyable; PG ideal 6–8 mph, max 10 mph with 4 mph gusts. ~4,850 ft vertical to LZ. High-altitude thermic turbulence especially midday. Salt Lake International Class B airspace begins at 10,500 ft MSL. Radio: 146.560 MHz.",lzBio:"Knowlton School athletic field and Hess Farm hayfields north of Lagoon park at US 89 and Shepard Lane, Farmington. Elev ~4,300 ft. ~4,850 ft vertical from launch."},
-  {id:'the_v',name:'The V',sub:'Centerville, UT',lat:40.9110,lon:-111.8458,alt:6344,lzAlt:4600,rating:'P2',facing:270,winds:{idealLo:5,idealHi:7,max:10,gust:4},wind:[225,315],lzLat:40.910556,lzLon:-111.876389,hazards:['Transmission lines between launch and LZ','Active gun range','GA aircraft overhead'],desc:"West launch at 6,344 ft (NW–SW, P2, ideal 5–7 mph, max 10) and North launch (NNW–N, P4 only, ideal 8 mph, max 10). 1,744 ft vertical. Transmission lines and towers between launch and landing zones. Active gun range and general aviation aircraft overhead.",lzBio:"Two options: Firebreak LZ — unimproved open land criss-crossed with dirt-bike trails and sparse shrubs, min 5,200 ft MSL needed. School LZ — 11-acre athletic field, flat, open, well-drained; unavailable during school hours; approach from east or north preferred."},
-  {id:'bigbeacon',name:'Big Beacon (Mt Wire)',sub:'Emigration Canyon, SLC',lat:40.770833,lon:-111.799444,alt:7047,lzAlt:5100,rating:'P2',facing:270,lzLat:40.7625,lzLon:-111.821389,desc:"Multi-directional hike-up at 7,047 ft. 1,947 ft vertical.",lzBio:"Valley floor below Emigration Canyon. Elev ~5,100 ft."},
-  {id:'grandeur',name:'Grandeur Peak',sub:'Millcreek Canyon, SLC',lat:40.7068,lon:-111.7787,alt:6308,lzAlt:5100,rating:'P3',facing:270,winds:{idealLo:5,idealHi:8,max:9,gust:6},wind:[225,315],lzLat:40.6927,lzLon:-111.8278,hazards:['Midday thermals','Rattlesnakes','Residential overflight'],access:'1 mi steep hike, 1,300 ft gain',desc:"Mountain thermal at 6,308 ft with three launch areas along a ridgeline and plenty of setup room. Steep 1-mile hike with 1,300 ft gain. Upper North (WNW–WSW), North (NW–SW, ideal 5–8 mph), and South (W–SW) launches. Midday thermal turbulence common. Rattlesnakes along the trail.",lzBio:"Eastwood Elementary School athletic fields in Millcreek. Landing requires overflight through residential neighborhoods. Elev ~5,100 ft. 1,200 ft vertical from launch."},
-  {id:'olympus',name:'Mt Olympus',sub:'Wasatch Blvd, SLC',lat:40.661111,lon:-111.798889,alt:5524,lzAlt:4900,rating:'P4',facing:270,lzLat:40.659,lzLon:-111.794,desc:"P4 only. West-facing thermal site. Experienced pilots fly Olympus → POM.",lzBio:"Open area near Wasatch Blvd. Elev ~4,900 ft."},
-  {id:'midfinger',name:'Middle Finger Ridge',sub:'Herriman, UT',lat:40.486806,lon:-112.035,alt:5500,lzAlt:5231,rating:'P2',facing:270,lzLat:40.488333,lzLon:-112.034722,desc:"Alternate to POM in cross/strong winds. West-facing.",lzBio:"Open area near Herriman. Elev 5,231 ft."},
-  {id:'jupiter',name:'Jupiter Peak',sub:'Park City, UT',lat:40.6133,lon:-111.5399,alt:9980,lzAlt:9000,rating:'P3',facing:250,winds:{idealLo:6,idealHi:8,max:12,gust:5},wind:[157.5,247.5],lzLat:40.5978,lzLon:-111.5831,hazards:['High density altitude','Steep launch','Narrow launch window'],radio:'146.560 MHz',bestWindow:'11 AM–12:30 PM — a 30 min window or less',desc:"High-altitude mountain thermal at 9,980 ft. WSW–SSE flyable; PG ideal 6–8 mph, max 12 mph with 5 mph gusts. Climb rates of 1,000 fpm as early as 10 AM. Optimal launch window 11 AM–12:30 PM lasting 30 min or less before conditions deteriorate. Half-mile hike makes it primarily a PG site. Radio: 146.560 MHz.",lzBio:"Two options: Meadow LZ — 14-acre open parcel east of launch, gently sloping south from valley road. PC Hill LZ — 7-acre soccer complex (North 40 Playing Fields) at the western base of Park City."},
-  {id:'snowbird',name:'Hidden Peak / Snowbird',sub:'Little Cottonwood Canyon',lat:40.560556,lon:-111.645278,alt:10980,lzAlt:8280,rating:'P4',facing:270,lzLat:40.580833,lzLon:-111.653056,access:'Tram access (P4, invite only)',desc:"P4 by invite only. Tram access. 10,980 ft.",lzBio:"Canyon floor near Snowbird resort. Elev ~8,280 ft."},
-  {id:'inspo',name:'Inspo',sub:'Inspiration Point, Provo, UT',lat:40.3013,lon:-111.6258,alt:6667,lzAlt:4853,rating:'P3',facing:265,winds:{idealLo:6,idealHi:8,max:10,gust:4},wind:[202.5,292.5],lzLat:40.2954,lzLon:-111.651,hazards:['Dense suburbs below','No mini-wings','Rotor activity'],desc:"High-altitude mountain thermal at 6,667 ft in Uintah NF. WNW–SSW flyable; PG ideal 6–8 mph, max 10 mph with 4 mph gusts. Dense suburban neighborhoods below with limited bailout options — not suitable for mini-wings. Midday thermic turbulence and common rotor activity. Not recommended during strong summer thunderstorm activity.",lzBio:"Two options: School LZ — elementary school playground (paragliders preferred, bailout option). Church LZ — 6-acre athletic field west of Latter-day Saint chapel (hang gliders preferred). Both 1.3–1.8 mi SW of launch. Elev ~4,853 ft."},
-  {id:'y_mtn',name:'The Y',sub:'BYU / Provo, UT',lat:40.2482,lon:-111.6197,alt:6283,lzAlt:4616,rating:'P3',facing:270,winds:{idealLo:6,idealHi:8,max:12,gust:4},wind:[225,315],lzLat:40.2461,lzLon:-111.640,hazards:['Two transmission line sets','Thermic turbulence','Min 4.2:1 glide required'],glideReq:4.2,access:'1 mi switchback hike (BYU property)',desc:"Mountain thermal at 6,283 ft with a 1-mile switchback hike on BYU property above the large stone monogram. W winds preferred, NW–SW flyable; PG ideal 6–8 mph, max 12 mph with 4 mph gusts. Challenging site with significant turbulence in thermic conditions. Two transmission wire/tower sets between launch and LZ. Bigfoot LZ permanently closed.",lzBio:"Kiwanis Park — open athletic fields in Provo. Minimum 4.2:1 glide ratio needed to reach safely. Two transmission wire/tower sets between launch and LZ. Bigfoot LZ is permanently closed. Elev 4,616 ft."},
-  {id:'west_mtn',name:'West Mountain',sub:'Benjamin, UT',lat:40.1005,lon:-111.8216,alt:6457,lzAlt:4550,rating:'P2',facing:90,lzLat:40.100278,lzLon:-111.796389,hazards:['Rotors in W wind','Cyclic thermic turbulence','Power lines on perimeter'],desc:"East-facing morning site at 6,457 ft. Favors east or north wind; west winds produce rotors and downflow. PG ideal 5–7 mph, max 10 mph. Strong cyclic thermic turbulence midday. Launch areas poorly marked with sparse vegetation and sharp rocks. Avoid tailwind launches. Radio: 146.560 MHz.",lzBio:"Big Pasture LZ — 22-acre fenced hayfield with firm, stable surface. Power lines on south and west perimeters. Hay bales and livestock possible. Elev ~4,550 ft."},
-  {id:'lake_mtn',name:'Lake Mountain',sub:'Saratoga Springs, UT',lat:40.280306,lon:-111.935194,alt:7602,lzAlt:4900,rating:'P2',facing:90,lzLat:40.311389,lzLon:-111.909444,desc:"Morning thermal at 7,602 ft. East-facing. 2,700 ft vertical. Utah Lake views.",lzBio:"Open area near Saratoga Springs. Elev ~4,900 ft."},
-  {id:'nebo',name:'Mt Nebo',sub:'Nephi, UT',lat:39.821972,lon:-111.760556,alt:11870,lzAlt:4962,rating:'P3',facing:270,lzLat:39.816944,lzLon:-111.856667,desc:"Highest Wasatch peak at 11,870 ft. West-facing. 6,909 ft vertical.",lzBio:"Mona City Park. Open fields. Elev 4,962 ft."},
-  {id:'horse_hv',name:'Horse Heaven',sub:'Juab County, UT',lat:39.49374,lon:-111.83614,alt:7538,lzAlt:5060,rating:'P3',facing:270,winds:{idealLo:6,idealHi:8,max:10,gust:2},wind:[225,315],lzLat:39.507222,lzLon:-111.871556,hazards:['4WD required','No emergency services','Dense sagebrush LZ','50 ft transmission towers'],access:'4WD required · no emergency services',desc:"Uintah NF at 7,538 ft. West launch: large open slope below the road, NW–SW, optimal with a north component. East launch: 800 yards past West, steep/short/rocky over dense scrub oak, SSW–ESE. PG ideal 6–8 mph, max 10 mph with 2 mph gusts. High density altitude in summer. Road requires 4WD; impassable in snow.",lzBio:"Broad, flat area north of the second gate on public land. Dense, waist-high sagebrush throughout. Dirt road landings possible if winds permit. 50-foot transmission towers parallel the roadway. No emergency services available."},
-  {id:'cove',name:'Cove Launch',sub:'Richfield, UT',lat:38.634167,lon:-112.060833,alt:8700,lzAlt:5360,rating:'P3',facing:270,winds:{idealLo:6,idealHi:6,max:12,gust:3},wind:[225,315],lzLat:38.618956,lzLon:-112.115687,desc:"Spectacular flying arena 3,000 ft above Sevier Valley at 8,700 ft. Launches on North, South, and West faces — flights in all directions possible. Extended sledder flights, soaring along dramatic cliff faces with regular boosts to 17,999 ft. Min 5.0 glide ratio. North Point: ideal 12 mph (1–25°). West: ideal 8 mph (260–280°). South: ideal 10 mph (170–195°). High-altitude high-desert mountain operations.",lzBio:"Sevier Valley floor. Open fields 12 mi SE of Richfield. Shared with Monroe Peak. Elev ~5,360 ft. Min 5.0 glide ratio from Cove launch."},
-  {id:'monroe_pk',name:'Monroe Peak',sub:'Monroe, UT',lat:38.5414,lon:-112.0733,alt:11171,lzAlt:5447,rating:'P3',facing:225,winds:{idealLo:8,idealHi:8,max:12,gust:5},wind:[200,280],lzLat:38.618956,lzLon:-112.115687,hazards:['Snow-blocked most of year','Supplemental O₂ above 12,000 ft'],desc:"High-altitude mountain launch at 11,171 ft — Utah's #1 XC site. SW facing (210–240° ideal, 200–280° acceptable). 6,000 ft vertical, 5.8 mi glide to LZ. PG ideal 8 kts, max 12 kts with 5 kt gusts. Flown June–November; snow-blocked otherwise. Morning flights preferred; evening often too strong. Supplemental O₂ recommended above 12,000 ft. Min 5.4:1 glide ratio. 2026 FAI Pan-Am host.",lzBio:"Monroe City — N–S running grass strip with packing area, public restroom, and large open field. 5.8 miles from Monroe Peak launch. Shared with Cove. Elev 5,447 ft."},
-  {id:'mt_edna',name:'Mt Edna',sub:'Marysvale, UT',lat:38.38575,lon:-112.336889,alt:11700,lzAlt:6100,rating:'P3',facing:225,winds:{idealLo:6,idealHi:6,max:12,gust:5},wind:[190,270],lzLat:38.385754,lzLon:-112.33224,glideReq:5.5,access:"Utah's highest drive-up launch",desc:"Utah's highest drive-up launch at 11,700 ft. Four launch directions: North (315–45°, min 6.0 glide), SW (210–240°), East (70–110°), South (160–200°) — all min 5.5 glide. PG ideal 6 kts, max 12 kts. Primarily morning-only due to early thermals and afternoon valley winds.",lzBio:"Valley floor near Marysvale. Elev ~6,100 ft. 5,600 ft vertical from launch. Min 5.5 glide ratio (6.0 from north launch)."},
-  {id:'mollies',name:"Mollie's Nipple",sub:'Hurricane, UT',lat:37.127778,lon:-113.298056,alt:4510,lzAlt:3300,rating:'P2',facing:270,lzLat:37.123333,lzLon:-113.309167,desc:"30-mile west-facing ridge. Good winter flying site.",lzBio:"Open desert below the ridge. Elev ~3,300 ft."},
-  {id:'brianhead',name:'Brian Head Peak',sub:'Brian Head, UT',lat:37.681111,lon:-112.830,alt:11307,lzAlt:10500,rating:'P3',facing:180,lzLat:37.671389,lzLon:-112.832222,desc:"South-facing alpine launch at 11,307 ft. Smooth south wind. Beautiful alpine setting.",lzBio:"Alpine meadow below Brian Head Peak. Elev ~10,500 ft."},
-  {id:'wm_stg',name:'West Mtn (St George)',sub:'St George, UT',lat:37.155556,lon:-113.883333,alt:7685,lzAlt:4514,rating:'P3',facing:225,lzLat:37.170278,lzLon:-113.930556,desc:"SW-facing thermal site at 7,685 ft. 3,000+ ft vertical.",lzBio:"Valley floor near St George. Elev 4,514 ft."},
-  {id:'ibepah',name:'Mt Ibepah',sub:'Callao, UT',lat:39.8275,lon:-113.919889,alt:11960,lzAlt:4470,rating:'P4',facing:270,lzLat:39.885833,lzLon:-113.737222,access:'Completely remote — 4WD, no services',desc:"Utah's biggest vertical — approximately 7,490 ft. Completely remote. West-facing at 11,960 ft.",lzBio:"Remote desert playa near Callao. Elev ~4,470 ft. 7,490 ft vertical from launch. Completely remote — no services."},
+  {id:'pom_s',name:'POM – South Side',sub:'Lehi (Flight Park)',lat:40.4567,lon:-111.9027,alt:5145,lzAlt:4852,rating:'P2',facing:180,winds:{idealLo:10,idealHi:16,max:18,gust:5},wind:[157.5,202.5],lzLat:40.4542,lzLon:-111.9006,hazards:['Midday turbulence','Traffic congestion at peak hours'],radio:'146.560 MHz',bestWindow:'First 3 hrs after sunrise, last 2 hrs before sunset',desc:"Utah's primary training site. SSE–SSW winds (160°–200°). Heavy use by all skill levels; strong midday turbulence — best within 3 hrs after sunrise and 2 hrs before sunset. PG ideal wind 10–16 mph, max 18 mph with 5 mph gusts. Upper and lower LZs; PGs must avoid HG landing zone marked with pink whiskers. Radio: 146.560 MHz.",lzBio:"Salt Lake County Flight Park. Green grass area with paved parking. Upper and lower LZ areas designated. Paragliders must avoid hang glider landing zone marked with pink whiskers. Elev 4,852 ft."},
+  {id:'pom_n',name:'POM – North Side',sub:'Draper (Flight Park)',lat:40.4745,lon:-111.8928,alt:4977,lzAlt:4852,rating:'P2',facing:350,winds:{idealLo:12,idealHi:16,max:18,gust:5},wind:[315,0],lzLat:40.4542,lzLon:-111.9006,hazards:['Midday turbulence','Rotor near ridge','Wind gradient on descent'],radio:'146.560 MHz',bestWindow:'Early or late — avoid strong midday turbulence',desc:"North/NW ridge soaring at 4,977 ft. PG ideal wind 12–16 mph, max 18 mph with 5 mph gusts. Lower bench produces strong midday turbulence; rotor effects near ridge line and wind gradient during descent. Traffic congestion during peak hours. Radio: 146.560 MHz.",lzBio:"Salt Lake County Flight Park — shared with POM South. Green grass area with paved parking at 4,852 ft."},
+  {id:'cherry',name:'Cherry Canyon',sub:'Draper, UT',lat:40.515992,lon:-111.817091,alt:7141,lzAlt:4463,rating:'P3',facing:270,winds:{idealLo:5,idealHi:8,max:9,gust:5},wind:[247.5,292.5],lzLat:40.507,lzLon:-111.875,hazards:['Rattlesnakes','No emergency services','Shifting upper winds'],access:'2.5 mi uphill hike, 2,400 ft gain',bestWindow:'Morning, before midday thermals build',desc:"Hike-and-fly in Wasatch NF requiring a 2.5-mile uphill carry with 2,400 ft gain. Two launches: North (NNE–NNW, ideal 5–8 mph) and West (WNW–WSW, ideal 5–8 mph). Morning light winds often build into thermic midday. Advanced ground handling recommended due to slope and potential cross winds. Multi-use recreation area with austere conditions.",lzBio:"Dirt road between tree and gate south of trailhead. Described as an extremely demanding landing place. Alternative mesa above trail for less experienced pilots. No emergency access. Elev ~4,463 ft."},
+  {id:'the_g',name:"The 'G'",sub:'Pleasant Grove, UT',lat:40.3711,lon:-111.702,alt:5885,lzAlt:4676,rating:'P2',facing:270,lzLat:40.365,lzLon:-111.735,desc:"Small grassy knoll below the giant white 'G'. West-facing with light thermal activity.",lzBio:"Open field below the G. Elev ~4,676 ft."},
+  {id:'camels',name:"Camel's",sub:'Springville, UT',lat:40.1826,lon:-111.5684,alt:7766,lzAlt:6376,rating:'P3',facing:270,winds:{idealLo:6,idealHi:8,max:10,gust:2},wind:[180,270],lzLat:40.178,lzLon:-111.580,hazards:['Transmission towers','Midday turbulence','Infrequently flown'],glideReq:2.6,desc:"High-altitude mountain thermal site at 7,766 ft in Uintah NF. Launch drops steeply to east, south, and west. W–S winds; PG ideal 6–8 mph, max 10 mph with 2 mph gusts. Min 2.6:1 glide ratio for the single LZ. Infrequently used — technically demanding.",lzBio:"Jr High athletic field, 8 acres. Requires minimum 2.6:1 glide ratio in calm conditions. School access restricted weekdays 8 AM–5 PM. Transmission infrastructure nearby."},
+  {id:'commodore',name:'Commodore',sub:'Stockton, UT',lat:40.3899,lon:-112.2846,alt:8781,lzAlt:7912,rating:'P3',facing:270,winds:{idealLo:4,idealHi:4,max:10,gust:4},wind:[180,270],lzLat:40.395,lzLon:-112.290,hazards:['Severe wind shear','Abandoned mines','4WD required'],access:'4WD · 7 mi washboard dirt road, 3,500 ft gain from Stockton',desc:"High-altitude mountain thermal at 8,781 ft near Stockton. Upper launch (PG ideal 4 mph, max 10) and Lower launch (PG ideal 10 mph, max 14). W–S winds. 4WD required via 7-mi washboard dirt road with 3,500 ft gain from Stockton. Expect severe shear when winds shift from south to north.",lzBio:"Broad valley floor north of Highway 73. Open desert terrain. Transmission towers and abandoned mines in the area."},
+  {id:'buffalo_pk',name:'Buffalo Peak',sub:'Squaw Peak Rd, Provo',lat:40.28408,lon:-111.614253,alt:7720,lzAlt:4778,rating:'P3',facing:290,lzLat:40.275,lzLon:-111.646,access:'Hike up from Squaw Peak Rd',desc:"Hike from Squaw Peak Rd. W/NW winds. LZ at Rock Canyon Park.",lzBio:"Rock Canyon Park. Open athletic fields. Elev ~4,778 ft."},
+  {id:'rock_canyon',name:'Rock Canyon Launch',sub:'Provo, UT',lat:40.269563,lon:-111.623685,alt:6297,lzAlt:4817,rating:'P3',facing:270,lzLat:40.267,lzLon:-111.645,desc:"Speed-wing and paragliding. West-facing. LZ at Rock Canyon Park.",lzBio:"Rock Canyon Park. Shared with Buffalo Peak. Open athletic fields at ~4,817 ft."},
+  {id:'mahogany',name:'Mahogany Ridge',sub:'Wasatch foothills, SLC',lat:40.426005,lon:-111.719857,alt:8638,lzAlt:5096,rating:'P3',facing:270,lzLat:40.420,lzLon:-111.760,desc:"Hike-and-fly at 8,638 ft. Light west/SW flow.",lzBio:"Open area in the Wasatch foothills. Elev ~5,096 ft."},
+  {id:'crawford',name:"Crawford's Ridge",sub:'Randolph, UT',lat:41.6738,lon:-111.0948,alt:7632,lzAlt:6245,rating:'P2',facing:270,winds:{idealLo:6,idealHi:8,max:12,gust:4},wind:[225,270],lzLat:41.669444,lzLon:-111.115278,hazards:['4WD required','Midday turbulence','Rotor behind ridge','Wind gradient near valley'],access:'4WD year-round; chains in snow season',desc:"High-altitude thermal site at 7,632 ft on BLM land in the Crawford Mountains. Ridge runs nearly N–S, producing 2,000–3,000+ ft above launch in ridge lift. W–SW winds; PG ideal 6–8 mph, max 12 mph with 4 mph gusts. 4WD required year-round; chains in snow season.",lzBio:"Pasture Gate LZ and Lone Tree LZ. Valley floor pastures below the ridge. Wind gradient near the valley floor. Elev ~6,245 ft."},
+  {id:'francis',name:'Francis Peak',sub:'Farmington, UT',lat:41.0275,lon:-111.8383,alt:9223,lzAlt:4308,rating:'P3',facing:260,winds:{idealLo:6,idealHi:8,max:10,gust:4},wind:[202.5,292.5],lzLat:41.007778,lzLon:-111.913056,hazards:['SLC Class B airspace at 10,500 ft','Severe rotor in N/S flow','Active radar at peak'],radio:'146.560 MHz',airspace:'SLC Class B floor 10,500 ft MSL',vertical:4915,bestWindow:'Mid-morning, before midday thermic turbulence builds',desc:"W–WSW facing launch at 9,223 ft with a 63% slope. Setup area 100 ft below the peak along the road. WNW–SSW flyable; PG ideal 6–8 mph, max 10 mph with 4 mph gusts. ~4,915 ft vertical to LZ. High-altitude thermic turbulence especially midday. Salt Lake International Class B airspace begins at 10,500 ft MSL. Radio: 146.560 MHz.",lzBio:"Knowlton School athletic field and Hess Farm hayfields north of Lagoon park at US 89 and Shepard Lane, Farmington. Elev ~4,308 ft. ~4,915 ft vertical from launch."},
+  {id:'the_v',name:'The V',sub:'Centerville, UT',lat:40.9110,lon:-111.8458,alt:6263,lzAlt:4302,rating:'P2',facing:270,winds:{idealLo:5,idealHi:7,max:10,gust:4},wind:[225,315],lzLat:40.910556,lzLon:-111.876389,hazards:['Transmission lines between launch and LZ','Active gun range','GA aircraft overhead'],desc:"West launch at 6,263 ft (NW–SW, P2, ideal 5–7 mph, max 10) and North launch (NNW–N, P4 only, ideal 8 mph, max 10). 1,961 ft vertical. Transmission lines and towers between launch and landing zones. Active gun range and general aviation aircraft overhead.",lzBio:"Two options: Firebreak LZ — unimproved open land criss-crossed with dirt-bike trails and sparse shrubs, min 5,200 ft MSL needed. School LZ — 11-acre athletic field, flat, open, well-drained; unavailable during school hours; approach from east or north preferred."},
+  {id:'bigbeacon',name:'Big Beacon (Mt Wire)',sub:'Emigration Canyon, SLC',lat:40.770833,lon:-111.799444,alt:6995,lzAlt:5102,rating:'P2',facing:270,lzLat:40.7625,lzLon:-111.821389,desc:"Multi-directional hike-up at 6,995 ft. 1,893 ft vertical.",lzBio:"Valley floor below Emigration Canyon. Elev ~5,102 ft."},
+  {id:'grandeur',name:'Grandeur Peak',sub:'Millcreek Canyon, SLC',lat:40.7068,lon:-111.7787,alt:6174,lzAlt:4580,rating:'P3',facing:270,winds:{idealLo:5,idealHi:8,max:9,gust:6},wind:[225,315],lzLat:40.6927,lzLon:-111.8278,hazards:['Midday thermals','Rattlesnakes','Residential overflight'],access:'1 mi steep hike, 1,300 ft gain',desc:"Mountain thermal at 6,174 ft with three launch areas along a ridgeline and plenty of setup room. Steep 1-mile hike with 1,300 ft gain. Upper North (WNW–WSW), North (NW–SW, ideal 5–8 mph), and South (W–SW) launches. Midday thermal turbulence common. Rattlesnakes along the trail.",lzBio:"Eastwood Elementary School athletic fields in Millcreek. Landing requires overflight through residential neighborhoods. Elev ~4,580 ft. 1,594 ft vertical from launch."},
+  {id:'olympus',name:'Mt Olympus',sub:'Wasatch Blvd, SLC',lat:40.661111,lon:-111.798889,alt:5453,lzAlt:6209,rating:'P4',facing:270,lzLat:40.659,lzLon:-111.794,desc:"P4 only. West-facing thermal site. Experienced pilots fly Olympus → POM.",lzBio:"Open area near Wasatch Blvd. Elev ~6,209 ft."},
+  {id:'midfinger',name:'Middle Finger Ridge',sub:'Herriman, UT',lat:40.486806,lon:-112.035,alt:5350,lzAlt:5184,rating:'P2',facing:270,lzLat:40.488333,lzLon:-112.034722,desc:"Alternate to POM in cross/strong winds. West-facing.",lzBio:"Open area near Herriman. Elev 5,184 ft."},
+  {id:'jupiter',name:'Jupiter Peak',sub:'Park City, UT',lat:40.6133,lon:-111.5399,alt:9971,lzAlt:8793,rating:'P3',facing:250,winds:{idealLo:6,idealHi:8,max:12,gust:5},wind:[157.5,247.5],lzLat:40.5978,lzLon:-111.5831,hazards:['High density altitude','Steep launch','Narrow launch window'],radio:'146.560 MHz',bestWindow:'11 AM–12:30 PM — a 30 min window or less',desc:"High-altitude mountain thermal at 9,971 ft. WSW–SSE flyable; PG ideal 6–8 mph, max 12 mph with 5 mph gusts. Climb rates of 1,000 fpm as early as 10 AM. Optimal launch window 11 AM–12:30 PM lasting 30 min or less before conditions deteriorate. Half-mile hike makes it primarily a PG site. Radio: 146.560 MHz.",lzBio:"Two options: Meadow LZ — 14-acre open parcel east of launch, gently sloping south from valley road. PC Hill LZ — 7-acre soccer complex (North 40 Playing Fields) at the western base of Park City."},
+  {id:'snowbird',name:'Hidden Peak / Snowbird',sub:'Little Cottonwood Canyon',lat:40.560556,lon:-111.645278,alt:10903,lzAlt:8216,rating:'P4',facing:270,lzLat:40.580833,lzLon:-111.653056,access:'Tram access (P4, invite only)',desc:"P4 by invite only. Tram access. 10,903 ft.",lzBio:"Canyon floor near Snowbird resort. Elev ~8,216 ft."},
+  {id:'inspo',name:'Inspo',sub:'Inspiration Point, Provo, UT',lat:40.3013,lon:-111.6258,alt:6670,lzAlt:4846,rating:'P3',facing:265,winds:{idealLo:6,idealHi:8,max:10,gust:4},wind:[202.5,292.5],lzLat:40.2954,lzLon:-111.651,hazards:['Dense suburbs below','No mini-wings','Rotor activity'],desc:"High-altitude mountain thermal at 6,670 ft in Uintah NF. WNW–SSW flyable; PG ideal 6–8 mph, max 10 mph with 4 mph gusts. Dense suburban neighborhoods below with limited bailout options — not suitable for mini-wings. Midday thermic turbulence and common rotor activity. Not recommended during strong summer thunderstorm activity.",lzBio:"Two options: School LZ — elementary school playground (paragliders preferred, bailout option). Church LZ — 6-acre athletic field west of Latter-day Saint chapel (hang gliders preferred). Both 1.3–1.8 mi SW of launch. Elev ~4,846 ft."},
+  {id:'y_mtn',name:'The Y',sub:'BYU / Provo, UT',lat:40.2482,lon:-111.6197,alt:6249,lzAlt:4626,rating:'P3',facing:270,winds:{idealLo:6,idealHi:8,max:12,gust:4},wind:[225,315],lzLat:40.2461,lzLon:-111.640,hazards:['Two transmission line sets','Thermic turbulence','Min 4.2:1 glide required'],glideReq:4.2,access:'1 mi switchback hike (BYU property)',desc:"Mountain thermal at 6,249 ft with a 1-mile switchback hike on BYU property above the large stone monogram. W winds preferred, NW–SW flyable; PG ideal 6–8 mph, max 12 mph with 4 mph gusts. Challenging site with significant turbulence in thermic conditions. Two transmission wire/tower sets between launch and LZ. Bigfoot LZ permanently closed.",lzBio:"Kiwanis Park — open athletic fields in Provo. Minimum 4.2:1 glide ratio needed to reach safely. Two transmission wire/tower sets between launch and LZ. Bigfoot LZ is permanently closed. Elev 4,626 ft."},
+  {id:'west_mtn',name:'West Mountain',sub:'Benjamin, UT',lat:40.1005,lon:-111.8216,alt:6420,lzAlt:4521,rating:'P2',facing:90,lzLat:40.100278,lzLon:-111.796389,hazards:['Rotors in W wind','Cyclic thermic turbulence','Power lines on perimeter'],desc:"East-facing morning site at 6,420 ft. Favors east or north wind; west winds produce rotors and downflow. PG ideal 5–7 mph, max 10 mph. Strong cyclic thermic turbulence midday. Launch areas poorly marked with sparse vegetation and sharp rocks. Avoid tailwind launches. Radio: 146.560 MHz.",lzBio:"Big Pasture LZ — 22-acre fenced hayfield with firm, stable surface. Power lines on south and west perimeters. Hay bales and livestock possible. Elev ~4,521 ft."},
+  {id:'lake_mtn',name:'Lake Mountain',sub:'Saratoga Springs, UT',lat:40.280306,lon:-111.935194,alt:7595,lzAlt:4905,rating:'P2',facing:90,lzLat:40.311389,lzLon:-111.909444,desc:"Morning thermal at 7,595 ft. East-facing. 2,690 ft vertical. Utah Lake views.",lzBio:"Open area near Saratoga Springs. Elev ~4,905 ft."},
+  {id:'nebo',name:'Mt Nebo',sub:'Nephi, UT',lat:39.821972,lon:-111.760556,alt:11722,lzAlt:4954,rating:'P3',facing:270,lzLat:39.816944,lzLon:-111.856667,desc:"Highest Wasatch peak at 11,722 ft. West-facing. 6,768 ft vertical.",lzBio:"Mona City Park. Open fields. Elev 4,954 ft."},
+  {id:'horse_hv',name:'Horse Heaven',sub:'Juab County, UT',lat:39.49374,lon:-111.83614,alt:7645,lzAlt:5354,rating:'P3',facing:270,winds:{idealLo:6,idealHi:8,max:10,gust:2},wind:[225,315],lzLat:39.507222,lzLon:-111.871556,hazards:['4WD required','No emergency services','Dense sagebrush LZ','50 ft transmission towers'],access:'4WD required · no emergency services',desc:"Uintah NF at 7,645 ft. West launch: large open slope below the road, NW–SW, optimal with a north component. East launch: 800 yards past West, steep/short/rocky over dense scrub oak, SSW–ESE. PG ideal 6–8 mph, max 10 mph with 2 mph gusts. High density altitude in summer. Road requires 4WD; impassable in snow.",lzBio:"Broad, flat area north of the second gate on public land. Dense, waist-high sagebrush throughout. Dirt road landings possible if winds permit. 50-foot transmission towers parallel the roadway. No emergency services available."},
+  {id:'cove',name:'Cove Launch',sub:'Richfield, UT',lat:38.634167,lon:-112.060833,alt:8514,lzAlt:5460,rating:'P3',facing:270,winds:{idealLo:6,idealHi:6,max:12,gust:3},wind:[225,315],lzLat:38.618956,lzLon:-112.115687,desc:"Spectacular flying arena 3,000 ft above Sevier Valley at 8,514 ft. Launches on North, South, and West faces — flights in all directions possible. Extended sledder flights, soaring along dramatic cliff faces with regular boosts to 17,999 ft. Min 5.0 glide ratio. North Point: ideal 12 mph (1–25°). West: ideal 8 mph (260–280°). South: ideal 10 mph (170–195°). High-altitude high-desert mountain operations.",lzBio:"Sevier Valley floor. Open fields 12 mi SE of Richfield. Shared with Monroe Peak. Elev ~5,460 ft. Min 5.0 glide ratio from Cove launch."},
+  {id:'monroe_pk',name:'Monroe Peak',sub:'Monroe, UT',lat:38.5414,lon:-112.0733,alt:11172,lzAlt:5460,rating:'P3',facing:225,winds:{idealLo:8,idealHi:8,max:12,gust:5},wind:[200,280],lzLat:38.618956,lzLon:-112.115687,hazards:['Snow-blocked most of year','Supplemental O₂ above 12,000 ft'],desc:"High-altitude mountain launch at 11,172 ft — Utah's #1 XC site. SW facing (210–240° ideal, 200–280° acceptable). 5,712 ft vertical, 5.8 mi glide to LZ. PG ideal 8 kts, max 12 kts with 5 kt gusts. Flown June–November; snow-blocked otherwise. Morning flights preferred; evening often too strong. Supplemental O₂ recommended above 12,000 ft. Min 5.4:1 glide ratio. 2026 FAI Pan-Am host.",lzBio:"Monroe City — N–S running grass strip with packing area, public restroom, and large open field. 5.8 miles from Monroe Peak launch. Shared with Cove. Elev 5,460 ft."},
+  {id:'mt_edna',name:'Mt Edna',sub:'Marysvale, UT',lat:38.38575,lon:-112.336889,alt:11719,lzAlt:11602,rating:'P3',facing:225,winds:{idealLo:6,idealHi:6,max:12,gust:5},wind:[190,270],lzLat:38.385754,lzLon:-112.33224,glideReq:5.5,access:"Utah's highest drive-up launch",desc:"Utah's highest drive-up launch at 11,719 ft. Four launch directions: North (315–45°, min 6.0 glide), SW (210–240°), East (70–110°), South (160–200°) — all min 5.5 glide. PG ideal 6 kts, max 12 kts. Primarily morning-only due to early thermals and afternoon valley winds.",lzBio:"Valley floor near Marysvale. Elev ~11,602 ft. 5,600 ft vertical from launch. Min 5.5 glide ratio (6.0 from north launch)."},
+  {id:'mollies',name:"Mollie's Nipple",sub:'Hurricane, UT',lat:37.127778,lon:-113.298056,alt:4514,lzAlt:3307,rating:'P2',facing:270,lzLat:37.123333,lzLon:-113.309167,desc:"30-mile west-facing ridge. Good winter flying site.",lzBio:"Open desert below the ridge. Elev ~3,307 ft."},
+  {id:'brianhead',name:'Brian Head Peak',sub:'Brian Head, UT',lat:37.681111,lon:-112.830,alt:11287,lzAlt:10496,rating:'P3',facing:180,lzLat:37.671389,lzLon:-112.832222,desc:"South-facing alpine launch at 11,287 ft. Smooth south wind. Beautiful alpine setting.",lzBio:"Alpine meadow below Brian Head Peak. Elev ~10,496 ft."},
+  {id:'wm_stg',name:'West Mtn (St George)',sub:'St George, UT',lat:37.155556,lon:-113.883333,alt:7622,lzAlt:4475,rating:'P3',facing:225,lzLat:37.170278,lzLon:-113.930556,desc:"SW-facing thermal site at 7,622 ft. 3,000+ ft vertical.",lzBio:"Valley floor near St George. Elev 4,475 ft."},
+  {id:'ibepah',name:'Mt Ibepah',sub:'Callao, UT',lat:39.8275,lon:-113.919889,alt:12038,lzAlt:4462,rating:'P4',facing:270,lzLat:39.885833,lzLon:-113.737222,access:'Completely remote — 4WD, no services',desc:"Utah's biggest vertical — approximately 7,576 ft. Completely remote. West-facing at 12,038 ft.",lzBio:"Remote desert playa near Callao. Elev ~4,462 ft. 7,576 ft vertical from launch. Completely remote — no services."},
 ];
 const LZS=LAUNCHES.map(s=>({id:'lz_'+s.id,name:s.name+' LZ',sub:s.sub,lat:s.lzLat,lon:s.lzLon,alt:s.lzAlt,desc:s.desc,lzBio:s.lzBio||'',hazards:s.hazards||[]}));
 const EXTRA_LZS=[
-  {id:'lz_kiwanis',name:'Kiwanis Park LZ',sub:'Provo, UT',lat:40.247,lon:-111.6398,alt:4900,desc:"Official Y Mountain LZ.",lzBio:"Kiwanis Park — open athletic fields. Minimum 4.2:1 glide ratio from The Y launch. Two transmission wire/tower sets en route. Bigfoot LZ is permanently closed. Elev ~4,900 ft.",hazards:['Transmission lines en route','Min 4.2:1 glide']},
-  {id:'lz_monroe_rodeo',name:'Monroe City Rodeo LZ',sub:'Monroe, UT',lat:38.618956,lon:-112.115687,alt:5447,desc:"Official Monroe Peak & Cove LZ.",lzBio:"N–S running grass strip with packing area, public restroom, and large open field. Serves both Monroe Peak (5.8 mi, 6,000 ft vertical) and Cove launches. Elev 5,447 ft.",hazards:[]},
-  {id:'lz_rock_canyon',name:'Rock Canyon Park LZ',sub:'Provo, UT',lat:40.264,lon:-111.641,alt:4900,desc:"LZ for Buffalo Peak and Rock Canyon.",lzBio:"Rock Canyon Park open athletic fields. Shared LZ for Buffalo Peak and Rock Canyon launches. Elev ~4,900 ft.",hazards:[]},
-  {id:'lz_inspo_hs',name:'High School LZ',sub:'Orem (Inspo)',lat:40.2933,lon:-111.6825,alt:4797,desc:"Inspo landing — land only OUTSIDE school hours!",lzBio:"Elementary school playground — bailout option for Inspo launch. Paragliders preferred. Land only OUTSIDE school hours. Dense suburban surroundings with limited bailout options. Elev 4,797 ft.",hazards:['School hours restricted','Dense suburbs']},
+  {id:'lz_kiwanis',name:'Kiwanis Park LZ',sub:'Provo, UT',lat:40.247,lon:-111.6398,alt:4636,desc:"Official Y Mountain LZ.",lzBio:"Kiwanis Park — open athletic fields. Minimum 4.2:1 glide ratio from The Y launch. Two transmission wire/tower sets en route. Bigfoot LZ is permanently closed. Elev ~4,636 ft.",hazards:['Transmission lines en route','Min 4.2:1 glide']},
+  {id:'lz_monroe_rodeo',name:'Monroe City Rodeo LZ',sub:'Monroe, UT',lat:38.618956,lon:-112.115687,alt:5447,desc:"Official Monroe Peak & Cove LZ.",lzBio:"N–S running grass strip with packing area, public restroom, and large open field. Serves both Monroe Peak (5.8 mi, 5,712 ft vertical) and Cove launches. Elev 5,460 ft.",hazards:[]},
+  {id:'lz_rock_canyon',name:'Rock Canyon Park LZ',sub:'Provo, UT',lat:40.264,lon:-111.641,alt:4863,desc:"LZ for Buffalo Peak and Rock Canyon.",lzBio:"Rock Canyon Park open athletic fields. Shared LZ for Buffalo Peak and Rock Canyon launches. Elev ~4,863 ft.",hazards:[]},
+  {id:'lz_inspo_hs',name:'High School LZ',sub:'Orem (Inspo)',lat:40.2933,lon:-111.6825,alt:4787,desc:"Inspo landing — land only OUTSIDE school hours!",lzBio:"Elementary school playground — bailout option for Inspo launch. Paragliders preferred. Land only OUTSIDE school hours. Dense suburban surroundings with limited bailout options. Elev 4,787 ft.",hazards:['School hours restricted','Dense suburbs']},
 ];
 const ALL_LZS=[...LZS,...EXTRA_LZS];
 
@@ -2260,6 +2375,31 @@ function windGridKey(){const b=mapBounds();if(!b)return'';return[b.s,b.w,b.n,b.e
 // Open-Meteo pressure level by standard-atmosphere altitude, so the overlay/grid shows winds aloft.
 let windAlt=0;
 const PLEVELS=[{hPa:1000,ft:364},{hPa:975,ft:1000},{hPa:950,ft:1640},{hPa:925,ft:2500},{hPa:900,ft:3243},{hPa:850,ft:4781},{hPa:800,ft:6394},{hPa:700,ft:9882},{hPa:600,ft:13801},{hPa:500,ft:18289}];
+// Continuous slider: integer ft MSL from WALT_MIN to WALT_MAX. WALT_MIN is set to Utah's
+// lowest realistic ground (~3,000 ft; Mollie's Nipple LZ near Hurricane sits at 3,307) so
+// the slider can't select nonsensical sub-Utah altitudes like 400 ft MSL. Surface wind
+// (windAlt = 0) is a separate mode reached by clicking the ▼ LZ marker — it uses the
+// model's 10 m AGL data, which is the right thing for a pilot on the ground.
+const WALT_MIN=3000,WALT_MAX=18000;
+// Reference altitudes where the atmosphere model has real data (850/800/700/600/500 hPa).
+// Rendered as tick marks under the slider so the user can see where the physical weather
+// layers are and drag near them if they want a clean layer match.
+const WALT_TICKS=[4781,6394,9882,13801,18289];
+// Slider readout: MSL-primary (matches the slider's underlying unit), with AGL over/below launch
+// shown in parentheses so pilots also see the intuitive number without having to do the subtraction.
+function waltLabel(ft){
+  const site=currentLaunchId?LAUNCHES.find(s=>s.id===currentLaunchId):null;
+  if(!ft)return site?'Surface wind (at LZ)':'Surface wind';
+  const msl=ft.toLocaleString()+' ft MSL';
+  if(!site||site.alt==null)return msl;
+  const agl=ft-site.alt;
+  if(agl===0)return `${msl} (at launch)`;
+  if(agl>0)return `${msl} (+${agl.toLocaleString()} ft above launch)`;
+  return `${msl} (${Math.abs(agl).toLocaleString()} ft below launch)`;
+}
+// Fraction (0..1) of the slider's visible range that a given ft-MSL value sits at. The
+// slider spans WALT_MIN..WALT_MAX, so this is how far along that span the value falls.
+function waltFraction(ft){return Math.max(0,Math.min(1,(ft-WALT_MIN)/(WALT_MAX-WALT_MIN)));}
 function windLevelTokens(){
   if(!windAlt)return['wind_speed_10m','wind_direction_10m'];
   let best=PLEVELS[0];for(const p of PLEVELS)if(Math.abs(p.ft-windAlt)<Math.abs(best.ft-windAlt))best=p;
@@ -2267,8 +2407,49 @@ function windLevelTokens(){
 }
 let windAltFcTimer=null;
 function setWindAlt(v){
-  windAlt=parseInt(v)||0;
-  const el=document.getElementById('walt-val');if(el)el.textContent=windAlt?windAlt.toLocaleString()+' ft':'Surface';
+  const n=parseInt(v)||0;
+  // 0 is the special Surface (10 m AGL) mode reached by clicking the ▼ LZ marker. Anything
+  // else is clamped into the Utah-relevant slider range so bogus sub-ground values can't happen.
+  // Figure out which site the horizontal in-popup slider is bound to and derive its floor
+  // (LZ altitude for launches, LZ's own altitude for LZ popups, WALT_MIN otherwise).
+  const _whPanel=document.querySelector('.wh-panel');
+  const _whIsLZMode=_whPanel&&_whPanel.dataset.lzMode==='1';
+  const _launchSite=currentLaunchId?LAUNCHES.find(s=>s.id===currentLaunchId):null;
+  const _lzAlt=_launchSite?connectedLZAlt(_launchSite):null;
+  const _launchAlt=_launchSite&&_launchSite.alt!=null?_launchSite.alt:null;
+  const _floor=_whPanel&&_whPanel.dataset.floor?parseInt(_whPanel.dataset.floor):((_lzAlt!=null)?_lzAlt:WALT_MIN);
+  // Snap the raw slider value to the Launch or LZ marker when the drag lands close to
+  // either — makes it feel like the thumb "clicks" onto those altitudes. Click-to-snap
+  // from the marker labels already lands exactly on the value, so this is a no-op there.
+  let snapped=n;
+  const SNAP_FT=200;
+  if(n>0){
+    if(_lzAlt!=null&&Math.abs(n-_lzAlt)<=SNAP_FT)snapped=_lzAlt;
+    else if(_launchAlt!=null&&Math.abs(n-_launchAlt)<=SNAP_FT)snapped=_launchAlt;
+  }
+  windAlt=(snapped<=0||snapped<=_floor)?0:Math.max(WALT_MIN,Math.min(WALT_MAX,snapped));
+  // Legacy walt-slider inputs (kept as a safety net for any code path still creating them).
+  const sl=document.getElementById('walt-slider');
+  if(sl){const target=(windAlt===0)?WALT_MIN:windAlt;if(+sl.value!==target)sl.value=target;}
+  const el=document.getElementById('walt-val');if(el)el.textContent=waltLabel(windAlt);
+  // In-popup horizontal slider: keep the range input, MSL number, AGL companion and the
+  // Surface tag in sync whether the change came from a drag, a marker click, or code.
+  // At Surface we park the slider at the floor (LZ ground) and reveal "· SURFACE".
+  const whRefAlt=_whIsLZMode?_floor:_launchAlt;
+  const whDisp=(windAlt===0)?_floor:windAlt;
+  const whRng=document.getElementById('wh-range');
+  if(whRng&&+whRng.value!==whDisp)whRng.value=whDisp;
+  const whMsl=document.getElementById('wh-msl-val');
+  if(whMsl)whMsl.textContent=whDisp.toLocaleString();
+  const whSurf=document.getElementById('wh-surf-tag');
+  if(whSurf)whSurf.style.display=(windAlt===0)?'inline':'none';
+  const whAgl=document.getElementById('wh-agl-val');
+  if(whAgl){
+    let txt=waltAglLabel(whDisp,whRefAlt);
+    if(_whIsLZMode)txt=txt.replace(/launch/g,'LZ');
+    whAgl.textContent=txt;
+    whAgl.classList.toggle('at',whRefAlt!=null&&whDisp===whRefAlt);
+  }
   if(windState.on)fetchWindGrid(windState.time).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});
   // Re-pull the forecast so its Wind/Direction rows reflect the chosen altitude (debounced so
   // dragging the slider fires one request on release, not one per step).
@@ -2413,8 +2594,21 @@ function curHourLocal(){const n=new Date();return n.getHours()+n.getMinutes()/60
 function isNight(h,site){
   let dawn=civilDawnH,dusk=civilDuskH;
   if(site){const wx=siteWx&&siteWx[site.id];if(wx&&wx.dawnH!=null){dawn=wx.dawnH;dusk=wx.duskH;}}
-  if(dawn==null)return false;
-  return h<dawn||h>dusk;
+  if(dawn!=null)return h<dawn||h>dusk;
+  // Fallback: neither the site nor the forecast bar has cached dawn/dusk yet (fresh load,
+  // stale wxCache from before we started persisting dawnH, or an offline site with no
+  // daily block). Compute solar elevation from lat/lon at the requested hour so markers
+  // don't paint flyable-green after dark — that was the "4 sites green at midnight" bug.
+  if(site&&site.lat!=null&&site.lon!=null&&typeof sunPos==='function'){
+    try{
+      const now=new Date();
+      const hh=Math.floor(h),mm=Math.round((h-hh)*60);
+      const dt=new Date(now.getFullYear(),now.getMonth(),now.getDate(),hh,mm,0);
+      // -6° = civil twilight, which is what the cached ±30 min approximation is targeting.
+      return sunPos(dt,site.lat,site.lon).el<-6;
+    }catch(e){}
+  }
+  return false;
 }
 // ── Fly-score configuration ──────────────────────────────────────────────────
 // Baseline thresholds informed by paragliding best-practice (recreational XC & soaring).
@@ -2918,7 +3112,29 @@ async function simulateFlight(sid){
 function clearAll(){clearFlight();}
 
 // ── Popup HTML ────────────────────────────────────────────────────────────────
-function bdg(s){const m={flyable:['#d1fae5','#065f46','✓ Flyable now'],caution:['#fef3c7','#92400e','⚠ Use caution'],no:['#fee2e2','#991b1b','✗ No fly']}[s]||['#f3f4f6','#374151','— Loading'];return`<span class="ppb" style="background:${m[0]};color:${m[1]};">${m[2]}</span>`;}
+// Toggle the "Why:" reason panel next to a fly-status badge. Walks up to the badge row's
+// parent (the .pp popup) then finds the .pp-nofly-why sibling and flips its display.
+function togglePpWhy(btn){
+  if(!btn)return;
+  const row=btn.closest('.pp-badge-row');
+  if(!row)return;
+  const why=row.parentElement&&row.parentElement.querySelector('.pp-nofly-why');
+  if(!why)return;
+  const open=why.style.display!=='none';
+  why.style.display=open?'none':'block';
+  btn.setAttribute('aria-expanded',open?'false':'true');
+  btn.setAttribute('title',open?'Show why':'Hide why');
+}
+function bdg(s,opts){
+  // The 'no' badge reads "Flight Not Recommended" for marginal daytime weather (softer
+  // than "no fly") and reverts to the hard "No Fly" wording only for nighttime, where
+  // flying outside civil daylight is a rule rather than a judgment call. Reason is not
+  // inline any more — a "?" toggle beside the badge (see launchPop) reveals it on demand.
+  opts=opts||{};
+  const noLabel=opts.night?'✗ No Fly':'✗ Flight Not Recommended';
+  const m={flyable:['#d1fae5','#065f46','✓ Flyable now'],caution:['#fef3c7','#92400e','⚠ Use caution'],no:['#fee2e2','#991b1b',noLabel]}[s]||['#f3f4f6','#374151','— Loading'];
+  return`<span class="ppb" style="background:${m[0]};color:${m[1]};">${m[2]}</span>`;
+}
 // Human-readable reason a launch is currently no-fly, shown under the badge in the launch popup.
 // Checks strongest → weakest: TFR, night, computed veto, then lowest-scoring param below the marker cutoff.
 function noFlyReason(site,w){
@@ -2936,12 +3152,124 @@ function noFlyReason(site,w){
   return 'Conditions currently no-fly';
 }
 function wxG(w){if(!w)return`<div class="ppg"><div class="ppc"><div class="ppcl">Wind</div><div class="ppcv">Loading...</div></div><div class="ppc"><div class="ppcl">Gusts</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Direction</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Temp</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Clouds</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Thermals</div><div class="ppcv">—</div></div></div>`;return`<div class="ppg"><div class="ppc"><div class="ppcl">Wind</div><div class="ppcv">${w.wind} mph</div></div><div class="ppc"><div class="ppcl">Gusts</div><div class="ppcv">${w.gusts} mph</div></div><div class="ppc"><div class="ppcl">Direction</div><div class="ppcv">${d2c(w.dir)} (${w.dir}°)</div></div><div class="ppc"><div class="ppcl">Temp</div><div class="ppcv">${w.temp}°F</div></div><div class="ppc"><div class="ppcl">Clouds</div><div class="ppcv">${w.cloud}%</div></div><div class="ppc"><div class="ppcl">Thermals</div><div class="ppcv" style="font-size:10px;">${thStr(w.cloud,w.temp,w.wind)}</div></div></div>`;}
+// The landing zone actually linked to a launch (from the editable lzStore) so its altitude
+// is the authoritative source for both the ▲ Launch details "LZ / Vertical" facts and the
+// left-side weather-altitude slider — they can't drift apart.
+function connectedLZ(site){
+  if(!site)return null;
+  if(typeof lzStore!=='undefined'&&Array.isArray(lzStore)){
+    const z=lzStore.find(zz=>Array.isArray(zz.launchIds)&&zz.launchIds.includes(site.id));
+    if(z)return z;
+  }
+  return null;
+}
+function connectedLZAlt(site){
+  const lz=connectedLZ(site);
+  if(lz&&lz.alt!=null)return lz.alt;
+  return (site&&site.lzAlt!=null)?site.lzAlt:null;
+}
+// "+1,200 ft above launch" / "800 ft below launch" / "● At launch" — companion readout
+// to the panel's MSL number, showing where the sample sits relative to the selected launch.
+function waltAglLabel(v,launchAlt){
+  if(launchAlt==null||v==null)return '';
+  const d=Math.round(v-launchAlt);
+  if(d===0)return '● At launch';
+  if(d>0)return `↑ +${d.toLocaleString()} ft above launch`;
+  return `↓ ${Math.abs(d).toLocaleString()} ft below launch`;
+}
+// Build the compact horizontal weather-altitude slider block inserted into a launch or LZ
+// popup, under the 2-Week Forecast bar. Track runs left→right: bottom (ground / LZ) to
+// WALT_MAX. Draws:
+//  - Header row with MSL primary readout + "above launch" companion
+//  - Horizontal range slider spanning floor..WALT_MAX
+//  - ▲ Launch marker at site.alt (green, click-to-snap) — launch popup only
+//  - ▲ LZ marker at ground (blue, click-to-snap → Surface / 10 m AGL)
+//  - 850/700/500 hPa ticks below the rail for orientation
+// Anchor a label to the panel edge nearest its percent position, so it can't spill outside
+// the box even when the marker is close to either edge. Center-anchor otherwise.
+// For edge-clamped labels the box is nudged 6 px past the row inset so the label's LEADING
+// glyph (▲ / ■) sits directly over the pip line — otherwise its inner padding pushes the
+// glyph a few pixels off the pip, making the connector look broken.
+function whLblStyle(pct){
+  if(pct<12)return 'left:-6px;';
+  if(pct>88)return 'right:-6px;';
+  return `left:${pct.toFixed(2)}%;transform:translateX(-50%);`;
+}
+function waltHorizontalHTML(site){
+  if(!site)return '';
+  const asLaunch=LAUNCHES.find(s=>s.id===site.id)||null;
+  const isLaunch=!!asLaunch;
+  const launchAlt=isLaunch&&site.alt!=null?site.alt:null;
+  // For a launch, "floor" is the connected LZ altitude (the ground you'd land at); for an
+  // LZ popup, the LZ itself IS the ground so the floor is the LZ's own altitude.
+  const lzAlt=isLaunch?connectedLZAlt(site):(site.alt!=null?site.alt:null);
+  const floor=(lzAlt!=null)?lzAlt:WALT_MIN;
+  const range=Math.max(1,WALT_MAX-floor);
+  const pctOf=v=>Math.max(0,Math.min(100,((v-floor)/range)*100));
+  // ── TOP ROW: Launch marker (label above rail, pip drops down onto rail) ───────────────
+  let topRow='';
+  if(launchAlt!=null&&launchAlt>floor){
+    const p=pctOf(launchAlt);
+    topRow=`<div class="wh-mline wh-mline-launch" style="left:${p.toFixed(2)}%;"></div>
+      <div class="wh-lbl wh-lbl-launch" style="${whLblStyle(p)}" onclick="setWindAlt(${launchAlt})" title="Snap to launch altitude">▲ Launch ${launchAlt.toLocaleString()}</div>`;
+  }
+  // ── BOTTOM ROW: LZ marker + pressure ticks (label below rail, pip rises onto rail) ────
+  let botRow='';
+  let usedPcts=[];   // percent slots we've already placed a label at; ticks skip if too close
+  if(lzAlt!=null){
+    const p=pctOf(lzAlt);
+    botRow+=`<div class="wh-mline wh-mline-lz" style="left:${p.toFixed(2)}%;"></div>
+      <div class="wh-lbl wh-lbl-lz" style="${whLblStyle(p)}" onclick="setWindAlt(0)" title="Snap to surface wind (10 m AGL)">■ ${isLaunch?'LZ':'Ground'} ${lzAlt.toLocaleString()}</div>`;
+    usedPcts.push(p);
+  }
+  // Pressure-level ticks — only levels that sit above the LZ floor AND at/under WALT_MAX,
+  // and only when at least a couple of percent away from an existing label so tick text
+  // doesn't collide with the LZ label. Launch label is on the row above, so no conflict there.
+  const tickDefs=[
+    {ft:4781,lbl:'850'},
+    {ft:6394,lbl:'800'},
+    {ft:9882,lbl:'700'},
+    {ft:13801,lbl:'600'},
+    {ft:17998,lbl:'500'}
+  ];
+  const MIN_TICK_GAP=14;   // percent — comfortably wider than a ~40 px LZ label at typical panel widths
+  for(const t of tickDefs){
+    if(t.ft<=floor||t.ft>WALT_MAX)continue;
+    const p=pctOf(t.ft);
+    if(usedPcts.some(u=>Math.abs(u-p)<MIN_TICK_GAP))continue;
+    botRow+=`<div class="wh-mline wh-mline-tick" style="left:${p.toFixed(2)}%;"></div>
+      <div class="wh-tick-lbl" style="${whLblStyle(p)}">${t.lbl}hPa</div>`;
+    usedPcts.push(p);
+  }
+  const initVal=(windAlt===0)?floor:Math.max(floor,Math.min(WALT_MAX,windAlt));
+  const initAgl=isLaunch?waltAglLabel(initVal,launchAlt):(lzAlt!=null?waltAglLabel(initVal,lzAlt).replace(/launch/g,'LZ'):'');
+  const refAlt=isLaunch?launchAlt:lzAlt;
+  // Double-click anywhere on the panel jumps the slider to this site's "home" altitude:
+  //  · Launch popup → the launch's own MSL elevation
+  //  · LZ popup → Surface (10 m AGL at the LZ ground)
+  const dblTarget=isLaunch&&launchAlt!=null?launchAlt:0;
+  return `<div class="wh-panel" data-launch-id="${site.id}" data-floor="${floor}"${isLaunch?'':' data-lz-mode="1"'} ondblclick="setWindAlt(${dblTarget})" title="Double-click to snap to ${isLaunch?'launch altitude':'surface (LZ ground)'}">
+    <div class="wh-hdr-row">
+      <span class="wh-hdr">Weather altitude</span>
+      <span class="wh-msl"><span id="wh-msl-val">${initVal.toLocaleString()}</span><small>ft MSL</small><span id="wh-surf-tag" class="wh-surf-tag" style="display:${windAlt===0?'inline':'none'};">· SURFACE</span></span>
+      <span class="wh-agl${(refAlt!=null&&initVal===refAlt)?' at':''}" id="wh-agl-val">${initAgl}</span>
+    </div>
+    <div class="wh-track-wrap">
+      <div class="wh-row-top">${topRow}</div>
+      <input class="wh-range" id="wh-range" type="range" min="${floor}" max="${WALT_MAX}" step="1" value="${initVal}" oninput="setWindAlt(this.value)"/>
+      <div class="wh-row-bot">${botRow}</div>
+    </div>
+  </div>`;
+}
 // Structured "About this launch" block. Uses discrete fields when present (elevations,
 // vertical, glide needed, best window, access, airspace, radio, hazards) and falls back to the
 // free-form `desc` prose — so sites can be migrated to the structured fields one at a time.
 function siteBioHTML(site){
-  const lzAlt=(site.lzAlt!=null)?site.lzAlt:null;
-  const vert=(site.vertical!=null)?site.vertical:(lzAlt!=null?site.alt-lzAlt:null);
+  // Prefer the connected LZ's altitude so this "▲ Launch details" block stays in lock-step
+  // with the left-side weather-altitude slider and re-linking a launch to a different LZ
+  // automatically updates the shown Vertical here.
+  const lzAlt=connectedLZAlt(site);
+  const vert=(lzAlt!=null)?site.alt-lzAlt:(site.vertical!=null?site.vertical:null);
   const facts=[['Launch',`${site.alt.toLocaleString()} ft`]];
   if(lzAlt!=null)facts.push(['LZ',`${lzAlt.toLocaleString()} ft`]);
   if(vert!=null&&vert>0)facts.push(['Vertical',`${vert.toLocaleString()} ft`]);
@@ -3060,8 +3388,25 @@ function fcModelSelectHTML(){return`<select class="pp-fc-model" title="Weather m
 // Weather-altitude slider for a site popup: drives the global windAlt so the forecast Wind row
 // (and wind overlay) show winds aloft. Initialised to the current altitude so it reflects state.
 function windAltSliderHTML(){
-  const lbl=windAlt?windAlt.toLocaleString()+' ft':'Surface';
-  return`<div class="pp-walt"><div class="lr" style="justify-content:space-between;margin:0 0 3px;">🌬 Weather altitude<b id="walt-val" style="color:#0369a1;">${lbl}</b></div><input type="range" id="walt-slider" min="0" max="18000" step="1000" value="${windAlt}" oninput="setWindAlt(this.value)" style="width:100%;margin:0;accent-color:#0369a1;"/></div>`;
+  const ticks=WALT_TICKS.map(v=>`<option value="${v}"></option>`).join('');
+  const tip='Pick which altitude the Wind/Direction rows below (and the map wind overlay) show. Ticks under the slider mark the real weather-model layers (850/800/700/600/500 hPa). ▼ launch sits at the launch\'s MSL elevation. ▼ LZ points at Surface — the model\'s 10 m AGL data, which is what a pilot on the ground actually feels.';
+  // Two markers on the track: green ▼ launch at the launch's MSL elevation (so users can see
+  // where "at launch" falls on the ladder of aloft altitudes), and blue ▼ LZ pinned to the
+  // leftmost "Surface" position — because at LZ ground level the useful data is the model's
+  // 10 m AGL surface field, not an interpolated pressure-level value at LZ MSL.
+  const site=currentLaunchId?LAUNCHES.find(s=>s.id===currentLaunchId):null;
+  let mark='';
+  if(site){
+    const mk=(frac,color,label,topOffset,clickable)=>{
+      const pos=`calc(${frac.toFixed(4)} * (100% - 14px) + 7px)`;
+      const click=clickable?' cursor:pointer;pointer-events:auto;" onclick="setWindAlt(0)" title="Click to switch to Surface wind (10 m AGL)':'';
+      return `<div style="position:absolute;left:${pos};top:-2px;bottom:-2px;width:2px;background:${color};transform:translateX(-50%);pointer-events:none;border-radius:1px;"></div><div style="position:absolute;left:${pos};top:${topOffset}px;transform:translateX(-50%);font-size:9px;color:${color};font-weight:600;pointer-events:none;white-space:nowrap;line-height:1;${click}">▼ ${label}</div>`;
+    };
+    if(site.alt!=null)mark+=mk(waltFraction(site.alt),'#059669','launch',-14,false);
+    if(site.lzAlt!=null)mark+=mk(0,'#0284c7','LZ',-24,true);
+  }
+  const sliderVal=(windAlt===0)?WALT_MIN:windAlt;
+  return`<div class="pp-walt"><div class="lr" style="justify-content:space-between;margin:0 0 3px;"><span title="${tip}" style="cursor:help;">🌬 Weather altitude</span><b id="walt-val" style="color:#0369a1;">${waltLabel(windAlt)}</b></div><div style="position:relative;padding-top:26px;">${mark}<input type="range" id="walt-slider" list="walt-ticks" min="${WALT_MIN}" max="${WALT_MAX}" step="1" value="${sliderVal}" oninput="setWindAlt(this.value)" style="width:100%;margin:0;accent-color:#0369a1;position:relative;"/></div><datalist id="walt-ticks">${ticks}</datalist></div>`;
 }
 // Red "NO FLY" pill shown beside a site name when it sits inside an active TFR.
 function tfrFlagHTML(site){
@@ -3232,13 +3577,21 @@ function launchPop(site,w){
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
   const nf=(s==='no')?noFlyReason(site,w):null;
-  const nfHTML=nf?`<div class="pp-nofly-why"><b>Why:</b> ${nf}</div>`:'';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div>${windCompassSVG(site,stCol,40,w)}</div>${bdg(s)}${nfHTML}${wxG(w)}${windAltSliderHTML()}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  // Nighttime is the one veto that keeps the "No Fly" wording — daytime marginal conditions
+  // read as "Flight Not Recommended". noFlyReason emits the "Outside civil daylight" copy in
+  // that case, which is what we detect here to flip the badge label.
+  const nightNo=!!(nf&&/civil daylight/i.test(nf));
+  // Reason lives behind a "?" toggle beside the badge instead of always-visible text —
+  // keeps the header clean while the "why" is still one click away.
+  const whyBtn=nf?`<button type="button" class="pp-why-btn" aria-expanded="false" onclick="togglePpWhy(this)" title="Show why">?</button>`:'';
+  const whyPanel=nf?`<div class="pp-nofly-why" style="display:none;"><b>Why:</b> ${nf}</div>`:'';
+  const badgeRow=`<div class="pp-badge-row">${bdg(s,{night:nightNo})}${whyBtn}</div>${whyPanel}`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div></div>${badgeRow}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${waltHorizontalHTML(site)}${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
   const bioHTML=lzBio?`<div class="ppbio"><div class="ppbio-h">📋 About this LZ</div><p>${lzBio}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}${tfrFlagHTML(site)}</div>${wxG(w)}${windAltSliderHTML()}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${flightCalcsHTML(site,w)}${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${shareBtnHTML(site.id)}${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}${tfrFlagHTML(site)}</div>${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${waltHorizontalHTML(site)}${flightCalcsHTML(site,w)}${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${shareBtnHTML(site.id)}${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
 }
 
 // ── 3D mini-map thumbnail (popup) ─────────────────────────────────────────────
@@ -3864,9 +4217,12 @@ let fcTarget={lat:40.52,lon:-111.87,label:'Salt Lake City',site:null};   // whic
 let fcInterval=60;
 function setFcInterval(n){
   n=parseInt(n,10)||60;if(n!==60&&n!==30&&n!==15)n=60;
-  if(fcInterval===n){document.querySelectorAll('#fc-res button').forEach(b=>{b.classList.toggle('on',+b.dataset.r===n);});return;}
+  // Both the header (#fc-res) and mobile-menu (#menu-fc-res) copies of the toggle stay in
+  // lockstep — one selector picks up either instance.
+  const sync=()=>document.querySelectorAll('#fc-res button, #menu-fc-res button').forEach(b=>{b.classList.toggle('on',+b.dataset.r===n);});
+  if(fcInterval===n){sync();return;}
   fcInterval=n;
-  document.querySelectorAll('#fc-res button').forEach(b=>{b.classList.toggle('on',+b.dataset.r===n);});
+  sync();
   loadForecast();
 }
 // True when the forecast is pointed at any site with an allowable-wind facing — real launches AND
@@ -4115,8 +4471,77 @@ function buildForecast(container,series,labels){
   series.forEach(e=>{const d=new Date(e.t),key=d.toDateString();const last=groups[groups.length-1];
     if(last&&last.key===key)last.count++;else groups.push({key,count:1,label:`${FC_DAYS[d.getDay()]} ${d.getDate()}`});});
   // day header cells + a per-column day lookup for the frozen day indicator
-  let dayRow='',alt=false;
-  groups.forEach(g=>{dayRow+=`<div class="fc-day${alt?' alt':''}" style="width:calc(var(--fcw) * ${g.count})">${g.label}</div>`;alt=!alt;});
+  // The day label for the calendar day CONTAINING "Now" is nudged to sit directly over
+  // the Now column instead of the default left-of-cell position — so the day name always
+  // hovers above the current-time indicator no matter where in the day we are.
+  let dayRow='',alt=false,cumCells=0;
+  groups.forEach(g=>{
+    const hasNow=nowIdx>=0&&nowIdx>=cumCells&&nowIdx<cumCells+g.count;
+    let style=`width:calc(var(--fcw) * ${g.count})`;
+    if(hasNow){
+      // Center of the Now column, in cell units, offset from the start of this day cell.
+      const nowOffset=(nowIdx-cumCells)+0.5;
+      // Push the label to that offset and pull it back by ~half a rough label width so
+      // "Sunday 12" lands centered on the vertical red Now line. Min-clamp to 6 px so it
+      // never runs off the day cell's left edge when Now sits at the very start of the day.
+      style+=`;justify-content:flex-start;padding-left:max(6px, calc(var(--fcw) * ${nowOffset.toFixed(2)} - 26px))`;
+    }
+    dayRow+=`<div class="fc-day${alt?' alt':''}" style="${style}">${g.label}</div>`;
+    alt=!alt;
+    cumCells+=g.count;
+  });
+  // Precompute the hourly-cell index nearest each day's sunrise and sunset so the sky
+  // row can drop an Apple-Weather-style sunrise / sunset icon at that hour instead of
+  // the plain sun/cloud/moon glyph.
+  const sunriseIdxSet=new Set(),sunsetIdxSet=new Set();
+  const nearestIdx=iso=>{
+    if(!iso)return -1;
+    const target=new Date(iso).getTime();
+    let best=-1,bestD=Infinity;
+    for(let i=0;i<series.length;i++){
+      const d=Math.abs(new Date(series[i].t).getTime()-target);
+      if(d<bestD){bestD=d;best=i;}
+    }
+    // Only mark it if the closest hour cell is within an interval-width of the actual
+    // sunrise/sunset — for a series that ends before sunset we don't want to slap the
+    // icon onto some unrelated afternoon cell.
+    const tolMs=Math.max(30,fcInterval||60)*60*1000;
+    return bestD<=tolMs?best:-1;
+  };
+  if(series.daily&&series.daily.time){
+    series.daily.time.forEach((t,i)=>{
+      const srIso=series.daily.sunrise&&series.daily.sunrise[i];
+      const ssIso=series.daily.sunset&&series.daily.sunset[i];
+      const srI=nearestIdx(srIso),ssI=nearestIdx(ssIso);
+      if(srI>=0)sunriseIdxSet.add(srI);
+      if(ssI>=0)sunsetIdxSet.add(ssI);
+    });
+  }
+  // Sun matches skyIcon() exactly — the same 4.4-radius yellow disc and the same 8 amber
+  // rays (N/S/E/W + 4 diagonals) with identical 1.2 / 0.9-unit gaps between each ray and
+  // the disc, so nothing ever touches the circle. Clipping is done by a NESTED <svg>
+  // acting as a viewport (its overflow:hidden default is guaranteed and needs no shared
+  // clipPath id) — everything below y=17 in outer coordinates is truly not painted, so
+  // the bottom rays, lower diagonals, and lower half of the disc are gone rather than
+  // just visually covered. The horizon line is drawn UNDER the clipped sun so the side
+  // rays crossing the horizon still appear complete.
+  const sunHalfGlyph=
+    '<line x1="1" y1="17" x2="23" y2="17" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round"/>'+
+    '<svg x="0" y="0" width="24" height="17" viewBox="0 0 24 17" overflow="hidden">'+
+      '<g stroke="#f59e0b" stroke-width="1.7" stroke-linecap="round">'+
+        '<line x1="12" y1="9.2"  x2="12" y2="11.4"/>'+     // top
+        '<line x1="12" y1="22.6" x2="12" y2="24.8"/>'+     // bottom (below viewport → clipped)
+        '<line x1="4.2"  y1="17" x2="6.4"  y2="17"/>'+     // left  (at horizon)
+        '<line x1="17.6" y1="17" x2="19.8" y2="17"/>'+     // right (at horizon)
+        '<line x1="5.2"  y1="10.2" x2="6.7"  y2="11.7"/>'+ // upper-left diag
+        '<line x1="17.3" y1="11.7" x2="18.8" y2="10.2"/>'+ // upper-right diag
+        '<line x1="5.2"  y1="23.8" x2="6.7"  y2="22.3"/>'+ // lower-left diag (clipped)
+        '<line x1="17.3" y1="22.3" x2="18.8" y2="23.8"/>'+ // lower-right diag (clipped)
+      '</g>'+
+      '<circle cx="12" cy="17" r="4.4" fill="#fcd34d" stroke="#f59e0b" stroke-width="1"/>'+
+    '</svg>';
+  const sunriseSVG=`<svg viewBox="0 0 24 24" width="18" height="18" style="display:block">${sunHalfGlyph}<g stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><line x1="12" y1="7" x2="12" y2="1"/><polyline points="9,4 12,1 15,4"/></g></svg>`;
+  const sunsetSVG=`<svg viewBox="0 0 24 24" width="18" height="18" style="display:block">${sunHalfGlyph}<g stroke="#c2410c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><line x1="12" y1="1" x2="12" y2="7"/><polyline points="9,4 12,7 15,4"/></g></svg>`;
   const dayCols=series.map(e=>{const d=new Date(e.t);return`${FC_DAYS[d.getDay()].slice(0,3)} ${d.getDate()}`;});
   // model band: group consecutive hours by model, plus a per-column model lookup for the
   // live indicator in the (frozen) Model label cell.
@@ -4145,7 +4570,8 @@ function buildForecast(container,series,labels){
     const wv=(windAlt>0&&e.windAlt!=null)?e.windAlt:e.wind;
     const dv=(windAlt>0&&e.dirAlt!=null)?e.dirAlt:e.dir;
     hrRow+=cell(i,i===nowIdx?'Now':ap);
-    skyRow+=cell(i,skyIcon(e.cloud,e.pop,isNight(d.getHours()+d.getMinutes()/60)));
+    const skyGlyph=sunriseIdxSet.has(i)?sunriseSVG:sunsetIdxSet.has(i)?sunsetSVG:skyIcon(e.cloud,e.pop,isNight(d.getHours()+d.getMinutes()/60));
+    skyRow+=cell(i,skyGlyph);
     tempRow+=cell(i,`${cvTemp(e.temp)}°`,`color:${tempColor(e.temp)}`);
     rainRow+=cell(i,e.pop>=10?e.pop:'');
     windRow+=cell(i,cvWind(wv));
@@ -4163,11 +4589,11 @@ function buildForecast(container,series,labels){
   const rows=[
     ['fc-r-day',`<span class="fc-day-name">${dayCols[nowIdx>0?nowIdx:0]||''}</span>`,dayRow],
     ['fc-r-model',`<span class="fc-model-name">${models[nowIdx>0?nowIdx:0]||'Model'}</span>`,modelRow],
-    ['fc-r-hr','Hour',hrRow],
+    ['fc-r-hr','Time',hrRow],
     ['fc-r-sky','Sky',skyRow],
     ['fc-r-temp',isMobileView()?`Temp ${tempU()}`:tempU(),tempRow],
     ['fc-r-rain',labels.rain,rainRow],
-    ['fc-r-wind',windAlt>0?`Wind ${windAlt/1000}k`:`Wind ${windU()}`,windRow,rowGrad(windVals)],
+    ['fc-r-wind',windAlt>0?`Wind ${(Math.round(windAlt/100)/10).toString().replace(/\.0$/,'')}k`:`Wind ${windU()}`,windRow,rowGrad(windVals)],
     ['fc-r-gust','Gusts',gustRow,rowGrad(gustVals)],
     ['fc-r-dir',labels.dir,dirRow],
     ['fc-r-therm','<span title="Thermal strength (climb punch, not ceiling): blends mixing-layer depth, airmass instability (lifted index / CAPE) and time of day. Taller bar = stronger thermals, peaking mid-afternoon. No bar = no thermals (night or overcast)." style="cursor:help;">Thermals</span>',thermRow]
@@ -4893,7 +5319,7 @@ function setupLongPress(){
 // slider's max). Silent no-op if already close — no need to refire loadForecast then.
 function autoSetWindAltForLaunch(site){
   if(!site||site.alt==null)return;
-  const target=Math.max(0,Math.min(18000,Math.round(site.alt/1000)*1000));
+  const target=Math.max(0,Math.min(WALT_MAX,site.alt));
   if(target===windAlt)return;
   windAlt=target;
   if(windState.on)fetchWindGrid(windState.time).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});
