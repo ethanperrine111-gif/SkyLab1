@@ -72,8 +72,9 @@ body.dark #menu-fc-res{background:#1e293b;border-color:#334155;}
 body.dark #menu-fc-res button{color:#cbd5e1;}
 body.dark #menu-fc-res button.on{background:#0f172a;color:#f1f5f9;}
 /* Desktop keeps the toggle in the header; mobile hides the header copy and shows the menu copy. */
-@media(max-width:768px){#fc-head-actions #fc-res{display:none;}}
-@media(min-width:769px){#menu-fc-res-row{display:none;}}
+/* #fc-res lives in the top bar — which sits directly above #forecast on every viewport,
+   so it's always "above the forecast" without needing a separate mobile copy. */
+#menu-fc-res-row{display:none;}
 #fc-toggle{display:block;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;line-height:1;}
 #fc-compare{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:4px 9px;font-size:12px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0;white-space:nowrap;}
 #fc-compare:hover{background:rgba(255,255,255,.22);}
@@ -94,7 +95,7 @@ body.fc-collapsed #forecast{display:none;}
 *::-webkit-scrollbar{width:0;height:0;display:none;}
 .fc-data{display:flex;flex-direction:column;width:max-content;font-family:system-ui,sans-serif;position:relative;}
 /* Live "exact time" bar that glides across the forecast at the current minute. */
-.fc-nowline{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;pointer-events:none;z-index:4;box-shadow:0 0 0 1px rgba(255,255,255,.7);}
+.fc-nowline{position:absolute;top:22px;bottom:0;width:2px;background:#ef4444;pointer-events:none;z-index:4;box-shadow:0 0 0 1px rgba(255,255,255,.7);}
 .fc-nowline::before{content:'';position:absolute;top:0;left:-3px;width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 1.5px #fff;}
 .fc-row{display:flex;align-items:stretch;}
 .fc-cell{width:var(--fcw);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-right:1px solid #eef1f5;}
@@ -284,6 +285,14 @@ body.dark .pp-why-btn[aria-expanded="true"]{background:#fecaca;color:#450a0a;bor
 body.dark .pp-nofly-why{background:#450a0a;border-color:#7f1d1d;color:#fecaca;}
 body.dark .pp-nofly-why b{color:#fca5a5;}
 .pp-fc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin:8px 0 2px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.pp-fc-ctrls{display:flex;align-items:center;gap:6px;}
+.pp-fc-res{display:inline-flex;gap:2px;padding:2px;background:#e2e8f0;border:1px solid #cbd5e1;border-radius:9px;}
+.pp-fc-res button{background:transparent;color:#334155;border:0;padding:3px 7px;font-size:10.5px;font-weight:800;letter-spacing:.2px;cursor:pointer;border-radius:7px;line-height:1;font-family:inherit;text-transform:none;}
+.pp-fc-res button:hover{color:#0f172a;background:rgba(255,255,255,.6);}
+.pp-fc-res button.on{background:#fff;color:#0f172a;box-shadow:0 1px 2px rgba(0,0,0,.14);}
+body.dark .pp-fc-res{background:#1e293b;border-color:#334155;}
+body.dark .pp-fc-res button{color:#cbd5e1;}
+body.dark .pp-fc-res button.on{background:#0f172a;color:#f1f5f9;}
 /* Weather-model dropdown in the popup — shaped and finished like the map's floating
    #layers-btn / .cbtn (9 px radius, subtle border, soft drop-shadow, glassy blur) so it
    reads as part of the same control family. Colours stay the neutral slate/light palette
@@ -545,8 +554,8 @@ body.dark .wh-range::-moz-range-track{background:#334155;}
 #geo-btn{background:rgba(255,255,255,.92);border-color:rgba(0,0,0,.12);}
 #geo-btn:hover{background:#fff;}
 /* compass indicator (left side, below control buttons) */
-#compass{position:absolute;top:8px;right:calc(8px + env(safe-area-inset-right,0px));z-index:500;width:46px;height:46px;border-radius:50%;background:rgba(17,24,39,.9);box-shadow:0 2px 10px rgba(0,0,0,.45);cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(56,189,248,.3);}
-#compass svg{display:block;}
+#compass{position:absolute;top:8px;right:calc(8px + env(safe-area-inset-right,0px));z-index:500;width:46px;height:46px;box-sizing:border-box;border-radius:50%;background:rgba(17,24,39,.9);box-shadow:0 2px 10px rgba(0,0,0,.45);cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(56,189,248,.3);}
+#compass svg{display:block;width:100%;height:100%;}
 /* Needle is rotated via the SVG transform attribute (rotate angle 23 23) in JS.
    Do NOT set a CSS transform-origin/transform-box here — it would be applied on top
    of the attribute's own centre and throw the needle out of the circle. */
@@ -562,13 +571,14 @@ body.dark .wh-range::-moz-range-track{background:#334155;}
 .favstar{background:none;border:none;padding:0;margin:0 0 0 6px;font-size:20px;line-height:1;cursor:pointer;color:#cbd5e1;flex-shrink:0;font-family:inherit;-webkit-tap-highlight-color:transparent;}
 .favstar.on{color:#f59e0b;}
 .favstar:hover{color:#f59e0b;transform:scale(1.12);}
-.ppcalc{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
-.ppcalc .ppc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;}
-.ppcalc .ppcl{font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
-.ppcalc .ppcv{font-size:14px;font-weight:700;color:#0f172a;}
-.ppcalc .ppch{font-size:9px;color:#94a3b8;margin-top:1px;}
-.ppc-i{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;margin-left:4px;border-radius:50%;background:#94a3b8;color:#fff;font-size:9px;font-weight:800;font-style:italic;font-family:Georgia,serif;cursor:help;vertical-align:1px;}
-body.dark .ppc-i{background:#475569;}
+.ppcalc{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px;}
+.ppcalc .ppc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:5px 7px;}
+.ppcalc .ppcl{font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+.ppcalc .ppcv{font-size:12.5px;font-weight:700;color:#0f172a;}
+.ppcalc .ppch{font-size:8.5px;color:#94a3b8;margin-top:1px;}
+.ppc-i{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:4px;border-radius:50%;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;font-size:10px;font-weight:800;font-style:italic;font-family:Georgia,'Times New Roman',serif;cursor:pointer;vertical-align:1px;line-height:1;}
+.ppc-i:hover{background:#dbeafe;}
+body.dark .ppc-i{background:#13243f;border-color:#1e3a8a;color:#bfdbfe;}
 body.dark .ppcalc .ppc{background:#1e293b;border-color:#334155;}
 body.dark .ppcalc .ppcv{color:#e2e8f0;}
 /* Wind-aloft (hodograph + rose) & Sun/shade panels */
@@ -603,9 +613,9 @@ body.dark .sun-note{color:#94a3b8;}
 .fc-model-sel{height:32px;box-sizing:border-box;}
 #fav-btn:hover{background:rgba(255,255,255,.2);}
 /* Full-screen Favorites overlay */
-#fav-overlay,#models-overlay,#flycfg-overlay{position:fixed;inset:0;z-index:1200;background:#f1f5f9;display:none;flex-direction:column;}
-#fav-overlay.open,#models-overlay.open,#flycfg-overlay.open{display:flex;}
-body.dark #fav-overlay,body.dark #models-overlay,body.dark #flycfg-overlay{background:#0b1220;}
+#fav-overlay,#models-overlay,#flycfg-overlay,#launch-info-overlay{position:fixed;inset:0;z-index:1200;background:#f1f5f9;display:none;flex-direction:column;}
+#fav-overlay.open,#models-overlay.open,#flycfg-overlay.open,#launch-info-overlay.open{display:flex;}
+body.dark #fav-overlay,body.dark #models-overlay,body.dark #flycfg-overlay,body.dark #launch-info-overlay{background:#0b1220;}
 /* Fly-score threshold editor: table of param rows, hard-veto grid, band cutoffs. */
 #flycfg-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;max-width:900px;width:100%;margin:0 auto;}
 #flycfg-body h3{font-size:14px;font-weight:800;margin:18px 0 8px;color:#0f172a;}
@@ -704,6 +714,10 @@ body.dark .fav-fc{background:#0f172a;border-color:#1e293b;}
 /* Desktop: menu bottom aligns with the my-location pin's top edge (br-controls bottom:12 + geo-btn height:42 = 54, minus 8 top offset → 100% - 62px). */
 #menu-panel{position:absolute;top:8px;left:8px;bottom:auto;z-index:800;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:10px;padding:9px 11px;font-size:11px;box-shadow:0 2px 12px rgba(0,0,0,.28);line-height:1.7;display:none;min-width:158px;max-width:230px;max-height:calc(100% - 62px - env(safe-area-inset-bottom,0px));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 #menu-panel.open{display:block;}
+/* Close X sits above the menu content on mobile (hidden on desktop; the hamburger toggles it). */
+#menu-close-x{display:none;position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:12px;width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.08);border:none;color:#0f172a;font-size:20px;font-weight:800;line-height:1;cursor:pointer;align-items:center;justify-content:center;z-index:2;}
+#menu-close-x:hover{background:rgba(15,23,42,.14);}
+body.dark #menu-close-x{background:rgba(255,255,255,.1);color:#f1f5f9;}
 /* Menu site-search: name/subtitle filter over LAUNCHES + LZs, with a compact result list. */
 #menu-search-wrap{position:relative;margin-bottom:4px;}
 #menu-search{width:100%;box-sizing:border-box;padding:7px 9px 7px 26px;font-size:12.5px;border:1px solid #cbd5e1;border-radius:8px;background:#fff url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 7px center;color:#0f172a;outline:none;transition:border-color .15s,box-shadow .15s;}
@@ -896,7 +910,7 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   #mode-badge{display:none;}
   /* Use the real SkyLab paraglider logo at the bottom (instead of the plain text chip) */
   #mobile-logo{display:none;}
-  #logo-overlay{display:flex;bottom:calc(32px + env(safe-area-inset-bottom,0px));padding:4px 12px 4px 6px;}  /* bottom edge lines up with the My-location pin on the left */
+  #logo-overlay{display:none;}
   /* Bigger tap targets for thumbs */
   .cbtn{padding:9px 13px;font-size:13px;border-radius:11px;}
   .icon-btn{padding:9px;}
@@ -909,7 +923,9 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   /* Compass sits at the same height as the Layers button on the opposite side (map area already clears the notch) */
   #compass{top:8px;}
   /* Floating panels: never overflow the viewport, scroll if tall */
-  #menu-panel{left:12px;right:12px;max-width:none;max-height:calc(100% - 86px - env(safe-area-inset-bottom,0px));overflow-y:auto;}  /* grow down until its bottom meets the My-location pin's top (br-controls bottom:32 + geo-btn height:46 = 78, minus 8 top offset → 86px) */
+  /* Mobile: full-screen menu sheet so it feels like a proper drawer, not a floating card */
+  #menu-panel{top:0;left:0;right:0;bottom:0;width:100vw;height:100dvh;max-width:none;max-height:none;border-radius:0;padding:calc(52px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px));}
+  #menu-close-x{display:flex;}
   /* On mobile, fold Compare into the Weather Models dropdown (bottom option) to free up the top bar for the location. */
   #fc-compare,.nb-compare{display:none;}
   #model-compare{max-height:50vh;}
@@ -1055,8 +1071,12 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
           <line x1="10.6" y1="10.6" x2="12.4" y2="12.4"/>
         </g>
         <g class="cn" id="compass-needle">
-          <polygon points="23,7.5 18.8,23 23,19 27.2,23" fill="#ef4444"/>
-          <polygon points="23,38.5 18.8,23 23,27 27.2,23" fill="#e2e8f0"/>
+          <polygon points="23,9.5 18.8,23 23,19 27.2,23" fill="#ef4444"/>
+          <polygon points="23,36.5 18.8,23 23,27 27.2,23" fill="#e2e8f0"/>
+          <text x="23" y="5.6" font-size="5.6" font-weight="800" fill="#ef4444" text-anchor="middle" dominant-baseline="central" font-family="system-ui,-apple-system,sans-serif">N</text>
+          <text x="40.4" y="23" font-size="5.6" font-weight="800" fill="#e2e8f0" text-anchor="middle" dominant-baseline="central" font-family="system-ui,-apple-system,sans-serif">E</text>
+          <text x="23" y="40.4" font-size="5.6" font-weight="800" fill="#e2e8f0" text-anchor="middle" dominant-baseline="central" font-family="system-ui,-apple-system,sans-serif">S</text>
+          <text x="5.6" y="23" font-size="5.6" font-weight="800" fill="#e2e8f0" text-anchor="middle" dominant-baseline="central" font-family="system-ui,-apple-system,sans-serif">W</text>
           <circle cx="23" cy="23" r="3.1" fill="#0f172a" stroke="#38bdf8" stroke-width="1.3"/>
           <circle cx="23" cy="23" r="1.1" fill="#38bdf8"/>
         </g>
@@ -1082,6 +1102,7 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
       <div class="wv-probe" id="wvprobe">↖ hover map for wind</div>
     </div>
     <div id="menu-panel">
+      <button id="menu-close-x" onclick="toggleMenu()" aria-label="Close menu" title="Close">✕</button>
       <div id="menu-search-wrap">
         <input type="search" id="menu-search" placeholder="Search sites..." autocomplete="off" oninput="siteSearch()" onkeydown="siteSearchKey(event)"/>
         <div id="menu-search-results"></div>
@@ -1127,6 +1148,7 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
         </div>
       </div>
       <button class="edbtn" onclick="openModelsInfo();">🌦 About weather models</button>
+      <button class="edbtn" onclick="openLaunchInfo();">🪂 About launch details</button>
       <div class="lp-div"></div>
       <div class="lp-sec">Owner</div>
       <button class="edbtn" id="adm-btn" onclick="promptAdminLogin();">🔒 Admin login</button>
@@ -1172,6 +1194,24 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
     <div class="mi-card"><div class="mi-h"><span class="mi-rank">5</span><span class="mi-n">GFS</span><span class="mi-g">~16 mi grid</span></div><p>The American global model — free, dependable, and what extends this app's 2-week forecast. Verifies a notch below ECMWF, especially for the <b>timing and strength</b> of systems. Fine for the broad picture.</p></div>
     <div class="mi-card mi-blend"><div class="mi-h"><span class="mi-n">Best match</span><span class="mi-g">blend</span></div><p>Open-Meteo automatically stitches the best-available model for each location and range. Convenient, but it hides <b>which</b> model is talking — so you lose the ability to judge agreement.</p></div>
     <div class="mi-tip"><b>💡 The pro habit:</b> open <b>⚖ Compare</b> and watch for agreement. When HRRR, ECMWF and ICON line up, confidence is high; when they diverge, treat the day as uncertain. And remember — <i>every</i> model smooths the terrain, so none truly capture a specific launch's rotor, venturi, or thermal trigger. That gap is what local knowledge and an on-site wind check fill.</div>
+  </div>
+</div>
+<!-- About launch details: what every field on a launch card actually means -->
+<div id="launch-info-overlay">
+  <div id="mi-bar"><span id="mi-title">🪂 About launch details</span><button id="mi-close" onclick="closeLaunchInfo()" title="Close">✕</button></div>
+  <div id="models-body">
+    <p class="mi-lead">Each launch card packs a lot into one screen. Here's what every row means and how to read it.</p>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Facing &amp; wind window</span></div><p>The launch's <b>aspect</b> (e.g. W-facing 270°) and the arc of directions considered flyable. Surface wind arriving from outside that arc is cross or tail — not safe to inflate on. The colored wedge on direction cells shows the arc.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Ideal / Max / Gust</span></div><p><b>idealLo–idealHi</b> is the sweet spot for surface wind. <b>max</b> is the hard ceiling. <b>gust</b> is the maximum acceptable gust spread (gust minus wind). Together these drive the Fly / Caution / No-Fly score.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">P-rating (P2 / P3 / P4)</span></div><p>USHPA rating required. P2 for novices, P3 intermediate, P4 advanced. If a site is marked P4, don't fly it below rating even if the numbers look green.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Launch alt / LZ alt / Vertical</span></div><p><b>Launch alt</b> = MSL elevation at the takeoff. <b>LZ alt</b> = MSL of the primary landing zone. <b>Vertical</b> = the drop between them, which is your altitude budget for the flight down.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Glide required</span></div><p>Minimum glide ratio needed to reach the LZ from launch. If forecast headwind pushes your working glide below this number, the site is a no-go for that day regardless of thermic conditions.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Density altitude</span></div><p>The effective altitude your wing feels after correcting for temperature and pressure. Higher DA = less lift, longer takeoff/landing rolls, softer flare. More than ~3,000 ft above field elevation is a red flag — plan for a fast forward launch and a firm landing.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Est. cloudbase</span></div><p>Working ceiling for thermals — the altitude MSL at which rising air cools to the dewpoint and forms cumulus. "Above launch" is your headroom; if cloudbase is <b>at or below</b> launch altitude, you're launching into cloud and you shouldn't.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Wind aloft (hodograph)</span></div><p>Wind speed &amp; direction at a stack of altitudes above the site right now. Each colored dot is one level, labeled with its altitude. A straight line = steady flow all the way up. A curving line = the wind turns as you climb (drift &amp; shear — expect more bumps and cross-country push).</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Wind rose</span></div><p>How today's daytime surface wind is distributed by direction. Longer spoke = more hours from that way; color = average speed. The blue ● marks the launch facing — you want the busiest spokes near that dot.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Hazards / Airspace / Radio / Access</span></div><p>Free-text notes: transmission lines, rotor zones, airspace ceilings, active gun ranges, 4WD access, unicom radio channels, best-window advice. Read these before every unfamiliar flight.</p></div>
+    <div class="mi-tip"><b>💡 Reading the whole card:</b> Fly / No-Fly at the top is the quick verdict. The Ideal/Max/Gust row explains the surface score. The Wind-aloft panel tells you what the climb will be like. Density altitude + cloudbase set your realistic ceiling. Always sanity-check against the hazard list before committing.</div>
   </div>
 </div>
 <!-- Fly-score threshold editor (admin only). Live-saves every edit. -->
@@ -1600,6 +1640,8 @@ function bindOverlaySwipe(ov,closeFn){
 }
 function openModelsInfo(){bindOverlaySwipe(document.getElementById('models-overlay'),closeModelsInfo);document.getElementById('models-overlay').classList.add('open');}
 function closeModelsInfo(){const ov=document.getElementById('models-overlay');ov.classList.remove('open');ov.style.transform='';ov.style.opacity='';ov.style.transition='';}
+function openLaunchInfo(){bindOverlaySwipe(document.getElementById('launch-info-overlay'),closeLaunchInfo);document.getElementById('launch-info-overlay').classList.add('open');}
+function closeLaunchInfo(){const ov=document.getElementById('launch-info-overlay');ov.classList.remove('open');ov.style.transform='';ov.style.opacity='';ov.style.transition='';}
 // ── Fly-score threshold editor (admin only) ───────────────────────────────────
 function openFlyConfig(){if(!isAdmin){promptAdminLogin();return;}renderFlyConfigEditor();bindOverlaySwipe(document.getElementById('flycfg-overlay'),closeFlyConfig);document.getElementById('flycfg-overlay').classList.add('open');}
 function closeFlyConfig(){const ov=document.getElementById('flycfg-overlay');ov.classList.remove('open');ov.style.transform='';ov.style.opacity='';ov.style.transition='';}
@@ -1765,13 +1807,13 @@ function flightCalcsHTML(site,w){
   const cells=[];
   const daTip="Density altitude — the effective altitude your wing feels after adjusting for temperature and pressure. Higher DA = less lift, longer takeoff/landing rolls, softer flare. More than ~3,000 ft above field elevation flags noticeably degraded performance.";
   const cbTip="Estimated cloudbase (spread method) — projected altitude MSL where rising air cools to its dew point and forms cumulus. A rough working ceiling for thermals and cross-country climbs.";
-  if(da!=null)cells.push(`<div class="ppc"><div class="ppcl">Density alt<span class="ppc-i" title="${daTip}">i</span></div><div class="ppcv"${daHi?' style="color:#b45309;"':''}>${da.toLocaleString()} ft${daHi?' ⚠':''}</div><div class="ppch">field elev ${site.alt.toLocaleString()} ft</div></div>`);
-  if(cb!=null)cells.push(`<div class="ppc"><div class="ppcl">Est. cloudbase<span class="ppc-i" title="${cbTip}">i</span></div><div class="ppcv">${cb.toLocaleString()} ft</div><div class="ppch">${Math.max(0,cb-site.alt).toLocaleString()} ft above launch</div></div>`);
+  if(da!=null)cells.push(`<div class="ppc"><div class="ppcl">Density alt<span class="ppc-i" title="${daTip}" onclick="event.stopPropagation();alert(this.getAttribute('title'));">i</span></div><div class="ppcv"${daHi?' style="color:#b45309;"':''}>${da.toLocaleString()} ft${daHi?' ⚠':''}</div></div>`);
+  if(cb!=null)cells.push(`<div class="ppc"><div class="ppcl">Est. cloudbase<span class="ppc-i" title="${cbTip}" onclick="event.stopPropagation();alert(this.getAttribute('title'));">i</span></div><div class="ppcv">${cb.toLocaleString()} ft</div><div class="ppch">${Math.max(0,cb-site.alt).toLocaleString()} ft above launch</div></div>`);
   return`<div class="ppcalc">${cells.join('')}</div>`;
 }
 let geoCtrl=null, lfBlueDot=null;                // geolocation: MapLibre control + Leaflet blue dot
 let currentModel='gfs_hrrr';                     // selected weather model
-const MODEL_LABELS={gfs_hrrr:'HRRR',gfs_seamless:'GFS',ecmwf_ifs025:'ECMWF',icon_seamless:'ICON',gem_seamless:'GEM',best_match:'Best'};
+const MODEL_LABELS={gfs_hrrr:'HRRR',gfs_seamless:'GFS',ecmwf_ifs025:'ECMWF',icon_seamless:'ICON',gem_seamless:'GEM',meteofrance_seamless:'MeteoFr',best_match:'Best'};
 // USFS "Forest System Boundaries" MapServer's default render fills each forest polygon with a
 // solid color — at any tile opacity that fill still obscures the satellite basemap beneath, so
 // turning the layer on looked like the satellite had been swapped for a green/streets-style
@@ -3232,7 +3274,7 @@ function waltHorizontalHTML(site){
     {ft:13801,lbl:'600'},
     {ft:17998,lbl:'500'}
   ];
-  const MIN_TICK_GAP=14;   // percent — comfortably wider than a ~40 px LZ label at typical panel widths
+  const MIN_TICK_GAP=22;   // percent — wide enough that a ~65 px LZ label never overlaps a neighbouring hPa tick label
   for(const t of tickDefs){
     if(t.ft<=floor||t.ft>WALT_MAX)continue;
     const p=pctOf(t.ft);
@@ -3385,6 +3427,9 @@ function setGlideRatio(id,v){
 // Weather-model selector that sits next to the in-sidebar "2-Week Forecast" heading.
 // The whole 2-week section is mobile-only (hidden ≥769px), so this dropdown only appears on mobile.
 function fcModelSelectHTML(){return`<select class="pp-fc-model" title="Weather model" onchange="siteMenuModel(this.value,this)">${WX_MODELS.map(([v,l])=>`<option value="${v}"${v===currentModel?' selected':''}>${l}</option>`).join('')}<option value="__compare__">⚖ Compare models</option></select>`;}
+// 1h / 30m / 15m segmented toggle for the site menu, sits to the left of the model select.
+// Mirrors the top-bar #fc-res copy — setFcInterval() re-syncs .on state across all three.
+function fcResHTML(){return`<div class="pp-fc-res" title="Forecast time resolution"><button data-r="60" class="${fcInterval===60?'on':''}" onclick="setFcInterval(60)">1h</button><button data-r="30" class="${fcInterval===30?'on':''}" onclick="setFcInterval(30)">30m</button><button data-r="15" class="${fcInterval===15?'on':''}" onclick="setFcInterval(15)">15m</button></div>`;}
 // Weather-altitude slider for a site popup: drives the global windAlt so the forecast Wind row
 // (and wind overlay) show winds aloft. Initialised to the current altitude so it reflects state.
 function windAltSliderHTML(){
@@ -3435,7 +3480,7 @@ function waLoadCache(){try{return JSON.parse(localStorage.getItem(WA_CACHE_KEY)|
 function waSaveCache(id,levels,rose){try{const c=waLoadCache();c[id]={levels,rose,ts:Date.now()};localStorage.setItem(WA_CACHE_KEY,JSON.stringify(c));}catch(e){}}
 function waChartsHTML(id,site,levels,rose,ts){
   const stamp=ts?`<div class="wa-sub" style="text-align:center;margin-top:7px;opacity:.85;">📦 Saved data from ${ageStr(ts)} ago — live update unavailable right now (weather API limit).</div>`:'';
-  return waControlsHTML(id)+`<div class="wa-grid"><div class="wa-cell"><div class="wa-cap">Wind aloft now</div>${hodographSVG(levels)}<div class="wa-sub">Each dot = wind at that height. A curving line means direction shifts with altitude (drift &amp; shear).</div></div><div class="wa-cell"><div class="wa-cap">Today's wind rose</div>${windRoseSVG(rose,site)}<div class="wa-sub">Daytime surface wind by direction; longer = more hours, color = avg speed. ● = launch facing (${d2c(site.facing)}).</div></div></div>`+stamp;
+  return waControlsHTML(id)+`<div class="wa-grid"><div class="wa-cell"><div class="wa-cap">Wind aloft now</div>${hodographSVG(levels)}${hodographSummary(levels)}<div class="wa-sub">Each dot = wind at that height. A curving line means direction shifts with altitude (drift &amp; shear).</div></div><div class="wa-cell"><div class="wa-cap">Today's wind rose</div>${windRoseSVG(rose,site)}<div class="wa-sub">Daytime surface wind by direction; longer = more hours, color = avg speed. ● = launch facing (${d2c(site.facing)}).</div></div></div>`+stamp;
 }
 async function loadWindAloft(id,btn){
   const site=LAUNCHES.find(s=>s.id===id);if(!site)return;
@@ -3477,8 +3522,33 @@ function hodographSVG(levels){
   const pts=levels.map(l=>{const r=l.dir*Math.PI/180,u=-l.sp*Math.sin(r),v=-l.sp*Math.cos(r);return{x:cx+u*scale,y:cy-v*scale,l};});
   const path=pts.map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
   const cols=['#2563eb','#0891b2','#16a34a','#ca8a04','#ea580c','#dc2626'];
-  let dots='';pts.forEach((p,i)=>{const col=cols[Math.min(cols.length-1,i)];dots+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.2" fill="${col}"/>`;if(i===0||i===pts.length-1)dots+=`<text x="${p.x.toFixed(1)}" y="${(p.y-6).toFixed(1)}" font-size="8" font-weight="700" text-anchor="middle" fill="${col}">${p.l.lbl}</text>`;});
+  // Label EVERY dot with its altitude — offset the label so it sits away from the centre so it never lands on the trail line.
+  let dots='';pts.forEach((p,i)=>{
+    const col=cols[Math.min(cols.length-1,i)];
+    dots+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.2" fill="${col}"/>`;
+    const dx=p.x-cx,dy=p.y-cy,mag=Math.max(1,Math.sqrt(dx*dx+dy*dy)),ox=(dx/mag)*8,oy=(dy/mag)*8;
+    const lx=p.x+ox,ly=p.y+oy+3;
+    dots+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="8" font-weight="700" text-anchor="middle" fill="${col}" stroke="#fff" stroke-width="2.5" paint-order="stroke" style="stroke-linejoin:round;">${p.l.lbl}</text>`;
+  });
   return`<svg viewBox="0 0 180 184" width="100%" style="max-width:168px;"><text x="90" y="10" font-size="8" text-anchor="middle" fill="#94a3b8">N</text><text x="174" y="95" font-size="8" text-anchor="middle" fill="#94a3b8">E</text><text x="90" y="181" font-size="8" text-anchor="middle" fill="#94a3b8">S</text><text x="6" y="95" font-size="8" text-anchor="middle" fill="#94a3b8">W</text>${rings}<text x="${cx+2}" y="${(cy-ringMax*scale+9).toFixed(1)}" font-size="7" fill="#94a3b8">${ringMax}mph</text><path d="${path}" fill="none" stroke="#475569" stroke-width="1.6"/>${dots}</svg>`;
+}
+// Plain-English one-liner beneath the hodograph: describes surface wind and how it evolves aloft.
+// Compares the lowest and highest available levels — direction shift + speed change — so a pilot
+// doesn't have to parse a polar plot to understand what the wind is doing.
+function hodographSummary(levels){
+  if(!levels||levels.length<2)return'';
+  const first=levels[0],last=levels[levels.length-1];
+  const c=d2c(first.dir),cTop=d2c(last.dir);
+  const spLo=Math.round(first.sp),spHi=Math.round(last.sp);
+  const dLo=first.dir,dHi=last.dir;
+  let veer=((dHi-dLo)%360+360)%360;if(veer>180)veer-=360;   // signed shortest angular change (+ = veering / clockwise)
+  const abs=Math.abs(veer);
+  let dir;
+  if(abs<20)dir=`steady ${c} through the column`;
+  else if(veer>0)dir=`turning to ${cTop} above ${last.lbl}`;
+  else dir=`backing to ${cTop} above ${last.lbl}`;
+  const spd=Math.abs(spHi-spLo)<3?'roughly constant':(spHi>spLo?`building to ${spHi} mph up top`:`easing to ${spHi} mph up top`);
+  return `<div class="wa-sub" style="color:#334155;font-weight:600;margin-top:6px;">${c} ${spLo} mph at the surface, ${spd}, ${dir}.</div>`;
 }
 function windRoseSVG(rose,site){
   const cx=90,cy=92,Rpx=66,maxN=Math.max(1,...rose.map(s=>s.n)),spCol=a=>a<8?'#22c55e':a<12?'#84cc16':a<16?'#eab308':a<20?'#f97316':'#ef4444';
@@ -3586,12 +3656,12 @@ function launchPop(site,w){
   const whyBtn=nf?`<button type="button" class="pp-why-btn" aria-expanded="false" onclick="togglePpWhy(this)" title="Show why">?</button>`:'';
   const whyPanel=nf?`<div class="pp-nofly-why" style="display:none;"><b>Why:</b> ${nf}</div>`:'';
   const badgeRow=`<div class="pp-badge-row">${bdg(s,{night:nightNo})}${whyBtn}</div>${whyPanel}`;
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div></div>${badgeRow}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${waltHorizontalHTML(site)}${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div></div>${badgeRow}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span><div class="pp-fc-ctrls">${fcResHTML()}${fcModelSelectHTML()}</div></div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${waltHorizontalHTML(site)}${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
   const bioHTML=lzBio?`<div class="ppbio"><div class="ppbio-h">📋 About this LZ</div><p>${lzBio}</p>${site.hazards?`<div class="ppbio-hz">${site.hazards.map(h=>`<span class="ppbio-tag">⚠ ${h}</span>`).join('')}</div>`:''}</div>`:'';
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}${tfrFlagHTML(site)}</div>${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span>${fcModelSelectHTML()}</div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${waltHorizontalHTML(site)}${flightCalcsHTML(site,w)}${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${shareBtnHTML(site.id)}${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn">◼ ${site.name}${tfrFlagHTML(site)}</div>${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span><div class="pp-fc-ctrls">${fcResHTML()}${fcModelSelectHTML()}</div></div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${waltHorizontalHTML(site)}${flightCalcsHTML(site,w)}${bioHTML}<a class="dirbtn" href="${directionsURL(site.lat,site.lon)}" target="_blank" rel="noopener">🧭 Directions to LZ</a>${shareBtnHTML(site.id)}${stationBtn(site.lat,site.lon)}${lzEditorHTML(site)}</div>`;
 }
 
 // ── 3D mini-map thumbnail (popup) ─────────────────────────────────────────────
@@ -3600,7 +3670,7 @@ function mountThumb(site,facing){
   const c=document.getElementById('ppsat');if(!c)return;
   destroyMini();
   if(useMapLibre&&window.maplibregl){
-    c.innerHTML='<div class="pp-sat-tag">🛰 3D · Esri</div>';
+    c.innerHTML='';
     try{
       // Frame the launch from its downhill side looking back INTO the takeoff slope,
       // so you're looking straight at it the way you'd run off (a west-facing launch
@@ -3627,9 +3697,14 @@ function mountThumb(site,facing){
       });
       mini.on('error',()=>{});
       miniMap=mini;
+      // Remember the framing so a double-click can snap back to it.
+      mini.__initBrg=brg;mini.__initPitch=pitch;mini.__initZoom=zoom;mini.__initCenter=[site.lon,site.lat];
+      // Double-click the thumbnail (either the sat area or the compass) → glide back to the original angle.
+      const resetThumb=()=>{try{mini.easeTo({center:mini.__initCenter,zoom:mini.__initZoom,pitch:mini.__initPitch,bearing:mini.__initBrg,duration:450});}catch(e){}};
+      c.addEventListener('dblclick',resetThumb);
       // Interactive compass (bottom-right): N fixed up; the blue dot/needle is the view
       // direction. Grab the dot and scrub it around to rotate the 3D camera in real time.
-      buildThumbCompass(c,brg);
+      buildThumbCompass(c,brg,resetThumb);
     }catch(e){c.innerHTML=`<img src="${satUrl(site.lat,site.lon)}" style="width:100%;height:148px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'"/>`;}
   }else{
     c.innerHTML=`<img src="${satUrl(site.lat,site.lon)}" style="width:100%;height:148px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'"/>`;
@@ -3638,7 +3713,7 @@ function mountThumb(site,facing){
 // Heading-up thumbnail compass. The mini-map is rendered "view-up", so the blue needle (the
 // camera's look-direction) stays pointing straight up, and the red "N" dial ROTATES so it always
 // points to true north for the current bearing. Drag anywhere to spin the dial / rotate the map.
-function buildThumbCompass(container,brg){
+function buildThumbCompass(container,brg,onReset){
   const wrap=document.createElement('div');wrap.className='thumb-compass';
   wrap.innerHTML=`<svg viewBox="0 0 40 40" width="40" height="40">
     <circle cx="20" cy="20" r="17" fill="rgba(0,0,0,.5)" stroke="rgba(255,255,255,.55)" stroke-width="1.2"/>
@@ -3666,20 +3741,24 @@ function buildThumbCompass(container,brg){
     }
   }catch(e){}
   const svg=wrap.querySelector('svg'),north=wrap.querySelector('.tc-north'),dot=wrap.querySelector('.tc-dot'),look=wrap.querySelector('.tc-look');
-  svg.style.cursor='grab';svg.style.touchAction='none';
+  svg.style.cursor='grab';svg.style.touchAction='none';svg.style.pointerEvents='all';
   const R=14,CX=20,CY=20;
+  wrap.__brgInit=brg;   // remembered so a double-tap can snap the dial back to where it started
   // The blue dot/needle is the draggable handle (the camera look-direction); the red N dial rotates
   // so it always points to true north (north sits at screen-angle -bearing).
   const setBrg=b=>{b=((b%360)+360)%360;const a=b*Math.PI/180,x=CX+R*Math.sin(a),y=CY-R*Math.cos(a);dot.setAttribute('cx',x);dot.setAttribute('cy',y);look.setAttribute('x2',x);look.setAttribute('y2',y);north.setAttribute('transform',`rotate(${-b},20,20)`);wrap.__brg=b;};
   setBrg(brg);
   const angleAt=ev=>{const r=svg.getBoundingClientRect();const dx=ev.clientX-r.left-r.width/2,dy=ev.clientY-r.top-r.height/2;return((Math.atan2(dx,-dy)*180/Math.PI)%360+360)%360;};
-  let dragging=false;
+  let dragging=false,downT=0,moved=false;
   // Drag the blue dot to where you want to look; the map rotates to that bearing and N re-points north.
   const apply=ev=>{const b=angleAt(ev);setBrg(b);if(miniMap){try{miniMap.setBearing(b);}catch(e){}}};
-  svg.addEventListener('pointerdown',ev=>{ev.preventDefault();dragging=true;svg.style.cursor='grabbing';try{svg.setPointerCapture(ev.pointerId);}catch(e){}apply(ev);});
-  svg.addEventListener('pointermove',ev=>{if(!dragging)return;apply(ev);});
+  svg.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();dragging=true;moved=false;downT=Date.now();svg.style.cursor='grabbing';try{svg.setPointerCapture(ev.pointerId);}catch(e){}apply(ev);});
+  svg.addEventListener('pointermove',ev=>{if(!dragging)return;moved=true;apply(ev);});
   const end=ev=>{dragging=false;svg.style.cursor='grab';try{svg.releasePointerCapture(ev.pointerId);}catch(e){}};
   svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
+  // Double-click the compass → snap the whole framing (bearing + pitch + zoom) back to what
+  // the launch was first opened with. Falls back to just re-setting the dial if no reset fn was passed.
+  wrap.addEventListener('dblclick',ev=>{ev.preventDefault();ev.stopPropagation();setBrg(wrap.__brgInit);if(typeof onReset==='function')onReset();else if(miniMap){try{miniMap.setBearing(wrap.__brgInit);}catch(e){}}});
 }
 
 // ── Layer panel (base maps + VFR sectional overlay) ───────────────────────────
@@ -4219,7 +4298,7 @@ function setFcInterval(n){
   n=parseInt(n,10)||60;if(n!==60&&n!==30&&n!==15)n=60;
   // Both the header (#fc-res) and mobile-menu (#menu-fc-res) copies of the toggle stay in
   // lockstep — one selector picks up either instance.
-  const sync=()=>document.querySelectorAll('#fc-res button, #menu-fc-res button').forEach(b=>{b.classList.toggle('on',+b.dataset.r===n);});
+  const sync=()=>document.querySelectorAll('#fc-res button, #menu-fc-res button, .pp-fc-res button').forEach(b=>{b.classList.toggle('on',+b.dataset.r===n);});
   if(fcInterval===n){sync();return;}
   fcInterval=n;
   sync();
@@ -4569,7 +4648,7 @@ function buildForecast(container,series,labels){
     // surface if the model has no data at that level for this hour).
     const wv=(windAlt>0&&e.windAlt!=null)?e.windAlt:e.wind;
     const dv=(windAlt>0&&e.dirAlt!=null)?e.dirAlt:e.dir;
-    hrRow+=cell(i,i===nowIdx?'Now':ap);
+    hrRow+=cell(i,ap);   // always show the time — the .now class + red line already flag the current cell
     const skyGlyph=sunriseIdxSet.has(i)?sunriseSVG:sunsetIdxSet.has(i)?sunsetSVG:skyIcon(e.cloud,e.pop,isNight(d.getHours()+d.getMinutes()/60));
     skyRow+=cell(i,skyGlyph);
     tempRow+=cell(i,`${cvTemp(e.temp)}°`,`color:${tempColor(e.temp)}`);
@@ -4599,7 +4678,7 @@ function buildForecast(container,series,labels){
     ['fc-r-therm','<span title="Thermal strength (climb punch, not ceiling): blends mixing-layer depth, airmass instability (lifted index / CAPE) and time of day. Taller bar = stronger thermals, peaking mid-afternoon. No bar = no thermals (night or overcast)." style="cursor:help;">Thermals</span>',thermRow]
   ];
   // Fly / No-Fly only makes sense at a real launch — skip it entirely for "My location" / flat pins.
-  if(siteHasWindow)rows.push(['fc-r-fly','<span title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature." style="cursor:help;text-transform:none;font-size:8.5px;letter-spacing:0;">Fly / No-Fly</span>',flyRow,colGrad(flyCols)]);
+  if(siteHasWindow)rows.push(['fc-r-fly','<span title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature." style="cursor:help;">Flyability</span>',flyRow,colGrad(flyCols)]);
   let labelsHTML='',dataHTML='';
   rows.forEach(([cls,lbl,cells,rowStyle])=>{
     labelsHTML+=`<div class="fc-row ${cls}"><div class="fc-lbl">${lbl}</div></div>`;
@@ -4778,10 +4857,10 @@ function placeMyLoc(lat,lon,fast,recenter){
       el.addEventListener('click',e=>{stopEvt(e);onClick();});
       myLocMarker=new maplibregl.Marker({element:el,anchor:'center',opacityWhenCovered:'1'}).setLngLat([lon,lat]).addTo(mlMap);
     }
-    // On phones, fly in flatter (pitch 0 so the dot lands dead-centre, not low on a tilted frame) and
-    // not as tight (13.5 was too far in for orienting yourself), so opening the app actually centres on you.
+    // Clicking the geo-pin should give you an oblique 3D framing — pitched about 55° so the
+    // terrain reads as terrain, not a paper map. Mobile keeps a slightly wider zoom for orientation.
     const mob=window.innerWidth<=768;
-    if(recenter)mlMap.flyTo({center:[lon,lat],zoom:mob?11.5:13.5,bearing:0,pitch:mob?0:45,duration:fast?800:550,curve:1.3,essential:true});
+    if(recenter)mlMap.flyTo({center:[lon,lat],zoom:mob?11.5:13.5,bearing:0,pitch:55,duration:fast?800:550,curve:1.3,essential:true});
   }else if(lfMap){
     if(myLocMarker){try{myLocMarker.setLatLng([lat,lon]);}catch(e){}}
     else{
@@ -5049,8 +5128,16 @@ function inWindow(dir,win){
 }
 // Grow a window by `m` degrees on each side (used for the marginal cross-wind band).
 function expandWin(win,m){return[(win[0]-m+360)%360,(win[1]+m)%360];}
-// Allowable wind STRENGTH (mph) by pilot rating. Sensible UHGPGA-style defaults; a site
-// may override with its own `winds:{idealLo,idealHi,max,gust}`. PG baseline; HG runs higher.
+// Allowable wind STRENGTH (mph) for a site. Highest → lowest precedence:
+//   1) `site.winds` — full explicit override on the site record
+//   2) The site's per-launch fly-score overrides on `surfaceWind` / `gustSpread`
+//      (falling back to the current global fly-score thresholds if any of those
+//      fields wasn't customized) — this is what keeps the "Ideal conditions" panel
+//      in lock-step with whatever custom fly/no-fly numbers the user typed for the
+//      launch. If a launch has no custom fly settings, the global defaults inform
+//      it; if the app itself has no fly config loaded yet, we fall through to
+//      rating-based baselines below.
+//   3) Rating-based UHGPGA-style defaults (PG baseline; HG runs higher).
 function windStrengthFor(site){
   if(site&&site.winds)return site.winds;
   const r=((site&&site.rating)||'P3').toUpperCase();
@@ -5060,6 +5147,22 @@ function windStrengthFor(site){
        :lvl===3?{idealLo:5,idealHi:14,max:18,gust:6}
        :{idealLo:5,idealHi:16,max:20,gust:8};
   if(isHG)s={idealLo:s.idealLo,idealHi:s.idealHi+4,max:s.max+6,gust:s.gust+2};
+  // If the fly-score config knows about a customized surface-wind or gust threshold
+  // (either global or per-launch), reflect it here so the pilot-facing "Ideal
+  // conditions" numbers stay coherent with the score/marker color they're seeing.
+  try{
+    if(typeof effectiveFlyCfg==='function'&&typeof flyConfig!=='undefined'&&flyConfig){
+      const cfg=effectiveFlyCfg(site);
+      const sw=cfg&&cfg.params&&cfg.params.surfaceWind;
+      const gs=cfg&&cfg.params&&cfg.params.gustSpread;
+      if(sw){
+        if(sw.caution!=null)s.idealHi=sw.caution;   // caution edge = top of the "ideal" range
+        if(sw.noFly!=null)s.max=sw.noFly;           // no-fly edge = hard max
+        if(sw.caution!=null&&s.idealLo>s.idealHi)s.idealLo=Math.max(1,s.idealHi-6);
+      }
+      if(gs&&gs.noFly!=null)s.gust=gs.noFly;        // hard gust-spread ceiling
+    }
+  }catch(e){}
   return s;
 }
 // Human-readable allowable wind direction, e.g. "SW–W (202°–292°)".
@@ -5421,6 +5524,10 @@ function closeSidebar(){
   destroyMini();openPopup=null;clearFlight();currentEditLZ=null;currentLaunchId=null;clearZones();clearLZHighlight();lockAllPins();hideMobileAction();hideGlideMobile();clearNearWx();
   // Leave the top weather panel on the last selected spot (no revert to the regional default).
   if(useMapLibre&&mlMap){try{mlMap.easeTo({padding:{right:0,left:0,top:0,bottom:0},duration:400});}catch(e){}}
+  // Mobile: the forecast strip was display:none while the popup was open, so any scrollLeft
+  // set by buildForecast during that time didn't stick. Restore the "now" column after it's
+  // visible again — otherwise the strip reappears scrolled to the far-left (yesterday).
+  requestAnimationFrame(()=>{const s=document.querySelector('#forecast .fc-scroll');if(s&&s._nowLeft!=null)s.scrollLeft=s._nowLeft;});
 }
 // Mobile: swipe the detail panel to the right to dismiss it (it slides in from the right).
 // Horizontal-only: a mostly-vertical drag is left to the panel's own scrolling.
