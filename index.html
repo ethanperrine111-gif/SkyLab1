@@ -346,7 +346,8 @@ body.dark .pp-walt{background:#0f172a;border-color:#1e293b;color:#e2e8f0;}
 .ppbio-hz{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
 .ppbio-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:#fef3c7;color:#92400e;}
 /* structured site facts + info lines */
-.ppfacts{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px;}
+.ppfacts{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:8px;}
+@media (max-width:600px){.ppfacts{grid-template-columns:repeat(3,1fr);}}
 .ppfact{background:#f1f5f9;border-radius:6px;padding:5px 7px;}
 .ppfact-k{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#94a3b8;}
 .ppfact-v{font-size:12.5px;font-weight:800;color:#1e293b;}
@@ -596,7 +597,7 @@ body.dark .wh-range::-moz-range-track{background:#334155;}
 .favstar{background:none;border:none;padding:0;margin:0 0 0 6px;font-size:20px;line-height:1;cursor:pointer;color:#cbd5e1;flex-shrink:0;font-family:inherit;-webkit-tap-highlight-color:transparent;}
 .favstar.on{color:#f59e0b;}
 .favstar:hover{color:#f59e0b;transform:scale(1.12);}
-.ppcalc{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px;}
+.ppcalc{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:5px;margin-top:7px;}
 .ppcalc .ppc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:5px 7px;}
 .ppcalc .ppcl{font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
 .ppcalc .ppcv{font-size:12.5px;font-weight:700;color:#0f172a;}
@@ -849,6 +850,15 @@ body.dark .lzedit[open]>summary{border-bottom-color:#1e293b;}
 #ar-status{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:14px;font-weight:700;text-align:center;padding:14px 20px;background:rgba(15,23,42,.72);border-radius:12px;max-width:80%;}
 #ar-close{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px));width:46px;height:46px;border-radius:50%;background:rgba(15,23,42,.85);color:#fff;border:2px solid rgba(255,255,255,.4);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:0;z-index:1610;pointer-events:auto;-webkit-tap-highlight-color:rgba(255,255,255,.2);}
 .ar-chip{position:absolute;display:flex;flex-direction:column;align-items:center;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));}
+.ar-chip.cluster{position:absolute;}
+.ar-chip.occluded{opacity:.45;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6)) grayscale(.5);}
+.ar-occ-badge{position:absolute;top:-6px;left:-6px;background:rgba(15,23,42,.85);color:#fde68a;font-size:11px;font-weight:800;padding:1px 5px;border-radius:8px;border:1.5px solid rgba(253,230,138,.6);z-index:2;}
+.ar-cluster-badge{position:absolute;top:-4px;right:-8px;background:#2563eb;color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:10px;border:2px solid #fff;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.4);}
+.ar-cluster-pop{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,.94);color:#fff;border:1.5px solid rgba(255,255,255,.25);border-radius:14px;padding:10px 12px;min-width:200px;max-width:80%;max-height:70%;overflow-y:auto;box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:auto;z-index:1615;}
+.ar-cluster-hd{font-size:12px;font-weight:800;color:#93c5fd;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;text-align:center;}
+.ar-cluster-row{padding:8px 10px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:3px;background:rgba(255,255,255,.06);}
+.ar-cluster-row:hover,.ar-cluster-row:active{background:rgba(37,99,235,.4);}
+.ar-cluster-close{margin-top:6px;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;background:rgba(255,255,255,.08);color:#cbd5e1;}
 .ar-chip svg{display:block;}
 .ar-chip-lbl{margin-top:2px;background:rgba(15,23,42,.75);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;text-align:center;line-height:1.3;}
 /* Off-screen sites (outside the camera's field of view): a small dot pinned to whichever
@@ -858,6 +868,14 @@ body.dark .lzedit[open]>summary{border-bottom-color:#1e293b;}
 .ar-edge.launch .ar-edge-dot{background:#16a34a;}
 .ar-edge.lz .ar-edge-dot{background:#2563eb;}
 #ar-hint{position:absolute;top:calc(48px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:rgba(15,23,42,.5);color:#fde68a;font-size:11px;font-weight:700;padding:3px 12px;border-radius:14px;white-space:nowrap;pointer-events:none;display:none;}
+/* Stack of accuracy/calibration warnings — GPS-imprecise, compass-uncalibrated, gimbal-lock, etc. */
+#ar-warn{position:absolute;top:calc(74px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:4px;align-items:center;pointer-events:none;max-width:92%;}
+.ar-warn-chip{background:rgba(180,83,9,.9);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:14px;line-height:1.3;text-align:center;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35);}
+.ar-warn-chip.bad{background:rgba(185,28,28,.92);}
+/* Small in-view compass-offset toggle (bottom-right) — mostly for Android Chromium builds that
+   still return magnetic heading; Utah's declination is ~+11°E so pins can be off by that much. */
+#ar-cal{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom,0px));right:calc(14px + env(safe-area-inset-right,0px));background:rgba(15,23,42,.72);color:#fff;font-size:11px;font-weight:700;border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:5px 11px;cursor:pointer;pointer-events:auto;z-index:1610;}
+#ar-cal.on{background:rgba(37,99,235,.85);border-color:#93c5fd;}
 /* native geolocate button hidden — driven by #geo-btn instead */
 .maplibregl-ctrl-geolocate{display:none!important;}
 /* brand logo as a cut-out overlay, bottom-centre of the map */
@@ -1053,7 +1071,7 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
         <label class="lp-row"><input type="checkbox" id="ov-airspace" onchange="toggleOverlay('airspace',this.checked)"/><span class="lp-ico">🚫</span><span class="lp-lbl">Airspace</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-tfr" onchange="toggleTFR(this.checked)"/><span class="lp-ico">⛔</span><span class="lp-lbl">TFRs</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-aqi" onchange="toggleAQI(this.checked)"/><span class="lp-ico">🫧</span><span class="lp-lbl">Air quality (AQI)</span></label>
-        <label class="lp-row"><input type="checkbox" id="ov-char" onchange="toggleCharLayer(this.checked)"/><span class="lp-ico">🪂</span><span class="lp-lbl">Flight character (best flavor today)</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-char" onchange="toggleCharLayer(this.checked)"/><span class="lp-ico">🪂</span><span class="lp-lbl">Flight score</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-thermals" onchange="toggleOverlay('thermals',this.checked)"/><span class="lp-ico">🔥</span><span class="lp-lbl">Thermal hotspots</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-skyways" onchange="toggleOverlay('skyways',this.checked)"/><span class="lp-ico">🛤️</span><span class="lp-lbl">Skyways</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-obstacles" onchange="toggleFeatureLayer('obstacles',this.checked)"/><span class="lp-ico">🗼</span><span class="lp-lbl">Obstacles</span></label>
@@ -1065,7 +1083,7 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
         <label class="lp-row"><input type="checkbox" id="ov-nps" onchange="toggleOverlay('nps',this.checked)"/><span class="lp-ico"><span class="lp-swatch" style="background:#a855f7;"></span></span><span class="lp-lbl">National Parks (no-fly)</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-usfs" onchange="toggleOverlay('usfs',this.checked)"/><span class="lp-ico"><span class="lp-swatch" style="background:#22c55e;"></span></span><span class="lp-lbl">National Forests</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-wilderness" onchange="toggleOverlay('wilderness',this.checked)"/><span class="lp-ico"><span class="lp-swatch" style="background:#dc2626;"></span></span><span class="lp-lbl">Wilderness (no-fly)</span></label>
-        <label class="lp-row"><input type="checkbox" id="ov-camping" onchange="toggleFeatureLayer('camping',this.checked)"/><span class="lp-ico">🏕️</span><span class="lp-lbl">Free camping</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-camping" onchange="toggleFeatureLayer('camping',this.checked)"/><span class="lp-ico">🏕️</span><span class="lp-lbl">Camping</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-power" onchange="toggleOverlay('power',this.checked)"/> ⚡ Power lines</label>
       </div>
     </div>
@@ -1078,6 +1096,8 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
       <div id="ar-markers"></div>
       <div id="ar-heading"></div>
       <div id="ar-hint"></div>
+      <div id="ar-warn"></div>
+      <button id="ar-cal" onclick="arPromptOffset()" title="Compass offset (magnetic declination)" aria-label="Compass offset">🧭 0°</button>
       <div id="ar-status"></div>
       <button id="ar-close" onclick="closeAR()" aria-label="Close AR view">✕</button>
     </div>
@@ -1235,6 +1255,9 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
     <div class="mi-card"><div class="mi-h"><span class="mi-n">Glide required</span></div><p>Minimum glide ratio needed to reach the LZ from launch. If forecast headwind pushes your working glide below this number, the site is a no-go for that day regardless of thermic conditions.</p></div>
     <div class="mi-card"><div class="mi-h"><span class="mi-n">Density altitude</span></div><p>The effective altitude your wing feels after correcting for temperature and pressure. Higher DA = less lift, longer takeoff/landing rolls, softer flare. More than ~3,000 ft above field elevation is a red flag — plan for a fast forward launch and a firm landing.</p></div>
     <div class="mi-card"><div class="mi-h"><span class="mi-n">Est. cloudbase</span></div><p>Working ceiling for thermals — the altitude MSL at which rising air cools to the dewpoint and forms cumulus. "Above launch" is your headroom; if cloudbase is <b>at or below</b> launch altitude, you're launching into cloud and you shouldn't.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Thermal top</span></div><p>Peak MSL altitude the mixed convective layer is forecast to reach today — the model's boundary-layer depth added to launch elevation. On <b>blue days</b> this IS your working ceiling. On <b>cu days</b>, real ceiling = min(thermal top, cloudbase). "Peak 2pm" tells you when the day tops out.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Thermal window</span></div><p>The hours the boundary layer is deep enough (≥1,640 ft AGL) to sustain useable thermals — think of it as "thermals on" → "thermals off." The trigger temperature next to it is the surface temp today needs to hit for the morning inversion to break. Plan XC launches inside this window.</p></div>
+    <div class="mi-card"><div class="mi-h"><span class="mi-n">Day type</span></div><p>Quick classifier from cloudbase vs thermal top. <b>Cu day</b> (green): cumulus forms right around the BL top — thermals are visually marked from a distance. <b>Blue day</b> (blue): cloudbase is above the BL top or air's too dry — thermals still work but nothing marks them. <b>Capped</b> (amber): cu are forming well below BL top — usually means the day will overdevelop into storms.</p></div>
     <div class="mi-card"><div class="mi-h"><span class="mi-n">Wind aloft (hodograph)</span></div><p>Wind speed &amp; direction at a stack of altitudes above the site right now. Each colored dot is one level, labeled with its altitude. A straight line = steady flow all the way up. A curving line = the wind turns as you climb (drift &amp; shear — expect more bumps and cross-country push).</p></div>
     <div class="mi-card"><div class="mi-h"><span class="mi-n">Wind rose</span></div><p>How today's daytime surface wind is distributed by direction. Longer spoke = more hours from that way; color = average speed. The blue ● marks the launch facing — you want the busiest spokes near that dot.</p></div>
     <div class="mi-card"><div class="mi-h"><span class="mi-n">Hazards / Airspace / Radio / Access</span></div><p>Free-text notes: transmission lines, rotor zones, airspace ceilings, active gun ranges, 4WD access, unicom radio channels, best-window advice. Read these before every unfamiliar flight.</p></div>
@@ -1826,16 +1849,48 @@ function cloudbaseFt(site,w){
   const aglFt=spread/2.5*1000;               // ~2.5°C convergence per 1000 ft
   return Math.round(site.alt+aglFt);         // MSL
 }
+// Format a decimal hour (0-23.99) as "9am" / "1pm" for compact display.
+function fmtHourAmPm(h){if(h==null)return'';const hr=Math.round(h)%24;const p=hr>=12?'pm':'am';const d=((hr+11)%12)+1;return d+p;}
 function flightCalcsHTML(site,w){
   if(!w)return'';
   const da=densityAltFt(site,w), cb=cloudbaseFt(site,w);
-  if(da==null&&cb==null)return'';
+  const dt=w.dayThermals;
+  if(da==null&&cb==null&&!dt)return'';
   const daHi=da!=null&&da-site.alt>3000;     // flag big density-altitude excess over field elevation
   const cells=[];
   const daTip="Density altitude — the effective altitude your wing feels after adjusting for temperature and pressure. Higher DA = less lift, longer takeoff/landing rolls, softer flare. More than ~3,000 ft above field elevation flags noticeably degraded performance.";
   const cbTip="Estimated cloudbase (spread method) — projected altitude MSL where rising air cools to its dew point and forms cumulus. A rough working ceiling for thermals and cross-country climbs.";
   if(da!=null)cells.push(`<div class="ppc"><div class="ppcl">Density alt<span class="ppc-i" title="${daTip}" onclick="event.stopPropagation();alert(this.getAttribute('title'));">i</span></div><div class="ppcv"${daHi?' style="color:#b45309;"':''}>${da.toLocaleString()} ft${daHi?' ⚠':''}</div></div>`);
   if(cb!=null)cells.push(`<div class="ppc"><div class="ppcl">Est. cloudbase<span class="ppc-i" title="${cbTip}" onclick="event.stopPropagation();alert(this.getAttribute('title'));">i</span></div><div class="ppcv">${cb.toLocaleString()} ft</div><div class="ppch">${Math.max(0,cb-site.alt).toLocaleString()} ft above launch</div></div>`);
+  // Thermal top, thermal window, day type — from the model's boundary-layer profile
+  // (or a CAPE-based fallback when PBL data is unusable). Sanity range guards
+  // against stale cached spikes from before MAX_BL_M was introduced.
+  // ⛔ Prototype OFF — flip THERMAL_PROTOTYPE to true to re-enable the three
+  // extra cells. Underlying data (dayThermals, blHeightM) still fetches so we
+  // can iterate on the calc without another round of API/UI plumbing.
+  const THERMAL_PROTOTYPE=false;
+  if(THERMAL_PROTOTYPE&&dt&&!dt.stable&&dt.peakBlFt>200&&dt.peakBlFt<20000){
+    const topFt=site.alt+dt.peakBlFt;
+    const isEst=dt.source==='cape';
+    const srcNote=isEst?' Model PBL data unavailable at this grid — value estimated from CAPE; expect ±1,000 ft error.':'';
+    const topTip=`Thermal top — peak MSL altitude the mixed convective layer is forecast to reach today. ${isEst?'Estimated from':'Set by the model\'s boundary-layer depth'} (${dt.peakBlFt.toLocaleString()} ft above launch at ${fmtHourAmPm(dt.peakBlH)}). On blue days this IS your working ceiling; on cu days, the real ceiling is min(thermal top, cloudbase).${srcNote}`;
+    cells.push(`<div class="ppc"><div class="ppcl">Thermal top<span class="ppc-i" title="${topTip}" onclick="event.stopPropagation();alert(this.getAttribute('title'));">i</span></div><div class="ppcv">${topFt.toLocaleString()} ft${isEst?' ~':''}</div><div class="ppch">${dt.peakBlFt.toLocaleString()} ft above launch · peak ${fmtHourAmPm(dt.peakBlH)}${isEst?' · est':''}</div></div>`);
+    if(dt.triggerH!=null&&dt.shutdownH!=null){
+      const winTip=`Thermal window — hours the boundary layer is deep enough (≥1,640 ft AGL) to sustain useable thermals. "Kicks in ~${dt.triggerT!=null?dt.triggerT+'°F':'—'}" is the surface temperature at trigger time — the temp today needs to hit for the morning inversion to break. Plan XC launches inside this window.`;
+      cells.push(`<div class="ppc"><div class="ppcl">Thermal window<span class="ppc-i" title="${winTip}" onclick="event.stopPropagation();alert(this.getAttribute('title'));">i</span></div><div class="ppcv">${fmtHourAmPm(dt.triggerH)} – ${fmtHourAmPm(dt.shutdownH)}</div><div class="ppch">${dt.triggerT!=null?'kicks in ~'+dt.triggerT+'°F':''}</div></div>`);
+    }
+    let dayType='blue', dayNote='no cumulus expected';
+    if(dt.peakCbAglFt!=null){
+      const cbMsl=site.alt+dt.peakCbAglFt;
+      if(cbMsl<topFt-1000){dayType='capped';dayNote='cu forming below BL top — OD risk';}
+      else if(cbMsl>topFt+800){dayType='blue';dayNote='cloudbase above thermal top';}
+      else{dayType='cu';dayNote='cu will mark thermals nicely';}
+    }
+    const dayColor=dayType==='cu'?'#059669':dayType==='blue'?'#0284c7':'#b45309';
+    const dayLabel=dayType==='cu'?'☁ Cu day':dayType==='blue'?'○ Blue day':'⚠ Capped';
+    const typeTip=`Day type — a quick classifier from cloudbase vs thermal top. Cu day: cumulus forms right around the BL top, marking thermals visually. Blue day: cloudbase is above the BL top (or air's too dry) — thermals exist but there are no cu to spot from a distance, so it's harder to route. Capped: cu are forming well below the BL top, which usually means the day will overdevelop into storms — treat as caution.`;
+    cells.push(`<div class="ppc"><div class="ppcl">Day type<span class="ppc-i" title="${typeTip}" onclick="event.stopPropagation();alert(this.getAttribute('title'));">i</span></div><div class="ppcv" style="color:${dayColor};">${dayLabel}</div><div class="ppch">${dayNote}</div></div>`);
+  }
   return`<div class="ppcalc">${cells.join('')}</div>`;
 }
 let geoCtrl=null, lfBlueDot=null;                // geolocation: MapLibre control + Leaflet blue dot
@@ -2464,7 +2519,7 @@ function toggleCharLayer(on){
   if(!on){setCharVisible(false);return;}
   renderCharLayer();setCharVisible(true);
   const n=charMarkers.length||(lfChar?lfChar.getLayers().length:0);
-  setBadge('🪂 Flight character on · '+n+' sites');setTimeout(()=>setBadge(''),2600);
+  setBadge('🪂 Flight score on · '+n+' sites');setTimeout(()=>setBadge(''),2600);
 }
 // Keep the character layer in sync when siteWx snapshots refresh.
 function refreshCharLayer(){if(charVisible){renderCharLayer();setCharVisible(true);}}
@@ -3124,7 +3179,14 @@ function characterScore(wx,site){
   const s_spread=spread<=2?100:spread<=4?70:spread<=6?40:0;
   const s_stab=cape<=50?100:cape<=200?60:cape<=500?25:0;
   const s_cloud=c<=40?100:c<=70?70:c<=90?35:0;
-  const sled=Math.round(s_wind*.4+s_spread*.25+s_stab*.2+s_cloud*.15);
+  // Wind DIRECTION gate for sled — light wind on the back side is still a tail
+  // launch, which is unsafe no matter how "calm" the day looks. Same `off` signal
+  // ridge uses (degrees outside the launch's directional window), but graded more
+  // leniently since sled doesn't need lift, just a survivable launch angle.
+  // `off==null` means wind was too light to trust a bearing (<3 mph) — genuinely
+  // calm, so direction doesn't matter → full credit.
+  const s_dir=off==null?1:off<=20?1:off<=35?0.7:off<=50?0.3:off<=65?0.1:0;
+  const sled=Math.round((s_wind*.4+s_spread*.25+s_stab*.2+s_cloud*.15)*s_dir);
   const scores={thermals,ridge,sled};
   let best=null,bestScore=0;
   Object.entries(scores).forEach(([k,v])=>{if(v>bestScore){best=k;bestScore=v;}});
@@ -4240,8 +4302,65 @@ function attachAloftFields(res,hourly,idx){
   if(viz!=null)res.visibility=Math.round(viz/1609.34*10)/10;                   // m → mi
   if(pop!=null)res.rainChance=Math.round(pop);
   if(prec!=null)res.rainRate=Math.round(prec*100)/100;                          // in/hr (unit=in via wind_speed_unit? no — precip is separate; open-meteo defaults to mm — see note)
+  const blH=g('boundary_layer_height');                                          // meters AGL, model-provided PBL depth
+  if(blH!=null)res.blHeightM=Math.round(blH);
   const base=lclFeet(res.temp,res.dp);
   if(base!=null)res.cloudBase=base;
+}
+// Scan the full day's hourly PBL height + temp + dewpoint to derive:
+//   triggerH   — first daylight hour with meaningful convective mixing (BL ≥ 500 m AGL ≈ 1,640 ft)
+//   triggerT   — surface temperature at that hour (the "trigger temp" in pilot terms)
+//   shutdownH  — last daylight hour still above that BL threshold
+//   peakBlM    — max PBL depth during daylight, in meters
+//   peakBlH    — hour of peak; peakBlFt is peak in feet
+//   peakCbAglFt — LCL at the peak hour, feet AGL from launch (null → blue day, no cu)
+// Returned object is stashed on the weather record so flightCalcsHTML can render
+// thermal top / thermal window / day-type without redoing the scan.
+function computeDayThermals(hourly,dawnH,duskH){
+  if(!hourly)return null;
+  const bl=hourly.boundary_layer_height||[], tp=hourly.temperature_2m||[], dp=hourly.dew_point_2m||[], ca=hourly.cape||[];
+  const dH=Math.floor(dawnH!=null?dawnH:7), sH=Math.ceil(duskH!=null?duskH:19);
+  const THRESH=500;                                                              // meters AGL — meaningful convective mixing
+  // Cap plausible PBL depth. HRRR/GFS's Richardson-number PBL scheme sometimes
+  // returns "top of calculation grid" values in the 15–20 km range over complex
+  // terrain (Wasatch Front) instead of nulling out — treat anything above this
+  // as an unphysical spike and skip it. Realistic max PBL over the Utah desert
+  // in summer is ~4,500 m; 5,500 m gives comfortable headroom before rejecting.
+  const MAX_BL_M=5500;
+  let triggerH=null,triggerT=null,shutdownH=null,peakBlM=0,peakBlH=null,peakCbAglFt=null;
+  for(let i=0;i<bl.length;i++){
+    if(i<dH||i>sH)continue;
+    const b=bl[i];if(b==null||b>MAX_BL_M)continue;
+    if(b>=THRESH){
+      if(triggerH==null){triggerH=i;triggerT=tp[i]!=null?Math.round(tp[i]):null;}
+      shutdownH=i;
+    }
+    if(b>peakBlM){peakBlM=b;peakBlH=i;peakCbAglFt=lclFeet(tp[i],dp[i]);}
+  }
+  if(peakBlM>0)return{triggerH,triggerT,shutdownH,peakBlM,peakBlH,peakBlFt:Math.round(peakBlM*3.28084),peakCbAglFt,source:'model'};
+  // ── Fallback: model PBL unusable (field missing entirely, or every daylight
+  // hour spiked above MAX_BL_M and got rejected). Estimate thermal top from
+  // CAPE + LCL, which we always have. Not as sharp as a good model PBL profile,
+  // but keeps the boxes populated on sites/models where boundary_layer_height
+  // is unreliable. Threshold: any CAPE ≥ 50 J/kg counts as convective.
+  const scanLen=Math.max(tp.length,ca.length);
+  if(scanLen===0)return null;
+  let peakEstAglFt=0,peakCapeH=null;
+  for(let i=0;i<scanLen;i++){
+    if(i<dH||i>sH)continue;
+    const c=ca[i]!=null?ca[i]:0;
+    if(c>=50){
+      if(triggerH==null){triggerH=i;triggerT=tp[i]!=null?Math.round(tp[i]):null;}
+      shutdownH=i;
+    }
+    // Rough top-of-convection AGL: 2,000 ft baseline + 5 ft per J/kg CAPE,
+    // capped at 15,000 ft AGL. Not a sounding — an order-of-magnitude proxy
+    // calibrated to typical Utah summer thermal ceilings.
+    const estAglFt=Math.min(15000,2000+c*5);
+    if(estAglFt>peakEstAglFt){peakEstAglFt=estAglFt;peakCapeH=i;peakCbAglFt=lclFeet(tp[i],dp[i]);}
+  }
+  if(peakEstAglFt<=0)return{stable:true};
+  return{triggerH,triggerT,shutdownH,peakBlH:peakCapeH,peakBlFt:Math.round(peakEstAglFt),peakCbAglFt,source:'cape'};
 }
 // Pull surface fields for a specific hour from `d.hourly[idx]`, falling back to
 // `d.current` when a field isn't in the hourly grid. Using the model's hourly slot
@@ -4259,13 +4378,14 @@ function surfaceAtHour(d,idx){
 // hardVeto threshold (0.05 in/hr).
 async function fetchHRRR(lat,lon){
   const k=`${currentModel}|${lat.toFixed(2)},${lon.toFixed(2)}`;if(wxCache[k])return wxCache[k];
-  const hourlyList='temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover,precipitation_probability,precipitation,cape,lifted_index,visibility,wind_speed_925hPa,wind_direction_925hPa,wind_speed_850hPa,wind_direction_850hPa';
+  const hourlyList='temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover,precipitation_probability,precipitation,cape,lifted_index,visibility,boundary_layer_height,wind_speed_925hPa,wind_direction_925hPa,wind_speed_850hPa,wind_direction_850hPa';
   try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&hourly=${hourlyList}&daily=sunrise,sunset&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FDenver&models=${currentModel}&forecast_days=1`);const d=await r.json();
     let dawnH=null,duskH=null;
     if(d.daily&&d.daily.sunrise&&d.daily.sunrise[0]){dawnH=hourOf(d.daily.sunrise[0])-0.5;duskH=hourOf(d.daily.sunset[0])+0.5;civilDawnH=dawnH;civilDuskH=duskH;}  // civil twilight ≈ ±30 min
     const hourIdx=currentDenverHourIdx();
     const res={...surfaceAtHour(d,hourIdx),dawnH,duskH};
     attachAloftFields(res,d.hourly,hourIdx);
+    res.dayThermals=computeDayThermals(d.hourly,dawnH,duskH);
     wxCache[k]=res;persistWxCache();return res;}catch{return null;}
 }
 // Fetch weather for MANY sites in a single Open-Meteo call (comma-separated coords),
@@ -4273,7 +4393,7 @@ async function fetchHRRR(lat,lon){
 // and every call comes back 429, which is why the forecast/markers showed nothing.
 async function fetchHRRRBatch(sites,fallback){
   const CHUNK=40;
-  const hourlyList='temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover,precipitation_probability,precipitation,cape,lifted_index,visibility,wind_speed_925hPa,wind_direction_925hPa,wind_speed_850hPa,wind_direction_850hPa';
+  const hourlyList='temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover,precipitation_probability,precipitation,cape,lifted_index,visibility,boundary_layer_height,wind_speed_925hPa,wind_direction_925hPa,wind_speed_850hPa,wind_direction_850hPa';
   const hourIdx=currentDenverHourIdx();
   // Serve any already-cached site from wxCache (localStorage-hydrated), only network-fetch the rest.
   // This is what makes a page reload cheap: the batch below skips every site we still have on disk.
@@ -4302,6 +4422,7 @@ async function fetchHRRRBatch(sites,fallback){
         const dl=d&&d.daily;
         if(dl&&dl.sunrise&&dl.sunrise[0]){eff.dawnH=hourOf(dl.sunrise[0])-0.5;eff.duskH=hourOf(dl.sunset[0])+0.5;}
         attachAloftFields(eff,d.hourly,hourIdx);
+        eff.dayThermals=computeDayThermals(d.hourly,eff.dawnH,eff.duskH);
         wxCache[`${currentModel}|${s.lat.toFixed(2)},${s.lon.toFixed(2)}`]=eff;
       }
       if(eff)siteWx[s.id]={...eff,status:flyS(eff.wind,eff.gusts,eff.cloud,eff.temp,null,s,eff.dir,null,eff)};   // extraWx=eff so vetoes see cape/li/rainRate/cloudBase on first fill
@@ -5328,7 +5449,12 @@ function startLiveTracking(){
   if(geoWatchId!=null||!navigator.geolocation)return;
   geoWatchId=navigator.geolocation.watchPosition(
     p=>{
-      const la=p.coords.latitude,lo=p.coords.longitude;lastGeo={lat:la,lon:lo};
+      const la=p.coords.latitude,lo=p.coords.longitude,alt=p.coords.altitude;
+      lastGeo={lat:la,lon:lo,alt:alt};
+      arGpsAcc=(typeof p.coords.accuracy==='number')?p.coords.accuracy:null;
+      // GPS altitude is metres → feet, and prefer Open-Meteo MSL when available (see #10).
+      if(alt!=null&&!isNaN(alt)&&!arAltFromOpenMeteo)arUserAltFt=alt*3.28084;
+      if(arActive)renderARWarn();
       placeMyLoc(la,lo,false,false);
       if(followMe){
         if(useMapLibre&&mlMap){try{mlMap.easeTo({center:[lo,la],duration:600});}catch(e){}}
@@ -5355,7 +5481,7 @@ function goToMyLocation(fast,force){
   // Always ask for a fresh, high-accuracy (GPS-grade, not coarse cell/wifi-tower) fix — a coarse
   // network fix can be off by an entire state, which is worse than the couple extra seconds this takes.
   navigator.geolocation.getCurrentPosition(
-    p=>{lastGeo={lat:p.coords.latitude,lon:p.coords.longitude};placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);},
+    p=>{const alt=p.coords.altitude;lastGeo={lat:p.coords.latitude,lon:p.coords.longitude,alt:alt};if(alt!=null&&!isNaN(alt)&&!arAltFromOpenMeteo)arUserAltFt=alt*3.28084;placeMyLoc(lastGeo.lat,lastGeo.lon,fast,true);startLiveTracking();if(!force)maybeSetGeoForecast(lastGeo.lat,lastGeo.lon);},
     ()=>{},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
   // Then start continuous high-accuracy tracking so the dot follows you live.
   startLiveTracking();
@@ -5374,7 +5500,19 @@ function autoGeoOnBoot(){
 // close enough for "which peak is that", not landing-precision.
 let arStream=null, arWatchId=null, arHeading=null, arActive=false, arRenderTimer=null;
 let arSmoothedHeading=null, arGotAbsolute=false;   // smoothing state + "have we seen an absolute reading yet"
-const AR_RANGE_MI=25, AR_FOV=62;
+let arPitch=0, arSmoothedPitch=null;               // camera elevation angle above horizon (deg), + its low-pass state
+let arHFOV=65, arVFOV=null;                        // real camera FOV — populated from the video track when the browser exposes it
+let arVideoW=0, arVideoH=0;                        // native video dimensions — used to compute how much `object-fit: cover` crops off each axis
+let arGpsAcc=null;                                 // most-recent GPS accuracy in metres — used to warn when a wifi/cell fix would misplace every pin
+let arCompassAcc=null;                             // iOS webkitCompassAccuracy in degrees (or -1 when unreliable)
+let arGimbalLock=false;                            // true when phone is near-vertical (heading axis degenerate → jittery)
+let arUsedWebkitHeading=false;                     // did the current session's heading come from iOS's already-true-north stream?
+const AR_OFFSET_KEY='skylab_ar_compass_offset';
+let arCompassOffset=(()=>{try{return parseFloat(localStorage.getItem(AR_OFFSET_KEY))||0;}catch(e){return 0;}})();
+let arUserAltFt=null;                              // user's altitude in feet (from GPS or Open-Meteo elevation fallback), for elevation-angle math
+let arAltFromOpenMeteo=false;                      // once we get an MSL elevation from Open-Meteo, stop letting the noisier WGS84 GPS altitude overwrite it
+let arLastRender=0;                                // sensor-driven render throttle (ms since epoch of last renderAR)
+const AR_RANGE_MI=50, AR_FOV=62;                   // AR_FOV kept for back-compat — live code uses arHFOV / arVFOV. Range at 50 mi covers Utah's typical clear-day visibility (peaks 40-100 mi out).
 async function openAR(){
   if(arActive)return;
   arActive=true;
@@ -5406,14 +5544,48 @@ async function openAR(){
   if(!arActive)return;   // closed while awaiting the permission prompt
   const v=document.getElementById('ar-video');v.srcObject=arStream;
   try{await v.play();}catch(e){}
+  // Read the actual camera field-of-view when the browser exposes it. horizontalFieldOfView is only
+  // reported by a subset of Chromium-based mobile browsers; when missing we fall back to 65° which
+  // is close to modern phone main cameras (iPhone ~64-68°, Pixel/Samsung ~68-77°). Vertical FOV
+  // is derived from the actual video aspect ratio so tall/short phones don't squash the sky.
+  try{
+    const track=arStream.getVideoTracks()[0];
+    const s=track&&track.getSettings?track.getSettings():{};
+    if(typeof s.horizontalFieldOfView==='number'&&s.horizontalFieldOfView>30&&s.horizontalFieldOfView<130)arHFOV=s.horizontalFieldOfView;
+    arVideoW=s.width||v.videoWidth||1280;
+    arVideoH=s.height||v.videoHeight||720;
+    arVFOV=2*Math.atan(Math.tan(arHFOV*Math.PI/360)*arVideoH/arVideoW)*180/Math.PI;
+  }catch(e){arVFOV=arHFOV*0.75;}
+  // Camera dims sometimes settle a beat after play(); catch those too so crop-FOV math is accurate.
+  v.addEventListener('loadedmetadata',()=>{if(v.videoWidth){arVideoW=v.videoWidth;arVideoH=v.videoHeight;}},{once:true});
   setARStatus('Waiting for compass + your location…');
   if(navigator.geolocation)startLiveTracking();   // reuses the app's own location watcher — harmless if already running
+  ensureARUserAlt();                              // fills in arUserAltFt from Open-Meteo elevation when GPS didn't give us an altitude (common on iOS in landscape/wifi)
   if(!arRenderTimer)arRenderTimer=setInterval(renderAR,500);
   renderAR();
+  // Backgrounding the tab or locking the screen keeps the camera stream + sensor listeners live,
+  // which is a big battery drain (~20-30%/hr with the flashlight-adjacent camera pipeline). Pause
+  // the video + render loop on hidden and resume on visible. One handler covers the whole session.
+  if(!openAR._visBound){
+    openAR._visBound=true;
+    document.addEventListener('visibilitychange',()=>{
+      if(!arActive)return;
+      const vid=document.getElementById('ar-video');
+      if(document.hidden){
+        if(vid){try{vid.pause();}catch(e){}}
+        if(arRenderTimer){clearInterval(arRenderTimer);arRenderTimer=null;}
+      }else{
+        if(vid){try{vid.play();}catch(e){}}
+        if(!arRenderTimer)arRenderTimer=setInterval(renderAR,500);
+        renderAR();
+      }
+    });
+  }
 }
 function closeAR(){
   arActive=false;
-  arSmoothedHeading=null;arGotAbsolute=false;arHeading=null;
+  arSmoothedHeading=null;arGotAbsolute=false;arHeading=null;arUsedWebkitHeading=false;
+  arSmoothedPitch=null;arPitch=0;arVFOV=null;arGimbalLock=false;arCompassAcc=null;   // reset pitch + FOV so a re-open re-samples fresh
   document.getElementById('ar-view').style.display='none';
   const v=document.getElementById('ar-video');if(v){try{v.srcObject=null;v.pause();}catch(e){}}
   if(arStream){arStream.getTracks().forEach(t=>t.stop());arStream=null;}
@@ -5421,7 +5593,51 @@ function closeAR(){
   window.removeEventListener('deviceorientation',onARHeading,true);
   if(arRenderTimer){clearInterval(arRenderTimer);arRenderTimer=null;}
 }
+// GPS `p.coords.altitude` is null on most iOS Wi-Fi fixes and some Android setups. Elevation-angle
+// math needs SOME baseline for "where the camera is vertically", so when we don't have one we ask
+// Open-Meteo (already used elsewhere in the app) for the ground elevation at the user's lat/lon.
+// That's a very good proxy — the user is standing on the ground, not floating a few hundred feet
+// above it. Cached in arUserAltFt for the rest of the AR session.
+async function ensureARUserAlt(){
+  // Fetch even when arUserAltFt is already populated: the initial value likely came from GPS
+  // altitude, which on iOS/Wi-Fi is WGS84-ellipsoidal (off by 10-30 m in Utah). Open-Meteo returns
+  // ground MSL, which is what the pilot's phone is standing on, and is what the elevation-angle
+  // math actually wants. Once we have that, arAltFromOpenMeteo pins it and blocks GPS overwrites.
+  if(arAltFromOpenMeteo||!lastGeo)return;
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lastGeo.lat.toFixed(4)}&longitude=${lastGeo.lon.toFixed(4)}`);
+    const j=await r.json();
+    if(j&&j.elevation&&j.elevation[0]!=null){arUserAltFt=j.elevation[0]*3.28084;arAltFromOpenMeteo=true;renderAR();}
+  }catch(e){}
+}
 function setARStatus(msg){const el=document.getElementById('ar-status');if(el){el.textContent=msg;el.style.display=msg?'block':'none';}}
+// Stacks GPS-accuracy / compass-calibration / gimbal-lock warnings above the AR chips. Any one
+// of these can make pins land in the wrong spot — the user needs to know when to distrust them.
+function renderARWarn(){
+  const el=document.getElementById('ar-warn');if(!el)return;
+  const chips=[];
+  if(arGpsAcc!=null&&arGpsAcc>100)chips.push(`<div class="ar-warn-chip ${arGpsAcc>500?'bad':''}">GPS ±${Math.round(arGpsAcc)} m — pins may be off. Step outside for a better fix.</div>`);
+  // iOS compass: -1 → unknown, > 30° → calibrate. Android doesn't expose this — silence there.
+  if(arUsedWebkitHeading&&arCompassAcc!=null&&(arCompassAcc<0||arCompassAcc>30))
+    chips.push(`<div class="ar-warn-chip bad">Compass uncalibrated — wave your phone in a figure-8.</div>`);
+  if(arGimbalLock)chips.push(`<div class="ar-warn-chip">Phone near-vertical — heading unreliable, tilt back toward horizon.</div>`);
+  el.innerHTML=chips.join('');
+  // Keep the calibration button label in sync with the persisted offset.
+  const cb=document.getElementById('ar-cal');
+  if(cb){cb.textContent=`🧭 ${arCompassOffset>0?'+':''}${arCompassOffset.toFixed(0)}°`;cb.classList.toggle('on',arCompassOffset!==0);}
+}
+// Prompt the user for a compass-offset value in degrees (magnetic declination). +11° works for
+// most of Utah; East declination is positive. Persist so the next session inherits it.
+function arPromptOffset(){
+  const cur=arCompassOffset||0;
+  const v=prompt('Compass offset in degrees\n(magnetic declination — Utah ≈ +11° East)\n\nLeave blank to reset.',cur?String(cur):'');
+  if(v===null)return;
+  const n=v.trim()===''?0:parseFloat(v);
+  if(isNaN(n)||Math.abs(n)>45){setARStatus('Enter a value between −45 and +45.');setTimeout(()=>setARStatus(''),2200);return;}
+  arCompassOffset=n;
+  try{localStorage.setItem(AR_OFFSET_KEY,String(n));}catch(e){}
+  renderARWarn();renderAR();
+}
 // Returns true once listeners are wired (or on Android/desktop, which have no gated
 // permission API and just start firing events). Returns false — with a status message
 // already set — if the device has no compass or the user declines.
@@ -5453,34 +5669,124 @@ async function startARCompass(){
 // the correct absolute stream).
 function onARHeading(e){
   let raw=null;
+  const so=(screen.orientation&&screen.orientation.angle)||(typeof window.orientation==='number'?window.orientation:0);
   if(typeof e.webkitCompassHeading==='number'){
-    raw=e.webkitCompassHeading;arGotAbsolute=true;
+    raw=e.webkitCompassHeading;arGotAbsolute=true;arUsedWebkitHeading=true;
+    // iOS exposes a live confidence value (degrees). -1 or > 30 → user must wave the phone in a figure-8.
+    if(typeof e.webkitCompassAccuracy==='number')arCompassAcc=e.webkitCompassAccuracy;
   }else if(e.absolute===true&&e.alpha!=null){
-    const so=(screen.orientation&&screen.orientation.angle)||(typeof window.orientation==='number'?window.orientation:0);
     raw=((360-e.alpha)-so+720)%360;arGotAbsolute=true;
   }else if(!arGotAbsolute&&e.alpha!=null){
     // Last resort: only until an absolute reading arrives. Better than showing no heading.
-    const so=(screen.orientation&&screen.orientation.angle)||(typeof window.orientation==='number'?window.orientation:0);
     raw=((360-e.alpha)-so+720)%360;
   }
-  if(raw==null||isNaN(raw))return;
-  if(arSmoothedHeading==null)arSmoothedHeading=raw;
-  else{
-    // Handle the wraparound at 359°→0°: take the shortest angular delta.
-    let d=raw-arSmoothedHeading;
-    if(d>180)d-=360;else if(d<-180)d+=360;
-    arSmoothedHeading=(arSmoothedHeading+d*0.25+360)%360;   // 0.25 = light smoothing (fast response, mild jitter cut)
+  // Magnetic-declination / user-set compass offset. iOS webkitCompassHeading is already true-north
+  // (Apple handles declination internally), so we skip the offset on that path — otherwise apply it.
+  if(raw!=null&&!isNaN(raw)&&!arUsedWebkitHeading&&arCompassOffset)raw=(raw+arCompassOffset+360)%360;
+  if(raw!=null&&!isNaN(raw)){
+    if(arSmoothedHeading==null)arSmoothedHeading=raw;
+    else{
+      // Handle the wraparound at 359°→0°: take the shortest angular delta.
+      let d=raw-arSmoothedHeading;
+      if(d>180)d-=360;else if(d<-180)d+=360;
+      // Adaptive smoothing: heavy (0.15) when standing still to kill jitter, light (0.45) during
+      // a fast pan so pins don't lag behind. The threshold roughly separates "hand tremor" from
+      // "user actively looking around". Big fixed jumps still get followed in a couple frames.
+      const a=Math.abs(d)>8?0.45:0.15;
+      arSmoothedHeading=(arSmoothedHeading+d*a+360)%360;
+    }
+    arHeading=arSmoothedHeading;
   }
-  arHeading=arSmoothedHeading;
-  renderAR();
+  // Camera pitch: elevation angle of the back-camera's forward axis above the horizon.
+  // Portrait: phone held vertically ⇒ beta ≈ 90; tilt up to look at a peak ⇒ beta > 90 ⇒ pitch > 0.
+  // Landscape: gamma is the tilt axis; sign flips depending on which way the phone rotated.
+  if(e.beta!=null){
+    const b=e.beta,g=e.gamma||0;
+    let rawPitch;
+    if(so===90)rawPitch=-g;
+    else if(so===-90||so===270)rawPitch=g;
+    else if(so===180)rawPitch=180-b;
+    else rawPitch=b-90;
+    if(rawPitch>90)rawPitch=180-rawPitch;else if(rawPitch<-90)rawPitch=-180-rawPitch;   // fold anything past straight-up/down back into ±90
+    if(arSmoothedPitch==null)arSmoothedPitch=rawPitch;
+    else arSmoothedPitch+=(rawPitch-arSmoothedPitch)*0.3;   // 0.3 — pitch drifts less than yaw, so a fixed factor is fine
+    arPitch=arSmoothedPitch;
+    // Gimbal lock: near-vertical phone poses (looking straight up or down) collapse the yaw axis
+    // and make heading jump around. Flag it so we can warn the user + freeze the pin layout.
+    arGimbalLock=Math.abs(arPitch)>75;
+  }
+  // Sensor events fire at 30-60 Hz. The 500ms arRenderTimer already handles idle updates; here we
+  // just want responsive re-renders while the user is actually moving. Throttle to ~15 Hz so we
+  // don't burn battery repainting the DOM on every raw event.
+  const now=Date.now();
+  if(now-arLastRender>66){arLastRender=now;renderAR();}
 }
-function arCompassLabel(h){const dirs=['N','NE','E','SE','S','SW','W','NW'];return dirs[Math.round(h/45)%8]+' '+Math.round(h)+'°';}
+// Terrain-occlusion cache: ridge-line-of-sight check between the user and each site. Keyed by
+// site id + coarse user location so a jittery GPS fix doesn't invalidate the whole cache every
+// callback. Result is bool + timestamp; entries older than 45s get recomputed.
+const arOccludedCache=new Map();
+function arOcclusionKey(site){
+  if(!lastGeo)return null;
+  const ux=lastGeo.lat.toFixed(3),uy=lastGeo.lon.toFixed(3);   // ~110m rounding
+  return`${site.id}|${ux},${uy}`;
+}
+// Returns true when the DEM between you and the site rises above the straight sight-line
+// (a ridge blocks the peak). Cheap enough to run once per open — cached, so per-frame is fine.
+// Skipped (returns false) when the MapLibre terrain isn't ready — better to show a chip than
+// silently hide a site because we don't know yet.
+function arSiteOccluded(site){
+  if(!(useMapLibre&&mlMap&&mlMap.queryTerrainElevation)||!lastGeo||site.lat==null||site.lon==null)return false;
+  const key=arOcclusionKey(site);if(!key)return false;
+  const cached=arOccludedCache.get(key);
+  if(cached&&(Date.now()-cached.t)<45000)return cached.v;
+  const uLat=lastGeo.lat,uLon=lastGeo.lon;
+  const userGround=mlMap.queryTerrainElevation([uLon,uLat]);
+  if(userGround==null)return false;                          // DEM not loaded yet — don't hide
+  const uEye=userGround+1.6;                                 // eye-height above ground (m)
+  const sGround=mlMap.queryTerrainElevation([site.lon,site.lat]);
+  // Sites usually have their own altitude (`site.alt`, feet) — trust that when the DEM disagrees
+  // (a launch on a cliff edge often sits above its rasterized elevation cell).
+  const sMslM=(site.alt!=null)?site.alt*0.3048:(sGround!=null?sGround:null);
+  if(sMslM==null)return false;
+  const totalMi=hav(uLat,uLon,site.lat,site.lon);
+  const totalM=totalMi*1609.344;
+  if(totalM<400)return false;                                // too close to occlude meaningfully
+  const siteAngle=Math.atan2(sMslM-uEye,totalM);
+  // Sample every ~250m, capped at 60 samples so a 50mi site doesn't blow up the loop.
+  const nSamples=Math.min(60,Math.max(6,Math.round(totalM/250)));
+  let worst=-Infinity;
+  for(let i=1;i<nSamples;i++){
+    const f=i/nSamples;
+    const lat=uLat+(site.lat-uLat)*f, lon=uLon+(site.lon-uLon)*f;
+    const g=mlMap.queryTerrainElevation([lon,lat]);
+    if(g==null)continue;                                     // hole in the tile: don't let a missing sample fake an occlusion
+    // Earth-curvature drop: ~7.85e-8 m per m². Subtract so ridges 20mi out don't look artificially high.
+    const drop=(f*totalM)*(f*totalM)*7.85e-8;
+    const a=Math.atan2(g-drop-uEye,f*totalM);
+    if(a>worst)worst=a;
+  }
+  // 1.5° tolerance: DEM cells are ~30m, so a "just below" ridge shouldn't hide a peak that's
+  // actually visible in real life. Better to over-show than to hide something the pilot sees.
+  const occluded=worst>siteAngle+(1.5*Math.PI/180);
+  arOccludedCache.set(key,{v:occluded,t:Date.now()});
+  return occluded;
+}
+function arCompassLabel(h){
+  const dirs=['N','NE','E','SE','S','SW','W','NW'];
+  const compass=dirs[Math.round(h/45)%8]+' '+Math.round(h)+'°';
+  // Pitch chip lets the pilot see at a glance whether tilt is being read — critical when the
+  // launches are 2000+ ft above the LZ and only appear at the correct spot when you tilt up.
+  const p=Math.round(arPitch);
+  const pitchStr=(p>=0?'↑':'↓')+Math.abs(p)+'°';
+  return`${compass} · ${pitchStr}`;
+}
 function renderAR(){
   if(!arActive)return;
   const layer=document.getElementById('ar-markers');
   const hEl=document.getElementById('ar-heading');
   const hintEl=document.getElementById('ar-hint');
   if(hEl)hEl.textContent=arHeading!=null?arCompassLabel(arHeading):'';
+  renderARWarn();
   if(arHeading==null||!lastGeo){
     if(layer)layer.innerHTML='';
     if(hintEl)hintEl.style.display='none';
@@ -5488,6 +5794,18 @@ function renderAR(){
   }
   setARStatus('');
   const w=layer.clientWidth||window.innerWidth;
+  const h=layer.clientHeight||window.innerHeight;
+  // `object-fit: cover` scales the video to fill the layer without letterboxing, cropping whichever
+  // axis is oversized. That crop means the on-screen FOV is SMALLER than the camera's native FOV,
+  // so pins placed with the raw values drift toward centre — worst at the edges. Compare aspects:
+  //   videoAspect > layerAspect (16:9 video in tall portrait layer) → sides are cropped → hFOV shrinks
+  //   videoAspect < layerAspect                                     → top/bottom cropped → vFOV shrinks
+  let hfov=arHFOV, vfov=arVFOV||(arHFOV*(h/Math.max(w,1)));
+  if(arVideoW>0&&arVideoH>0&&w>0&&h>0){
+    const videoAsp=arVideoW/arVideoH, layerAsp=w/h;
+    if(videoAsp>layerAsp)hfov=arHFOV*(layerAsp/videoAsp);   // sides cropped
+    else if(videoAsp<layerAsp)vfov=(arVFOV||arHFOV*0.75)*(videoAsp/layerAsp);   // top/bottom cropped
+  }
   let cands=[];
   LAUNCHES.forEach(s=>{if(s.lat!=null&&s.lon!=null)cands.push({site:s,type:'launch',mi:hav(lastGeo.lat,lastGeo.lon,s.lat,s.lon)});});
   (typeof lzStore!=='undefined'?lzStore:[]).forEach(z=>{if(z.lat!=null&&z.lon!=null)cands.push({site:z,type:'lz',mi:hav(lastGeo.lat,lastGeo.lon,z.lat,z.lon)});});
@@ -5503,22 +5821,56 @@ function renderAR(){
     }
   }
   if(hintEl){
-    if(fallback&&picked.length){hintEl.textContent=`Nothing within ${AR_RANGE_MI} mi — showing nearest`;hintEl.style.display='block';}
+    if(fallback&&picked.length){hintEl.textContent=`Nothing within ${AR_RANGE_MI} mi — showing nearest (${picked[0].mi.toFixed(0)} mi)`;hintEl.style.display='block';}
     else hintEl.style.display='none';
   }
-  const items=picked.map(({site,type,mi})=>arItem(site,type,mi,w));
-  const onscreen=items.filter(it=>!it.offscreen).sort((a,b)=>b.mi-a.mi);   // farthest first so nearer chips paint on top
+  const items=picked.map(({site,type,mi})=>{
+    const it=arItem(site,type,mi,w,hfov,vfov);
+    // Terrain occlusion for LAUNCHES only — LZs sit in valleys and are almost always occluded
+    // by their launch, which isn't useful information. Result feeds `.occluded` styling below.
+    if(type==='launch')it.occluded=arSiteOccluded(site);
+    return it;
+  });
+  const onscreenAll=items.filter(it=>!it.offscreen).sort((a,b)=>b.mi-a.mi);   // farthest first so nearer chips paint on top
   const edge=items.filter(it=>it.offscreen);
+  // Cluster on-screen chips whose screen-x is within ~AR_CLUSTER_PX (roughly 3° of bearing at
+  // typical viewports). Point of the Mountain has ~5 launches within a few degrees — without
+  // clustering they stack up and the labels overlap illegibly. A tap expands the cluster.
+  const AR_CLUSTER_PX=Math.max(24,Math.round(w*0.055));
+  const clusters=[]; const byX=onscreenAll.slice().sort((a,b)=>a.x-b.x);
+  byX.forEach(it=>{
+    const last=clusters[clusters.length-1];
+    if(last&&Math.abs(last.x-it.x)<=AR_CLUSTER_PX)last.items.push(it);
+    else clusters.push({x:it.x,items:[it]});
+  });
   layer.innerHTML=
-    onscreen.map(it=>{
-      const svg=it.type==='launch'
-        ?mkLaunchSVG({flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[launchStatus(it.site)],it.site,siteWx[it.site.id])
-        :mkLZSVG(false,!!it.site.inTFR);
-      // Anchor the pin's TIP at the site's screen position (like the map does), with the
-      // label riding just below the tip so it doesn't cover the icon.
-      return `<div class="ar-chip ${it.type}" style="left:${it.x}px;top:${it.y}%;transform:translate(-50%,-100%) scale(${it.scale})" onclick="arPick('${it.type}','${it.id}')">
+    clusters.map(cl=>{
+      if(cl.items.length===1){
+        const it=cl.items[0];
+        const svg=it.type==='launch'
+          ?mkLaunchSVG({flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[launchStatus(it.site)],it.site,siteWx[it.site.id])
+          :mkLZSVG(false,!!it.site.inTFR);
+        // Anchor the pin's TIP at the site's screen position (like the map does), with the
+        // label riding just below the tip so it doesn't cover the icon. Occluded launches are
+        // dimmed rather than hidden so the user knows there's a peak behind that ridge.
+        const cls=(it.type==='launch'?'launch':'lz')+(it.occluded?' occluded':'');
+        const occ=it.occluded?'<div class="ar-occ-badge" title="Blocked by terrain">⛰</div>':'';
+        return `<div class="ar-chip ${cls}" style="left:${it.x}px;top:${it.y}%;transform:translate(-50%,-100%) scale(${it.scale})" onclick="arPick('${it.type}','${it.id}')">
+          ${occ}${svg}
+          <div class="ar-chip-lbl">${it.name}<br>${it.mi.toFixed(1)} mi</div>
+        </div>`;
+      }
+      // Multi-site cluster: render one badge at the median y with a count. Tap → arExpandCluster.
+      const nearest=cl.items.slice().sort((a,b)=>a.mi-b.mi)[0];
+      const y=cl.items.reduce((s,i)=>s+parseFloat(i.y),0)/cl.items.length;
+      const svg=nearest.type==='launch'
+        ?mkLaunchSVG({flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[launchStatus(nearest.site)],nearest.site,siteWx[nearest.site.id])
+        :mkLZSVG(false,!!nearest.site.inTFR);
+      const ids=cl.items.map(i=>i.type+':'+i.id).join('|');
+      return `<div class="ar-chip cluster" style="left:${cl.x}px;top:${y.toFixed(1)}%;transform:translate(-50%,-100%) scale(${nearest.scale})" onclick="arExpandCluster('${ids}')">
+        <div class="ar-cluster-badge">${cl.items.length}</div>
         ${svg}
-        <div class="ar-chip-lbl">${it.name}<br>${it.mi.toFixed(1)} mi</div>
+        <div class="ar-chip-lbl">${cl.items.length} sites<br>${nearest.mi.toFixed(1)} mi</div>
       </div>`;
     }).join('')+
     edge.map(it=>{
@@ -5528,15 +5880,49 @@ function renderAR(){
       </div>`;
     }).join('');
 }
-function arItem(site,type,mi,viewportW){
+// Cluster expansion: pop a small vertical list of the grouped sites at the tap location so the
+// user can pick the exact launch/LZ they wanted.
+function arExpandCluster(idsStr){
+  const ids=idsStr.split('|');
+  const layer=document.getElementById('ar-markers');if(!layer)return;
+  const rows=ids.map(t=>{
+    const[type,id]=t.split(':');
+    let site=null;
+    if(type==='launch')site=LAUNCHES.find(x=>x.id===id);
+    else site=(typeof lzStore!=='undefined'?lzStore:[]).find(x=>x.id===id);
+    if(!site||!lastGeo)return '';
+    const mi=hav(lastGeo.lat,lastGeo.lon,site.lat,site.lon);
+    return `<div class="ar-cluster-row" onclick="event.stopPropagation();arPick('${type}','${id}')">${type==='launch'?'🪂':'🎯'} ${site.name} · ${mi.toFixed(1)} mi</div>`;
+  }).join('');
+  const wrap=document.createElement('div');
+  wrap.className='ar-cluster-pop';
+  wrap.innerHTML=`<div class="ar-cluster-hd">Nearby sites</div>${rows}<div class="ar-cluster-close" onclick="this.parentNode.remove()">Close ✕</div>`;
+  wrap.onclick=e=>e.stopPropagation();
+  layer.appendChild(wrap);
+}
+function arItem(site,type,mi,viewportW,hfov,vfov){
   const brg=bearingTo(lastGeo.lat,lastGeo.lon,site.lat,site.lon);
   const rel=((brg-arHeading+540)%360)-180;               // signed delta from where you're facing, -180..180 (negative = turn left)
-  const offscreen=Math.abs(rel)>AR_FOV/2;                // outside the camera's view — shown as an edge dot instead of a full chip
-  const x=Math.round((0.5+rel/AR_FOV)*viewportW);
+  const offscreen=Math.abs(rel)>hfov/2;                  // outside the camera's actual horizontal FOV — shown as an edge dot instead of a full chip
+  const x=Math.round((0.5+rel/hfov)*viewportW);
+  // Elevation angle above the horizon from the user's position to the site. This is what makes
+  // AR feel "right" for mountain launches: a takeoff 2000ft above your LZ at 1mi horizontal
+  // reads at ~+21° pitch, so pointing the phone at the horizon shows it near the top of the
+  // frame and pointing UP at the peak parks it dead-centre. Falls back to a flat horizon
+  // when we're missing altitudes on either end.
+  const userAlt=arUserAltFt!=null?arUserAltFt:5000;      // sane Utah baseline while ensureARUserAlt() is in flight
+  const siteAlt=(site.alt!=null)?site.alt:userAlt;
+  const dAltM=(siteAlt-userAlt)*0.3048;                  // ft → m so the angle math is unitless
+  const dHorizM=Math.max(mi*1609.344,1);
+  const elevDeg=Math.atan2(dAltM,dHorizM)*180/Math.PI;
+  // Screen Y: 50% = camera axis. Positive vertDelta (site above where camera is pointing)
+  // pushes the chip UP the frame. Clamp so out-of-frame vertical still shows the chip
+  // pinned near the top/bottom edge as a cue that the user should tilt further.
+  const vertDelta=elevDeg-arPitch;
+  const yPct=Math.max(6,Math.min(94,50-(vertDelta/Math.max(vfov,1))*100));
   const capped=Math.min(mi,AR_RANGE_MI);                 // the fallback nearest-site can be farther than the normal range cap
   const scale=(Math.max(0.55,1-(capped/AR_RANGE_MI)*0.5)).toFixed(2);
-  const y=(50-scale*22).toFixed(1);                      // closer (bigger) chips sit a little lower, for a rough depth cue
-  return{id:site.id,name:site.name,type,mi,x,y,scale,rel,offscreen,site};
+  return{id:site.id,name:site.name,type,mi,x,y:yPct.toFixed(1),scale,rel,offscreen,site};
 }
 function arPick(type,id){
   closeAR();
@@ -6761,8 +7147,10 @@ function cullGhostMarkers(){
       if(typeof maplibregl==='undefined')throw new Error('maplibre script not ready');
       await initMapLibre(attempt<3?7000:11000);
       useMapLibre=true;mapOk=true;
-      document.getElementById('mode-badge').textContent='🏔 3D terrain active · right-drag to tilt';
-      setTimeout(()=>document.getElementById('mode-badge').style.opacity='0',4000);
+      // Silent success — no startup toast. (Was "🏔 3D terrain active · right-drag
+      // to tilt"; users found it noisy on every load.) Clear the "Loading" text
+      // that preceded this branch so nothing lingers.
+      const mb=document.getElementById('mode-badge');if(mb){mb.textContent='';mb.style.opacity='0';}
     }catch(e){
       console.warn('MapLibre attempt '+attempt+' failed:',(e&&e.message)||e);
       const mc=document.getElementById('map');if(mc)mc.innerHTML='';   // clear any half-built canvas before retrying
@@ -6788,6 +7176,12 @@ function cullGhostMarkers(){
   fitFcLoc();window.addEventListener('load',fitFcLoc);
   syncUnitBtns();   // highlight the saved unit choices in the menu
   fitAllModelSelects();   // size the model dropdown(s) to the selected word
+  // PWA: register the offline shell + tile cache. The <link rel="manifest"> above already declares
+  // the app; this makes it installable + gives pilots the last-seen map when they're out of signal.
+  // Skip on file:// (SW registration throws) and on very old browsers with no SW support.
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+  }
 })();
 </script>
 <div id="mobile-logo">🪂 SkyLab</div>
