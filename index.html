@@ -11,6 +11,24 @@
 <meta name="application-name" content="SkyLab"/>
 <meta name="theme-color" content="#0f172a"/>
 <link rel="manifest" href="manifest.json"/>
+<!-- Sharing preview (iMessage, Slack, Discord, WhatsApp, X, etc.). Without these tags the recipient's
+     app scrapes whatever image it feels like — and may fall back to a stale/cached preview from a
+     previous version of the URL. `?v=2` cache-busts old previews so recipients see the SkyLab logo. -->
+<meta name="description" content="Utah paragliding launches, landing zones, live weather and flyability."/>
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="SkyLab"/>
+<meta property="og:title" content="SkyLab — Utah Paragliding"/>
+<meta property="og:description" content="Live weather, wind, and fly-status for every Utah PG/HG launch and LZ."/>
+<meta property="og:image" content="https://ethanperrine111-gif.github.io/SkyLab1/icon-512.png?v=2"/>
+<meta property="og:image:width" content="512"/>
+<meta property="og:image:height" content="512"/>
+<meta property="og:url" content="https://ethanperrine111-gif.github.io/SkyLab1/"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="SkyLab — Utah Paragliding"/>
+<meta name="twitter:description" content="Live weather, wind, and fly-status for every Utah PG/HG launch and LZ."/>
+<meta name="twitter:image" content="https://ethanperrine111-gif.github.io/SkyLab1/icon-512.png?v=2"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png"/>
 <!-- Prefer the freshest index.html — a mid-edit reload should NOT resurrect a stale cached copy. -->
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
@@ -577,6 +595,9 @@ body.dark .wh-range::-moz-range-track{background:#334155;}
 /* Pin & camera share dimensions so they line up visually in #br-controls */
 #geo-btn,#ar-btn{box-sizing:border-box;width:36px;height:42px;}
 #ar-btn{font-size:22px;line-height:1;}
+/* Hide the AR/camera button on desktop — the phone-only pitch+compass sensors don't exist here,
+   so the button is dead weight. Re-shown inside the mobile media query below. */
+@media(min-width:769px){#ar-btn{display:none !important;}}
 #geo-btn{background:rgba(255,255,255,.92);border-color:rgba(0,0,0,.12);}
 #geo-btn:hover{background:#fff;}
 /* compass indicator (left side, below control buttons) */
