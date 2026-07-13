@@ -6618,6 +6618,20 @@ const WX_CACHE_KEY='skylab_wxcache_v2', FC_CACHE_KEY='skylab_fccache_v1';   // v
 const _stripHourly=o=>{if(!o)return o;const{hourly,...rest}=o;return rest;};
 function saveWxCache(){try{const sw={};for(const k in siteWx)sw[k]=_stripHourly(siteWx[k]);localStorage.setItem(WX_CACHE_KEY,JSON.stringify({ts:Date.now(),siteWx:sw,slcWx:_stripHourly(slcWx)}));}catch(e){}}
 function loadWxCache(){try{return JSON.parse(localStorage.getItem(WX_CACHE_KEY)||'null');}catch(e){return null;}}
+// Pre-fill siteWx from the localStorage wxCache before pins render so each launch
+// paints with its last-known status on first draw. Without this, addMarkers runs
+// with siteWx empty and every pin defaults to 'caution' (yellow) for the second
+// or two it takes loadWeather to finish — that was the "everything flashes yellow
+// on boot" glitch. Uses the same key + status computation as fetchHRRRBatch's
+// cache-serve path so the colors match once real fetches complete.
+function hydrateSiteWxFromCache(){
+  LAUNCHES.forEach(s=>{
+    if(!s.lat||!s.lon)return;
+    const k=`${currentModel}|${s.lat.toFixed(2)},${s.lon.toFixed(2)}`;
+    const c=wxCache[k];
+    if(c)siteWx[s.id]={...c,status:flyS(c.wind,c.gusts,c.cloud,c.temp,null,s,c.dir,null,c)};
+  });
+}
 function saveFcCache(series){try{localStorage.setItem(FC_CACHE_KEY,JSON.stringify({ts:Date.now(),lat:fcTarget.lat,lon:fcTarget.lon,series,daily:series&&series.daily||null}));}catch(e){}}
 function loadFcCache(){try{return JSON.parse(localStorage.getItem(FC_CACHE_KEY)||'null');}catch(e){return null;}}
 function ageStr(ts){const m=Math.round((Date.now()-ts)/60000);if(m<60)return m+' min';const h=Math.round(m/60);return h<48?h+' hr':Math.round(h/24)+' days';}
@@ -6762,7 +6776,8 @@ function cullGhostMarkers(){
   }
   setupLongPress();    // touch press-and-hold → drop an ad-hoc takeoff at that point
   setupSidebarSwipe(); // mobile: swipe the detail panel right to dismiss it
-  addMarkers();        // draw pins immediately (coloured 'caution' until weather lands)
+  hydrateSiteWxFromCache();   // paint pins with their last-known status from localStorage — otherwise every launch flashes yellow until loadWeather returns
+  addMarkers();        // draw pins immediately using the hydrated snapshot (or 'caution' fallback for sites the cache didn't cover)
   ensureTFRData();     // background: red-flag any launch/LZ inside an active TFR, even with the layer off
   loadWeather();       // background: fills the strip + recolours pins when done
   importUtahPGSites(); // background: pull Utah PG/HG sites (ParaglidingEarth) into our launches
