@@ -3100,14 +3100,21 @@ function characterScore(wx,site){
     0
   );
   const r_spread=spread<=3?100:spread<=6?70:spread<=10?35:0;
-  const r_axis=off==null?70:off<=15?100:off<=30?60:off<=45?25:0;
   // Gust spread is not just a fractional contributor — it's a hard cap on ridge quality.
   // A ridge day means smooth, steady laminar flow deflecting up the face; punchy air isn't
   // "ridge soaring", it's rowdy. Multiplying by smoothness ensures a huge gust spread can't
   // be papered over by ideal wind speed + on-axis alignment (which would previously still
   // give ridge≈75 at spread=12mph, badly overstating conditions).
   const smoothness=spread<=3?1:spread<=6?0.75:spread<=10?0.4:0.15;
-  const ridge=Math.round((r_wind*.5+r_spread*.25+r_axis*.25)*smoothness);
+  // Wind DIRECTION is the same story — a hard prerequisite, not a partial contributor.
+  // If the wind isn't hitting the ridge face, no amount of ideal speed or smooth air will
+  // generate ridge lift; the air is going PAST the ridge, not deflecting UP it. `off` is
+  // degrees outside the launch's own directional window (0 = inside window). ≥45° off and
+  // ridge lift is effectively gone regardless of the other terms. `off==null` means wind
+  // was too light to trust a bearing (<3 mph) — dampen heavily since we can't confirm
+  // the flow is on-face.
+  const directionality=off==null?0.3:off<=15?1:off<=30?0.6:off<=45?0.25:0.05;
+  const ridge=Math.round((r_wind*.6+r_spread*.4)*smoothness*directionality);
   // ── Sled: light wind, low CAPE (stable), clear-ish view, calm gusts ──────
   //   wind <8 mph is best (glass-off feel)
   //   gust spread <3 (nothing punchy)
@@ -4777,7 +4784,11 @@ async function loadForecast(){
     saveFcCache(series);
   }
   fcSeries=series;renderForecast(series);
-  try{refreshOpenPopupCharToNow();}catch(e){}
+  // Upgrade the open launch popup (badge, Why, character tiles, weather grid) from the
+  // siteWx nowcast placeholder to the current-hour hourly forecast entry now that we
+  // have real per-hour data. Everything downstream (score cutoffs, veto reasons, gust
+  // spread) then agrees with what the strip cells show.
+  try{refreshOpenPopupToTime(null);}catch(e){}
 }
 // Windy-like colour ramps
 function windColor(v){              // mph → cool→hot, smoothly interpolated between stops
@@ -5002,13 +5013,11 @@ function buildForecast(container,series,labels){
       const h12=((hr+11)%12)+1,suf=hr<12?'a':'p';
       ap=`${h12}:${pad(mn)}${suf}`;
     }
-    // For the current-hour cell, defer to siteWx.status (what the badge and pin show) instead
-    // of the hourly forecast. Open-Meteo's `current` block (siteWx) and `hourly[nowIdx]`
-    // (this series) don't always agree — especially on gusts, where hourly can spike while
-    // current is smoothed — and pilots reasonably expect "now" in the strip to match "Flyable
-    // now" in the badge. Future cells still use the per-hour forecast.
-    const siteStatus=fcTarget.site&&typeof siteWx!=='undefined'&&siteWx[fcTarget.site.id]&&siteWx[fcTarget.site.id].status;
-    const fs=(i===nowIdx&&siteStatus)?siteStatus:flyS(e.wind,e.gust,e.cloud,e.temp,hr+mn/60,fcTarget.site,e.dir,d,synthWxFromEntry(e));   // flyability stays on surface wind
+    // Every cell — including "now" — uses the hourly forecast entry. The popup badge
+    // is now upgraded to this same source once fcSeries loads (see refreshOpenPopupToTime
+    // null-branch), so the strip's now cell and the badge stay in agreement without a
+    // special case here.
+    const fs=flyS(e.wind,e.gust,e.cloud,e.temp,hr+mn/60,fcTarget.site,e.dir,d,synthWxFromEntry(e));
     const dc={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[fs];
     // When an altitude is selected, the Wind/Direction rows show winds aloft (falls back to
     // surface if the model has no data at that level for this hour).
@@ -5192,7 +5201,15 @@ function refreshOpenPopupToTime(iso){
     const e=(fcSeries||[]).find(x=>x.t===iso);if(!e)return;
     wx=synthWxFromEntry(e);hr=hourOf(iso);
   }else{
-    wx=siteWx[site.id]||null;hr=null;
+    // "Snap to live" now means the current-hour hourly forecast entry (Option A —
+    // one source of truth). Falls back to siteWx only when fcSeries hasn't loaded
+    // for this site yet (cold start / first render).
+    const fresh=fcTarget&&fcTarget.site&&fcTarget.site.id===site.id;
+    const nowMs=Date.now();
+    const nowWin=Math.max(15,fcInterval)*60*1000/2;
+    const e=fresh?(fcSeries||[]).find(x=>new Date(x.t).getTime()>=nowMs-nowWin):null;
+    if(e){wx=synthWxFromEntry(e);hr=hourOf(e.t);}
+    else{wx=siteWx[site.id]||null;hr=null;}
   }
   const rowDate=iso?new Date(iso):null;
   const s=(site.inTFR)?'no':(wx?flyS(wx.wind,wx.gusts,wx.cloud,wx.temp,hr,site,wx.dir,rowDate):'caution');
@@ -5215,29 +5232,6 @@ function refreshOpenPopupToTime(iso){
   else if(newCharHTML){const after=pp.querySelector('.pp-nofly-why')||badgeRow;if(after)after.insertAdjacentHTML('afterend',newCharHTML);}
   const oldWxG=pp.querySelector('.ppg');
   if(oldWxG){const t=document.createElement('template');t.innerHTML=wxG(wx).trim();const newWxG=t.content.firstChild;if(newWxG)oldWxG.replaceWith(newWxG);}
-}
-// Refresh ONLY the character tiles (T / R / S) of an open launch popup to the
-// current-hour forecast entry. siteWx is built from Open-Meteo's `d.current` block,
-// which smooths gusts — so the initial character row could show ridge=100 even when
-// the hourly forecast for this same hour had a 12 mph gust spread. This matches what
-// the pilot already sees when they click the "now" cell in the forecast strip.
-// Badge/why stay on siteWx so "Flyable now" remains consistent with the strip's
-// now cell (see the fly-status note in buildForecast).
-function refreshOpenPopupCharToNow(){
-  if(!currentLaunchId||typeof fcSeries==='undefined'||!fcSeries||!fcSeries.length)return;
-  const site=LAUNCHES.find(x=>x.id===currentLaunchId);if(!site)return;
-  const pp=document.querySelector('#sb-body .pp');if(!pp)return;
-  const now=Date.now();
-  const nowWin=Math.max(15,fcInterval)*60*1000/2;
-  const e=fcSeries.find(x=>new Date(x.t).getTime()>=now-nowWin);
-  if(!e)return;
-  const wx=synthWxFromEntry(e);if(!wx)return;
-  const d=new Date(e.t);
-  const nightNo=isNight(d.getHours()+d.getMinutes()/60,site,d);
-  const hardNo=nightNo||!!(site&&site.inTFR);
-  const newCharHTML=characterRowHTML(wx,site,hardNo);
-  const oldChar=pp.querySelector('.pp-char-row');
-  if(oldChar&&newCharHTML){const t=document.createElement('template');t.innerHTML=newCharHTML.trim();oldChar.replaceWith(t.content.firstChild);}
 }
 function renderForecast(series){
   const fcEl=document.getElementById('forecast');
