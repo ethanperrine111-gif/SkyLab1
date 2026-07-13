@@ -45,7 +45,7 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;overflow:hi
 .nb-load{color:#64748b;font-size:12px;padding:11px 16px;}
 /* ── Forecast header (selected-site name + weather model) ─────────────────── */
 #fc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0f172a;flex-shrink:0;padding:calc(6px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 6px calc(12px + env(safe-area-inset-left,0px));z-index:10;border-bottom:1px solid rgba(255,255,255,.06);min-width:0;overflow:hidden;}
-#fc-loc{font-size:32px;line-height:1;font-weight:800;color:#fff;letter-spacing:.2px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;text-align:center;min-width:0;flex:1 1 auto;max-width:100%;padding-bottom:.18em;}   /* line-height:1 + descender padding keeps 'y'/'g'/'p' from clipping; JS fitFcLoc() shrinks to fit */
+#fc-loc{font-size:32px;line-height:1;font-weight:800;color:#fff;letter-spacing:.2px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:flex-start;text-align:left;min-width:0;flex:1 1 auto;max-width:100%;padding-bottom:.18em;visibility:hidden;}   /* Starts hidden; fitFcLoc() reveals once sized so no glyph-jump is visible during layout/font-load. */
 /* Top-bar weather-model dropdown — same geometry and depth as the floating map controls
    (.cbtn / #layers-btn): 9 px radius, subtle border, quiet drop-shadow, glassy blur.
    Blue accent colour is kept for the label so the "HRRR / ECMWF / …" name still reads
@@ -260,7 +260,7 @@ body.probe-off #ctrl-panel{top:8px;}
 .ppn-row .ppn{margin-bottom:0;}
 .pps{font-size:11px;color:#888;margin-bottom:6px;}
 .ppb{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9px;margin-bottom:7px;}
-.ppg{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:7px;}
+.ppg{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-bottom:7px;}
 .ppc{background:#f5f5f0;border-radius:5px;padding:4px 7px;}
 .ppcl{font-size:9px;color:#bbb;text-transform:uppercase;}
 .ppcv{font-size:13px;font-weight:700;color:#222;}
@@ -280,10 +280,35 @@ body.probe-off #ctrl-panel{top:8px;}
 body.dark .pp-why-btn{background:#450a0a;border-color:#7f1d1d;color:#fecaca;}
 body.dark .pp-why-btn:hover{background:#5a1010;}
 body.dark .pp-why-btn[aria-expanded="true"]{background:#fecaca;color:#450a0a;border-color:#fecaca;}
+/* Amber variant: when the badge is caution, the "?" adopts the same amber palette so the
+   two read as a pair (red badge → red ?, yellow badge → yellow ?). */
+.pp-why-btn.pp-why-btn-caution{border-color:#fcd34d;background:#fef3c7;color:#92400e;}
+.pp-why-btn.pp-why-btn-caution:hover{background:#fde68a;}
+.pp-why-btn.pp-why-btn-caution[aria-expanded="true"]{background:#92400e;color:#fef3c7;border-color:#92400e;}
+body.dark .pp-why-btn.pp-why-btn-caution{background:#3f2d0a;border-color:#78350f;color:#fde68a;}
+body.dark .pp-why-btn.pp-why-btn-caution:hover{background:#4a340c;}
+body.dark .pp-why-btn.pp-why-btn-caution[aria-expanded="true"]{background:#fde68a;color:#3f2d0a;border-color:#fde68a;}
+/* Character scorer row inside the launch popup: 3 tiles, best one highlighted. */
+.pp-char-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
+.pp-char-cell{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 4px;text-align:center;line-height:1.15;}
+.pp-char-cell.pp-char-win{background:#ecfeff;border-color:#67e8f9;box-shadow:0 0 0 1px #67e8f9 inset;}
+.pp-char-ico{font-size:15px;}
+.pp-char-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#64748b;margin-top:1px;}
+.pp-char-val{font-size:17px;font-weight:800;margin-top:1px;}
+body.dark .pp-char-cell{background:#0f172a;border-color:#1e293b;}
+body.dark .pp-char-cell.pp-char-win{background:#083344;border-color:#22d3ee;}
+body.dark .pp-char-lbl{color:#94a3b8;}
 .pp-nofly-why{margin-top:5px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:6px 9px;font-size:11.5px;color:#991b1b;line-height:1.4;}
 .pp-nofly-why b{color:#7f1d1d;font-weight:800;margin-right:3px;}
+.pp-nofly-why ul{list-style:disc;}
+.pp-nofly-why li{margin:1px 0;}
 body.dark .pp-nofly-why{background:#450a0a;border-color:#7f1d1d;color:#fecaca;}
 body.dark .pp-nofly-why b{color:#fca5a5;}
+/* Softer amber styling when the same panel is used to explain a "caution" verdict. */
+.pp-caution-why{background:#fef3c7;border-color:#fcd34d;color:#78350f;}
+.pp-caution-why b{color:#92400e;}
+body.dark .pp-caution-why{background:#3f2d0a;border-color:#78350f;color:#fde68a;}
+body.dark .pp-caution-why b{color:#fbbf24;}
 .pp-fc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin:8px 0 2px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .pp-fc-ctrls{display:flex;align-items:center;gap:6px;}
 .pp-fc-res{display:inline-flex;gap:2px;padding:2px;background:#e2e8f0;border:1px solid #cbd5e1;border-radius:9px;}
@@ -886,7 +911,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
   /* Header: bigger, with a collapse toggle for the forecast table */
   #fc-toggle{display:block;}
   body.fc-collapsed #forecast{display:none;}   /* collapse only applies on mobile */
-  /* #fc-loc mobile: base rule already sets 32px + shrink-to-fit — no mobile-specific override needed */
+  /* #fc-loc mobile: same 32px sizing as desktop but centered between the button groups */
+  #fc-loc{justify-content:center;text-align:center;}
   #fc-head{padding:calc(8px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 8px calc(12px + env(safe-area-inset-left,0px));}
   /* Bigger layers tap target on phones (width is synced to the wind box in JS) */
   #trow .cbtn{height:40px;font-size:14px;}
@@ -951,8 +977,8 @@ body.dark .ppbio-tag{background:#422006;color:#fde68a;}
 .mk-red{z-index:410 !important;}
 .mk-yellow{z-index:420 !important;}
 .mk-green{z-index:430 !important;}
-/* AQI badges tuck behind the pins (below the 400–430 launch range) so the pin sits on top. */
-.aqi-badge{z-index:300 !important;}
+/* AQI + character badges tuck behind the pins (below the 400–430 launch range) so the pin sits on top. */
+.aqi-badge,.char-badge{z-index:300 !important;}
 /* Popups must sit above every pin (which are forced to z-index 400–430 above). */
 .maplibregl-popup{z-index:600 !important;}
 .leaflet-popup-pane{z-index:800 !important;}
@@ -969,8 +995,8 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
     <div id="fc-left">
       <button id="menu-btn" onclick="toggleMenu()" title="Menu" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g stroke="#fff" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></g></svg></button>
       <button id="fav-btn" onclick="openFavorites()" title="Favorite sites">★</button>
-      <span id="fc-loc">Salt Lake City</span>
     </div>
+    <span id="fc-loc">Salt Lake City</span>
     <div id="fc-head-actions">
       <div id="fc-res" title="Forecast time resolution">
         <button data-r="60" class="on" onclick="setFcInterval(60)">1h</button>
@@ -1027,6 +1053,7 @@ body.adm #adm-btn{background:#dcfce7;border-color:#16a34a;color:#14532d;}
         <label class="lp-row"><input type="checkbox" id="ov-airspace" onchange="toggleOverlay('airspace',this.checked)"/><span class="lp-ico">🚫</span><span class="lp-lbl">Airspace</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-tfr" onchange="toggleTFR(this.checked)"/><span class="lp-ico">⛔</span><span class="lp-lbl">TFRs</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-aqi" onchange="toggleAQI(this.checked)"/><span class="lp-ico">🫧</span><span class="lp-lbl">Air quality (AQI)</span></label>
+        <label class="lp-row"><input type="checkbox" id="ov-char" onchange="toggleCharLayer(this.checked)"/><span class="lp-ico">🪂</span><span class="lp-lbl">Flight character (best flavor today)</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-thermals" onchange="toggleOverlay('thermals',this.checked)"/><span class="lp-ico">🔥</span><span class="lp-lbl">Thermal hotspots</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-skyways" onchange="toggleOverlay('skyways',this.checked)"/><span class="lp-ico">🛤️</span><span class="lp-lbl">Skyways</span></label>
         <label class="lp-row"><input type="checkbox" id="ov-obstacles" onchange="toggleFeatureLayer('obstacles',this.checked)"/><span class="lp-ico">🗼</span><span class="lp-lbl">Obstacles</span></label>
@@ -2383,6 +2410,64 @@ async function toggleAQI(on){
   setAQIVisible(true);
   setBadge('🫧 Air quality on · '+aqiData.length+' sites');setTimeout(()=>setBadge(''),2600);
 }
+// ── Flight-character map layer ────────────────────────────────────────────────
+// Mirrors the AQI badge but sits on the LEFT of the pin — a small chip carrying the
+// best flavor (T/R/S) with its 0-100 score. Colored on the same scale as the tiles.
+const CHAR_LETTER={thermals:'T',ridge:'R',sled:'S'};
+let charMarkers=[],lfChar=null,charVisible=false;
+function charBadgeSVG(best,val){
+  const letter=best?CHAR_LETTER[best]:'—';
+  const col=best?charColor(val):'#94a3b8';
+  const num=best?Math.round(val):'';
+  return `<svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg"><circle cx="17" cy="17" r="14.5" fill="${col}" stroke="#fff" stroke-width="3"/><text x="17" y="12" text-anchor="middle" dominant-baseline="central" fill="#fff" font-family="system-ui,Segoe UI,Roboto,sans-serif" font-weight="800" font-size="9">${letter}</text><text x="17" y="22" text-anchor="middle" dominant-baseline="central" fill="#fff" font-family="system-ui,Segoe UI,Roboto,sans-serif" font-weight="800" font-size="10">${num}</text></svg>`;
+}
+function charPopupHTML(site,cs){
+  if(!cs.best)return `<div class="oa-pop"><div style="font-weight:800;">🪂 ${site.name}</div><div>No character data yet</div></div>`;
+  return `<div class="oa-pop"><div style="font-weight:800;">🪂 ${site.name}</div><div style="margin-top:2px;">Best flavor today: <b>${CHAR_LABEL[cs.best]}</b> (${Math.round(cs.bestScore)}/100)</div><div style="margin-top:3px;font-size:11px;">🔥 Thermals ${cs.thermals} · ⛰ Ridge ${cs.ridge} · 🛷 Sled ${cs.sled}</div></div>`;
+}
+function buildCharPoints(){
+  const out=[];
+  LAUNCHES.forEach(s=>{
+    const w=siteWx[s.id];if(!w)return;
+    const cs=characterScore(w,s);
+    if(cs.best)out.push({site:s,cs});
+  });
+  return out;
+}
+function renderCharLayer(){
+  charMarkers.forEach(m=>{try{m.remove();}catch(e){}});charMarkers=[];
+  if(lfChar){try{lfMap.removeLayer(lfChar);}catch(e){}lfChar=null;}
+  const pts=buildCharPoints();if(!pts.length)return;
+  if(useMapLibre&&mlMap){
+    pts.forEach(({site,cs})=>{
+      const el=document.createElement('div');
+      el.className='char-badge';
+      el.style.cssText='cursor:pointer;line-height:0;filter:drop-shadow(0 1px 4px rgba(0,0,0,.55));';
+      el.innerHTML=charBadgeSVG(cs.best,cs.bestScore);
+      const mk=new maplibregl.Marker({element:el,anchor:'center',offset:[-16,-48]}).setLngLat([site.lon,site.lat]).addTo(mlMap);
+      el.addEventListener('click',ev=>{ev.stopPropagation();new maplibregl.Popup({offset:16,closeButton:true}).setLngLat([site.lon,site.lat]).setHTML(charPopupHTML(site,cs)).addTo(mlMap);});
+      charMarkers.push(mk);
+    });
+  }else if(lfMap){
+    lfChar=L.layerGroup(pts.map(({site,cs})=>{
+      const mk=L.marker([site.lat,site.lon],{icon:L.divIcon({className:'char-badge',html:`<div style="filter:drop-shadow(0 1px 4px rgba(0,0,0,.5))">${charBadgeSVG(cs.best,cs.bestScore)}</div>`,iconSize:[34,34],iconAnchor:[33,65]})});
+      mk.bindPopup(charPopupHTML(site,cs));return mk;
+    })).addTo(lfMap);
+  }
+}
+function setCharVisible(on){
+  charVisible=on;
+  if(useMapLibre&&mlMap){charMarkers.forEach(m=>{try{m.getElement().style.display=on?'':'none';}catch(e){}});}
+  else if(lfMap&&lfChar){if(on)lfChar.addTo(lfMap);else{try{lfMap.removeLayer(lfChar);}catch(e){}}}
+}
+function toggleCharLayer(on){
+  if(!on){setCharVisible(false);return;}
+  renderCharLayer();setCharVisible(true);
+  const n=charMarkers.length||(lfChar?lfChar.getLayers().length:0);
+  setBadge('🪂 Flight character on · '+n+' sites');setTimeout(()=>setBadge(''),2600);
+}
+// Keep the character layer in sync when siteWx snapshots refresh.
+function refreshCharLayer(){if(charVisible){renderCharLayer();setCharVisible(true);}}
 // Import Utah paragliding / hang-gliding sites from ParaglidingEarth (OpenAIP has no
 // PG-site dataset). De-duped against existing launches by name and ~1.5 km proximity.
 async function importUtahPGSites(){
@@ -2633,7 +2718,7 @@ function curHourLocal(){const n=new Date();return n.getHours()+n.getMinutes()/60
 // batch weather fetch), fall back to whatever the forecast bar last loaded, then to null=day.
 // Without this, every site was judged against wherever the forecast pointed — Monroe stayed
 // green after sunset because SLC's dawn/dusk was in the global.
-function isNight(h,site){
+function isNight(h,site,date){
   let dawn=civilDawnH,dusk=civilDuskH;
   if(site){const wx=siteWx&&siteWx[site.id];if(wx&&wx.dawnH!=null){dawn=wx.dawnH;dusk=wx.duskH;}}
   if(dawn!=null)return h<dawn||h>dusk;
@@ -2641,11 +2726,13 @@ function isNight(h,site){
   // stale wxCache from before we started persisting dawnH, or an offline site with no
   // daily block). Compute solar elevation from lat/lon at the requested hour so markers
   // don't paint flyable-green after dark — that was the "4 sites green at midnight" bug.
+  // `date` lets forecast rows pass their own day so a 5pm row 10 days out judges against
+  // that day's sunset, not today's — sunset drifts ~90 s/day in shoulder season.
   if(site&&site.lat!=null&&site.lon!=null&&typeof sunPos==='function'){
     try{
-      const now=new Date();
+      const base=date instanceof Date?date:new Date();
       const hh=Math.floor(h),mm=Math.round((h-hh)*60);
-      const dt=new Date(now.getFullYear(),now.getMonth(),now.getDate(),hh,mm,0);
+      const dt=new Date(base.getFullYear(),base.getMonth(),base.getDate(),hh,mm,0);
       // -6° = civil twilight, which is what the cached ±30 min approximation is targeting.
       return sunPos(dt,site.lat,site.lon).el<-6;
     }catch(e){}
@@ -2660,23 +2747,23 @@ function isNight(h,site){
 // dataKey (wind aloft, CAPE, etc.) are shown in the editor but skipped from scoring
 // until a data source is wired up. `higher-bad` = value at/above `caution` demotes to
 // caution and at/above `noFly` vetoes. `lower-bad` = value at/below is worse.
-const FLY_CFG_KEY='updraft_flycfg_v1';
+const FLY_CFG_KEY='updraft_flycfg_v2';   // bumped: tightened windOffAxis defaults (was v1)
 const FLY_DEFAULTS={
   version:1,
   params:{
     surfaceWind :{label:'Surface Wind',           unit:'mph',   dir:'higher-bad', caution:15, noFly:20, weight:22, dataKey:'wind'},
-    windOffAxis :{label:'Wind Off-Axis (vs launch window)',unit:'°',dir:'higher-bad',caution:15, noFly:25, weight:15, dataKey:'windOffAxis'},
+    windOffAxis :{label:'Wind Off-Axis (vs launch window)',unit:'°',dir:'higher-bad',caution:5,  noFly:15, weight:15, dataKey:'windOffAxis'},
     gustSpread  :{label:'Gust Spread (gust − avg)',unit:'mph',  dir:'higher-bad', caution:5,  noFly:10, weight:18, dataKey:'gustSpread'},
     windAloft2k :{label:'925 hPa Wind (~2,500 ft MSL)',unit:'mph', dir:'higher-bad', caution:18, noFly:25, weight:7,  dataKey:'wind2k'},
     windAloft5k :{label:'850 hPa Wind (~5,000 ft MSL)',unit:'mph', dir:'higher-bad', caution:22, noFly:30, weight:6,  dataKey:'wind5k'},
-    windDirChg  :{label:'Wind Dir Change (sfc→5k)',unit:'°',    dir:'higher-bad', caution:45, noFly:90, weight:4,  dataKey:'dirChg'},
+    windDirChg  :{label:'Wind Dir Change (sfc→5k)',unit:'°',    dir:'higher-bad', caution:60, noFly:100,weight:4,  dataKey:'dirChg'},
     windShear   :{label:'Vertical Wind Shear',     unit:'mph',  dir:'higher-bad', caution:10, noFly:15, weight:9,  dataKey:'shear'},
     thermals    :{label:'Thermal Strength',        unit:'fpm',  dir:'higher-bad', caution:600,noFly:900,weight:10, dataKey:null},
-    cape        :{label:'CAPE',                    unit:'J/kg', dir:'higher-bad', caution:300,noFly:700,weight:5,  dataKey:'cape'},
-    liftedIdx   :{label:'Lifted Index',            unit:'',     dir:'lower-bad',  caution:0,  noFly:-2, weight:4,  dataKey:'liftedIdx'},
+    cape        :{label:'CAPE',                    unit:'J/kg', dir:'higher-bad', caution:500,noFly:1000,weight:5, dataKey:'cape'},
+    liftedIdx   :{label:'Lifted Index',            unit:'',     dir:'lower-bad',  caution:-2, noFly:-5, weight:4,  dataKey:'liftedIdx'},
     cloudCover  :{label:'Cloud Cover',             unit:'%',    dir:'higher-bad', caution:60, noFly:85, weight:3,  dataKey:'cloud'},
-    cloudBase   :{label:'Cloud Base (LCL est.)',   unit:'ft AGL',dir:'lower-bad', caution:4000,noFly:2500,weight:3,dataKey:'cloudBase'},
-    rainChance  :{label:'Rain Chance',             unit:'%',    dir:'higher-bad', caution:20, noFly:40, weight:3,  dataKey:'rainChance'},
+    cloudBase   :{label:'Cloud Base (LCL est.)',   unit:'ft AGL',dir:'lower-bad', caution:2500,noFly:1500,weight:3,dataKey:'cloudBase'},
+    rainChance  :{label:'Rain Chance',             unit:'%',    dir:'higher-bad', caution:40, noFly:70, weight:3,  dataKey:'rainChance'},
     visibility  :{label:'Visibility',              unit:'mi',   dir:'lower-bad',  caution:10, noFly:5,  weight:2,  dataKey:'visibility'},
     humidity    :{label:'Relative Humidity',       unit:'%',    dir:'higher-bad', caution:70, noFly:90, weight:1,  dataKey:'rh'},
     dewSpread   :{label:'Dew Point Spread',        unit:'°F',   dir:'lower-bad',  caution:5,  noFly:2,  weight:3,  dataKey:'dewSpread'}
@@ -2694,7 +2781,10 @@ const FLY_DEFAULTS={
   // Score → band cutoffs (score ≥ threshold falls in that band, top-down).
   bands:{excellent:90, veryGood:80, good:70, flyable:60, marginal:40, poor:20},
   // Which score cutoff maps to the marker colors used elsewhere (flyable/caution/no).
-  markerCutoffs:{flyable:60, caution:40}   // ≥60 green, 40-59 yellow, <40 red
+  // Widened so the middle band is real (was 40-59, a razor-thin slice). Now ≥70 green,
+  // 45-69 yellow, <45 red — much more likely to land on caution when the composite is
+  // slightly compromised, matching how a pilot actually reads borderline days.
+  markerCutoffs:{flyable:70, caution:45}   // ≥70 green, 45-69 yellow, <45 red
 };
 let flyConfig=null;
 function cloneCfg(c){return JSON.parse(JSON.stringify(c));}
@@ -2719,12 +2809,24 @@ function loadFlyConfig(){
 function saveFlyConfig(){try{localStorage.setItem(FLY_CFG_KEY,JSON.stringify(flyConfig));}catch(e){}cloudSave(FLY_CFG_KEY,flyConfig);}
 function resetFlyConfig(){flyConfig=cloneCfg(FLY_DEFAULTS);saveFlyConfig();}
 loadFlyConfig();
+// Surface-based CAPE integrates buoyant energy from the launch's altitude upward,
+// so a high-alpine launch reads lower CAPE than a valley launch on the same synoptic
+// day — because a chunk of what would count as CAPE at the valley is already below
+// the alpine "surface". Scale the reading back to a valley-equivalent so a single
+// hard-veto threshold (e.g. 800 J/kg) means the same thing at Snowbird as at POM.
+function effectiveCape(wx,site){
+  if(!wx||wx.cape==null)return null;
+  const alt=(site&&site.alt)||5000;
+  return wx.cape*(1+alt/20000);   // ~1.55× at 11k ft
+}
 // Extract each param's value from the weather record, computing derived fields
 // (gust spread, dew-point spread, off-axis wind) on the fly.
 function paramValue(wx,key,site){
   if(!wx)return null;
   if(key==='gustSpread')return(wx.gusts!=null&&wx.wind!=null)?(wx.gusts-wx.wind):null;
   if(key==='dewSpread' )return(wx.temp!=null&&wx.dp!=null)?(wx.temp-wx.dp):null;
+  if(key==='liftedIdx' )return wx.liftedIdx??wx.li??null;   // siteWx stores `liftedIdx`, forecast series stores `li`
+  if(key==='cape'      )return effectiveCape(wx,site);
   if(key==='windOffAxis'){
     // Degrees the wind bearing sits OUTSIDE the launch's own directional window (0 = inside).
     // Requires a site and a real wind. Below 3 mph we can't trust the reported direction, so skip.
@@ -2737,17 +2839,25 @@ function paramValue(wx,key,site){
   }
   return wx[key];
 }
-// Per-parameter score: 100 in fly band, 60 in caution, 0 in no-fly.
+// Per-parameter score: 100 in the good zone, 0 past the no-fly cutoff, and a linear
+// ramp in between so scores land accurately in the mid-zone (instead of jump-cutting
+// from 100 to 60 to 0). The ramp is compressed into the middle 70% of [caution, noFly]
+// — an extra flat buffer at each end so a value teetering right at "caution" doesn't
+// blur the composite, and a value nearing noFly plunges the score decisively.
 function paramScore(val,p){
   if(val==null||isNaN(val))return null;
+  const c=p.caution,n=p.noFly,BUF=0.15;
+  const range=Math.abs(n-c)||1;
   if(p.dir==='higher-bad'){
-    if(val>=p.noFly)return 0;
-    if(val>=p.caution)return 60;
-    return 100;
+    const lo=c+range*BUF, hi=n-range*BUF;
+    if(val<=lo)return 100;
+    if(val>=hi)return 0;
+    return Math.round(100*(hi-val)/(hi-lo));
   }else{
-    if(val<=p.noFly)return 0;
-    if(val<=p.caution)return 60;
-    return 100;
+    const hi=c-range*BUF, lo=n+range*BUF;
+    if(val>=hi)return 100;
+    if(val<=lo)return 0;
+    return Math.round(100*(val-lo)/(hi-lo));
   }
 }
 // Merge a site's per-launch fly-score overrides on top of the global config.
@@ -2766,6 +2876,11 @@ function effectiveFlyCfg(site){
 // Skips params with no data source or no reading; renormalizes weights over
 // what we have so the total remains 0-100.
 function computeFlyScore(wx,site){
+  // Night gate — matches flyS/flyReasonList so the 0-100 composite doesn't read a real
+  // number at 2 AM while the pin and the "Why" panel correctly show no-fly.
+  if(isNight(curHourLocal(),site)){
+    return{score:null,band:'no fly',reasons:['Outside civil daylight (before dawn / after dusk)'],veto:true,vetoReason:'night'};
+  }
   const cfg=effectiveFlyCfg(site); const reasons=[]; let veto=false; let vetoReason=null;
   // Site-specific vetoes (still respected — the tail-note "each site defines its own" idea).
   if(site){
@@ -2776,23 +2891,37 @@ function computeFlyScore(wx,site){
       if(!inWindow(wx.dir,expandWin(win,25))){veto=true;vetoReason='wind outside site window';}
     }
   }
-  // Hard vetoes from config.
+  // Hard vetoes from config. All seven keys the UI exposes are enforced here — earlier
+  // versions only checked surface wind + gust spread, so a pilot who typed a rain-rate or
+  // visibility limit in the settings panel got no protection from it.
   const hv=cfg.hardVeto;
   if(!veto&&wx){
     const spread=(wx.gusts!=null&&wx.wind!=null)?(wx.gusts-wx.wind):null;
+    const capeEff=effectiveCape(wx,site);
     if(wx.wind!=null&&wx.wind>hv.surfaceWindMax){veto=true;vetoReason=`surface wind > ${hv.surfaceWindMax} mph`;}
     else if(spread!=null&&spread>hv.gustSpreadMax){veto=true;vetoReason=`gust spread > ${hv.gustSpreadMax} mph`;}
+    else if(wx.shear!=null&&hv.windShearMax!=null&&wx.shear>hv.windShearMax){veto=true;vetoReason=`wind shear > ${hv.windShearMax} mph`;}
+    else if(capeEff!=null&&hv.capeMax!=null&&capeEff>hv.capeMax){veto=true;vetoReason=`CAPE > ${hv.capeMax} J/kg (overdevelopment)`;}
+    else if(wx.rainRate!=null&&hv.rainRateMax!=null&&wx.rainRate>hv.rainRateMax){veto=true;vetoReason=`rain rate > ${hv.rainRateMax} in/hr`;}
+    else if(wx.visibility!=null&&hv.visibilityMin!=null&&wx.visibility<hv.visibilityMin){veto=true;vetoReason=`visibility < ${hv.visibilityMin} mi`;}
+    else if(wx.cloudBase!=null&&hv.cloudBaseMin!=null&&wx.cloudBase<hv.cloudBaseMin){veto=true;vetoReason=`cloud base < ${hv.cloudBaseMin} ft AGL`;}
   }
-  // Weighted score over params with data.
+  // Weighted score over params with data. Reasons are stored with their weighted impact
+  // so noFlyReason() can surface the actual biggest score-drivers first.
   let totalW=0, weightedSum=0;
+  const scored=[];
   Object.entries(cfg.params).forEach(([k,p])=>{
     if(!p.dataKey)return;
     const v=paramValue(wx,p.dataKey,site);
     const s=paramScore(v,p);
     if(s==null)return;
     totalW+=p.weight; weightedSum+=s*p.weight;
-    if(s<100)reasons.push(`${p.label}: ${p.dataKey==='windOffAxis'?Math.round(v)+'° outside window':v+p.unit} (${s===0?'no fly':'caution'})`);
+    if(s<100){
+      const valStr=p.dataKey==='windOffAxis'?Math.round(v)+'° outside window':(Math.round(v*10)/10)+p.unit;
+      scored.push({text:`${p.label}: ${valStr}`,impact:(100-s)*p.weight,s});
+    }
   });
+  scored.sort((a,b)=>b.impact-a.impact).forEach(x=>reasons.push(x.text));
   let score=totalW>0?Math.round(weightedSum/totalW):null;
   if(veto){score=0;reasons.unshift('VETO — '+vetoReason);}
   const b=cfg.bands;
@@ -2811,19 +2940,199 @@ function computeFlyScore(wx,site){
 // Fly status. Kept back-compatible: same 7-arg signature, same 'flyable'/'caution'/'no'
 // return, so all existing callers (markers, forecast bar) keep working. Under the hood
 // this now runs the weighted fly-score and maps score→status via config cutoffs.
-function flyS(w,g,c,t,hour,site,dir){
-  if(isNight(hour==null?curHourLocal():hour,site))return'no';
-  // Reconstruct a weather record from the positional args so we can reuse computeFlyScore.
-  const wx={wind:w,gusts:g,cloud:c,temp:t,dir};
-  const r=computeFlyScore(wx,site);
-  if(r.veto)return'no';
-  if(r.score==null)return'caution';
-  const m=flyConfig.markerCutoffs;
-  if(r.score>=m.flyable)return'flyable';
-  if(r.score>=m.caution)return'caution';
-  return'no';
+// ── Fly / no-fly decision ─────────────────────────────────────────────────────
+// Simple deterministic sequence. NOT a weighted composite — a pilot doesn't decide
+// "the average is fine, go fly", they check each safety item and any red is a stop.
+// Keys used (all under flyConfig.params, so admin can still tune thresholds):
+//   surfaceWind, windOffAxis, gustSpread, windDirChg, rainChance, cloudBase
+// Everything else in flyConfig now only feeds the character scorer / config UI preview.
+const FLY_STATUS_KEYS=['windOffAxis','surfaceWind','gustSpread','windDirChg','rainChance','cloudBase','cape','liftedIdx'];
+function flyStatusCheck(wx,site){
+  const reasons=[];let worst=0;   // 0=flyable, 1=caution, 2=no
+  const bump=(lv,txt)=>{if(lv>worst)worst=lv;if(txt)reasons.push({lv,text:txt});};
+  const cfg=effectiveFlyCfg(site);
+  const p=cfg.params;
+  // Site-specific hard vetoes first — these override any threshold.
+  if(site){
+    const L=windStrengthFor(site);
+    if(wx&&(wx.wind>L.max||(wx.gusts||0)>L.max+L.gust)){bump(2,`Over site ceiling (${L.max} mph)`);}
+    if(wx&&wx.dir!=null&&(wx.wind||0)>=1){
+      const win=windowFor(site);
+      // Green outside the launch's actual fly-bowl is never right unless the wind is
+      // essentially still. Any wind from outside the window paints at least CAUTION;
+      // strong wind well past the 15° buffer paints NO. The old logic only checked the
+      // ±15° buffer, so a wind 1–14° off could still read green.
+      if(!inWindow(wx.dir,win)){
+        if((wx.wind||0)>=4 && !inWindow(wx.dir,expandWin(win,15))){
+          bump(2,'Wind outside launch window');
+        }else{
+          bump(1,'Wind from outside launch window');
+        }
+      }
+    }
+  }
+  // Config hard vetoes — same list as computeFlyScore so the marker color and the
+  // composite score agree. Silent skip when a field isn't present on the record
+  // (forecast rows lack visibility/shear, etc.) rather than treating null as safe.
+  if(wx){
+    const hv=cfg.hardVeto||{};
+    const spread=(wx.gusts!=null&&wx.wind!=null)?(wx.gusts-wx.wind):null;
+    const capeEff=effectiveCape(wx,site);
+    if(wx.wind!=null&&hv.surfaceWindMax!=null&&wx.wind>hv.surfaceWindMax)bump(2,`Surface wind > ${hv.surfaceWindMax} mph`);
+    if(spread!=null&&hv.gustSpreadMax!=null&&spread>hv.gustSpreadMax)bump(2,`Gust spread > ${hv.gustSpreadMax} mph`);
+    if(wx.shear!=null&&hv.windShearMax!=null&&wx.shear>hv.windShearMax)bump(2,`Wind shear > ${hv.windShearMax} mph`);
+    if(capeEff!=null&&hv.capeMax!=null&&capeEff>hv.capeMax)bump(2,`CAPE > ${hv.capeMax} J/kg (overdevelopment)`);
+    if(wx.rainRate!=null&&hv.rainRateMax!=null&&wx.rainRate>hv.rainRateMax)bump(2,`Rain rate > ${hv.rainRateMax} in/hr`);
+    if(wx.visibility!=null&&hv.visibilityMin!=null&&wx.visibility<hv.visibilityMin)bump(2,`Visibility < ${hv.visibilityMin} mi`);
+    if(wx.cloudBase!=null&&hv.cloudBaseMin!=null&&wx.cloudBase<hv.cloudBaseMin)bump(2,`Cloud base < ${hv.cloudBaseMin} ft AGL`);
+  }
+  const testKey=(key,val,fmt)=>{
+    const pp=p[key];if(!pp||val==null||isNaN(val))return;
+    const c=pp.caution,n=pp.noFly;
+    const bad=pp.dir==='higher-bad'?val>=n:val<=n;
+    const caut=pp.dir==='higher-bad'?val>=c:val<=c;
+    if(bad)bump(2,`${pp.label}: ${fmt?fmt(val):val+pp.unit}`);
+    else if(caut)bump(1,`${pp.label}: ${fmt?fmt(val):val+pp.unit}`);
+  };
+  // 1. Direction off-axis (derived) — soft check; hard veto already handled above.
+  const off=paramValue(wx,'windOffAxis',site);
+  testKey('windOffAxis',off,v=>Math.round(v)+'° off-axis');
+  // 2. Surface wind speed.
+  testKey('surfaceWind',wx&&wx.wind);
+  // 3. Gust spread.
+  const spread=(wx&&wx.gusts!=null&&wx.wind!=null)?(wx.gusts-wx.wind):null;
+  testKey('gustSpread',spread,v=>v+' mph spread');
+  // 4. Wind direction change surface→aloft.
+  const dirChg=wx&&(wx.dirChg!=null?wx.dirChg
+    :(wx.dirAlt!=null&&wx.dir!=null?Math.round(angleDiff(wx.dir,wx.dirAlt)):null));
+  testKey('windDirChg',dirChg,v=>v+'° sfc→aloft');
+  // 5. Rain probability (siteWx stores as rainChance; forecast rows use pop).
+  const rain=wx&&(wx.rainChance!=null?wx.rainChance:(wx.pop!=null?wx.pop:null));
+  testKey('rainChance',rain,v=>v+'% chance rain');
+  // 6. Cloud base (lower-bad).
+  testKey('cloudBase',wx&&wx.cloudBase,v=>v+' ft AGL');
+  // 7. Convective instability — a big-CAPE / very-negative-LI day paints caution or
+  // no-fly on the marker instead of silently reading green. CAPE runs through
+  // paramValue() so it's altitude-scaled for alpine launches.
+  testKey('cape',paramValue(wx,'cape',site),v=>Math.round(v)+' J/kg');
+  testKey('liftedIdx',paramValue(wx,'liftedIdx',site),v=>v+' LI');
+  // Sort reasons by severity (no-fly first, then caution) but keep first appearance order within a tier.
+  reasons.sort((a,b)=>b.lv-a.lv);
+  return{status:worst===2?'no':worst===1?'caution':'flyable',reasons:reasons.map(r=>r.text)};
+}
+function flyS(w,g,c,t,hour,site,dir,date,extraWx){
+  if(isNight(hour==null?curHourLocal():hour,site,date))return'no';
+  if(site&&site.inTFR)return'no';
+  // Enrich with the last-known siteWx snapshot so derived fields (dirChg, cloudBase, rainChance)
+  // are available even though positional callers only pass the 5 basic fields.
+  // `extraWx` lets forecast-strip callers pass that hour's specific CAPE / LI / rainRate /
+  // cloudBase so a future overdevelopment hour actually paints red, instead of inheriting
+  // whatever the current snapshot happened to hold.
+  const stored=(site&&typeof siteWx!=='undefined')?siteWx[site.id]:null;
+  const wx={...(stored||{}),...(extraWx||{}),wind:w,gusts:g,cloud:c,temp:t,dir};
+  return flyStatusCheck(wx,site).status;
 }
 function thStr(c,t,w){if(c>80)return'Weak/overcast';if(w>22)return'Rotor risk';if(t>78)return'Strong thermals';if(t>62)return'Good thermals';if(t>50)return'Light thermals';return'Minimal';}
+// ── Character scorer — "what KIND of flying is this?" ────────────────────────
+// Independent from the fly/no-fly veto (which is a safety gate). This grades a day
+// against three flavors of soaring so the pilot can pick when to drive to which site.
+// Each profile returns 0-100. `best` is whichever profile scored highest, unless the
+// day is a no-fly (then best=null so the badge shows a dash).
+function characterScore(wx,site){
+  if(!wx)return{thermals:0,ridge:0,sled:0,best:null,bestScore:0};
+  const w=wx.wind??0,g=wx.gusts??w,c=wx.cloud??0,t=wx.temp??60;
+  const cape=wx.cape??0,li=wx.li??wx.liftedIdx??0;   // siteWx snapshot stores it as liftedIdx
+  const spread=Math.max(0,g-w);
+  const off=paramValue(wx,'windOffAxis',site);   // 0 = inside window, ° otherwise
+  const alt=(site&&site.alt)||5000;
+  // ── Thermals: sunny + unstable airmass + sun-on-face + workable wind ──────
+  // Alpine-aware. Ambient temp at 10k+ ft launches is always cold on a summer day
+  // (~60°F), even when the airmass is punchy — so we correct back to a sea-level
+  // equivalent (standard ~3.5°F/1000 ft) to score the airmass, not the elevation.
+  // Surface-based CAPE also understates useable convection when your "surface"
+  // starts high, and light-to-moderate wind at a ridgeline is normal — both get
+  // altitude-scaled. Finally, a sun-on-face gate uses the site's `facing` and the
+  // solar position at this hour so a west launch in morning shade doesn't score
+  // as if it were baking.
+  const equivT=t+(alt/1000)*3.5;
+  const th_temp=Math.max(0,Math.min(100,(equivT-70)*(100/25)));  // 70°F eq→0, 95°F eq→100
+  const th_cloud=Math.max(0,100-c*1.1);
+  const capeScale=1+alt/20000;                    // ~1.55× at 11k ft
+  const th_cape=Math.max(0,Math.min(40,cape*capeScale/10));
+  const th_li=li<=-3?15:li<=0?10:li<=2?4:0;
+  const windScale=1+alt/15000;                    // ~1.73× at 11k ft — 15 mph "feels like" 8.7
+  const wEff=w/windScale;
+  const th_wind=wEff<=6?100:wEff<=12?90:wEff<=16?70:wEff<=20?40:0;
+  // Sun-on-face gate (0.15..1). Blends two effects:
+  //   sunElev  — sin(elevation), so overhead sun ≈ 1, horizon ≈ 0.
+  //   faceBonus — how aligned the sun's azimuth is with the launch's aspect.
+  // When the sun is HIGH, a slope still bakes even if the sun isn't perfectly
+  // on-axis (a west face at noon in July still generates thermals). When the sun
+  // is LOW, aspect matters a lot (a west face at 7am gets none of it). The 0.4
+  // baseline for faceBonus reflects diffuse + terrain-scatter heating.
+  let sunFace=1;
+  if(site&&site.facing!=null&&typeof sunPos==='function'){
+    try{
+      const s=sunPos(new Date(),site.lat,site.lon);
+      if(s.el<=0){sunFace=0.15;}
+      else{
+        const azOff=Math.min(180,Math.abs(((s.az-site.facing+540)%360)-180));
+        const faceBonus=Math.max(0,Math.cos(azOff*Math.PI/180));
+        const sunElev=Math.sin(s.el*Math.PI/180);
+        sunFace=Math.max(0.15,sunElev*(0.4+0.6*faceBonus));
+      }
+    }catch(e){}
+  }
+  const solarDrive=(th_temp*.32+th_cloud*.25)*sunFace;
+  const thermals=Math.round(solarDrive+th_cape+th_li+th_wind*.18);
+  // ── Ridge: steady moderate wind, on-axis, smooth (low gust spread) ────────
+  //   wind speed sweet spot 13-18 mph (real ridge lift). Below ~10 you're not going
+  //   to stay up on lift alone, so score should reflect that.
+  //   gust spread <5 mph (any bumpier = not ridge, it's rowdy)
+  //   direction on-axis (0-15° off gets max, >30° drops fast)
+  const r_wind=(
+    w<7 ? 0 :
+    w<10 ? Math.round((w-7)*20) :         // 7→0, 10→60
+    w<13 ? 60+Math.round((w-10)*13) :     // 10→60, 13→99
+    w<=18 ? 100 :                          // 13-18 sweet spot
+    w<=22 ? Math.round(100-(w-18)*15) :   // 18→100, 22→40
+    w<=25 ? Math.round(40-(w-22)*13) :    // 22→40, 25→1
+    0
+  );
+  const r_spread=spread<=3?100:spread<=6?70:spread<=10?35:0;
+  const r_axis=off==null?70:off<=15?100:off<=30?60:off<=45?25:0;
+  // Gust spread is not just a fractional contributor — it's a hard cap on ridge quality.
+  // A ridge day means smooth, steady laminar flow deflecting up the face; punchy air isn't
+  // "ridge soaring", it's rowdy. Multiplying by smoothness ensures a huge gust spread can't
+  // be papered over by ideal wind speed + on-axis alignment (which would previously still
+  // give ridge≈75 at spread=12mph, badly overstating conditions).
+  const smoothness=spread<=3?1:spread<=6?0.75:spread<=10?0.4:0.15;
+  const ridge=Math.round((r_wind*.5+r_spread*.25+r_axis*.25)*smoothness);
+  // ── Sled: light wind, low CAPE (stable), clear-ish view, calm gusts ──────
+  //   wind <8 mph is best (glass-off feel)
+  //   gust spread <3 (nothing punchy)
+  //   CAPE <100 (no thermal churn to ride)
+  //   cloud <70 (nice view down)
+  const s_wind=w<=5?100:w<=9?70:w<=12?35:0;
+  const s_spread=spread<=2?100:spread<=4?70:spread<=6?40:0;
+  const s_stab=cape<=50?100:cape<=200?60:cape<=500?25:0;
+  const s_cloud=c<=40?100:c<=70?70:c<=90?35:0;
+  const sled=Math.round(s_wind*.4+s_spread*.25+s_stab*.2+s_cloud*.15);
+  const scores={thermals,ridge,sled};
+  let best=null,bestScore=0;
+  Object.entries(scores).forEach(([k,v])=>{if(v>bestScore){best=k;bestScore=v;}});
+  return{...scores,best,bestScore};
+}
+const CHAR_LABEL={thermals:'Thermals',ridge:'Ridge Soaring',sled:'Sleder'};
+const CHAR_ICON ={thermals:'🔥',ridge:'⛰',sled:'🛷'};
+// 5-band color scale for the character badges (green good → grey bad).
+function charColor(v){
+  if(v>=80)return'#16a34a';
+  if(v>=65)return'#84cc16';
+  if(v>=50)return'#eab308';
+  if(v>=35)return'#f97316';
+  return'#94a3b8';
+}
 function hav(a,b,c,d){const R=3958.8,dL=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dl/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function dest(lat,lon,brg,mi){const R=3958.8,d=mi/R,b=brg*Math.PI/180,la1=lat*Math.PI/180,lo1=lon*Math.PI/180,la2=Math.asin(Math.sin(la1)*Math.cos(d)+Math.cos(la1)*Math.sin(d)*Math.cos(b)),lo2=lo1+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(la1),Math.cos(d)-Math.sin(la1)*Math.sin(la2));return[la2*180/Math.PI,lo2*180/Math.PI];}
 
@@ -3186,12 +3495,22 @@ function noFlyReason(site,w){
   }
   if(isNight(curHourLocal(),site))return 'Outside civil daylight (before dawn / after dusk)';
   if(!w)return null;
-  const r=computeFlyScore(w,site);
-  if(r.vetoReason){const t=r.vetoReason;return t.charAt(0).toUpperCase()+t.slice(1);}
-  const bad=(r.reasons||[]).filter(x=>/\(no fly\)$/i.test(x));
-  if(bad.length)return bad[0].replace(/\s*\(no fly\)$/i,'');
-  if(r.score!=null){const cut=(flyConfig.markerCutoffs||{}).caution;return `Fly-score ${r.score}${cut!=null?` (below no-fly cutoff of ${cut})`:''}`;}
-  return 'Conditions currently no-fly';
+  const r=flyStatusCheck(w,site);
+  return r.reasons[0]||'Conditions currently no-fly';
+}
+// Top-N ranked reason list for the "Why" panel — surfaces which safety checks tripped
+// (no-fly items first, then caution items), so the pilot can see WHY the badge disagrees
+// with the wind circle (e.g. gust spread and wind aloft flipping the verdict even
+// though surface wind is inside the launch window).
+function flyReasonList(site,w,max){
+  max=max||3;
+  const out=[];
+  if(site&&site.inTFR){out.push('Inside an active TFR');return out;}
+  if(isNight(curHourLocal(),site)){out.push('Outside civil daylight (before dawn / after dusk)');return out;}
+  if(!w)return out;
+  const r=flyStatusCheck(w,site);
+  r.reasons.slice(0,max).forEach(x=>out.push(x));
+  return out;
 }
 function wxG(w){if(!w)return`<div class="ppg"><div class="ppc"><div class="ppcl">Wind</div><div class="ppcv">Loading...</div></div><div class="ppc"><div class="ppcl">Gusts</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Direction</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Temp</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Clouds</div><div class="ppcv">—</div></div><div class="ppc"><div class="ppcl">Thermals</div><div class="ppcv">—</div></div></div>`;return`<div class="ppg"><div class="ppc"><div class="ppcl">Wind</div><div class="ppcv">${w.wind} mph</div></div><div class="ppc"><div class="ppcl">Gusts</div><div class="ppcv">${w.gusts} mph</div></div><div class="ppc"><div class="ppcl">Direction</div><div class="ppcv">${d2c(w.dir)} (${w.dir}°)</div></div><div class="ppc"><div class="ppcl">Temp</div><div class="ppcv">${w.temp}°F</div></div><div class="ppc"><div class="ppcl">Clouds</div><div class="ppcv">${w.cloud}%</div></div><div class="ppc"><div class="ppcl">Thermals</div><div class="ppcv" style="font-size:10px;">${thStr(w.cloud,w.temp,w.wind)}</div></div></div>`;}
 // The landing zone actually linked to a launch (from the editable lzStore) so its altitude
@@ -3646,17 +3965,32 @@ function launchPop(site,w){
   const bio=siteBioHTML(site);
   const flyBtn=site.lzLat!=null?`<button class="flybtn" id="flybtn-${site.id}" onclick="simulateFlight('${site.id}')">🪂 Simulate flight → LZ</button>`:'';
   const stCol={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[s]||'#facc15';
-  const nf=(s==='no')?noFlyReason(site,w):null;
-  // Nighttime is the one veto that keeps the "No Fly" wording — daytime marginal conditions
-  // read as "Flight Not Recommended". noFlyReason emits the "Outside civil daylight" copy in
-  // that case, which is what we detect here to flip the badge label.
+  // Surface the top 3 reasons whenever the composite is anything BUT flyable — that way
+  // when the wind circle is green but the composite says caution/no, the user can see
+  // it's other params (gust spread, wind aloft, cloud base, etc.) driving the verdict.
+  const reasons=(s!=='flyable')?flyReasonList(site,w,3):[];
+  const nf=reasons[0]||null;
   const nightNo=!!(nf&&/civil daylight/i.test(nf));
-  // Reason lives behind a "?" toggle beside the badge instead of always-visible text —
-  // keeps the header clean while the "why" is still one click away.
-  const whyBtn=nf?`<button type="button" class="pp-why-btn" aria-expanded="false" onclick="togglePpWhy(this)" title="Show why">?</button>`:'';
-  const whyPanel=nf?`<div class="pp-nofly-why" style="display:none;"><b>Why:</b> ${nf}</div>`:'';
+  const whyBtn=reasons.length?`<button type="button" class="pp-why-btn${s==='caution'?' pp-why-btn-caution':''}" aria-expanded="false" onclick="togglePpWhy(this)" title="Show why">?</button>`:'';
+  const whyClass=s==='caution'?'pp-nofly-why pp-caution-why':'pp-nofly-why';
+  const whyPanel=reasons.length?`<div class="${whyClass}" style="display:none;"><b>Why:</b><ul style="margin:4px 0 0;padding-left:16px;">${reasons.map(r=>`<li>${r}</li>`).join('')}</ul></div>`:'';
   const badgeRow=`<div class="pp-badge-row">${bdg(s,{night:nightNo})}${whyBtn}</div>${whyPanel}`;
-  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div></div>${badgeRow}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span><div class="pp-fc-ctrls">${fcResHTML()}${fcModelSelectHTML()}</div></div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${waltHorizontalHTML(site)}${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+  // Only zero the tiles when it's a HARD no-fly (night or TFR). "Flight Not Recommended"
+  // marginal-conditions days keep showing real scores so the pilot can still gauge the day.
+  const hardNo=nightNo||!!(site&&site.inTFR);
+  const charRow=w?characterRowHTML(w,site,hardNo):'';
+  return`<div class="pp"><div class="pp-sat" id="ppsat"></div><div class="ppn-row"><div class="ppn">▲ ${site.name}${favStarHTML(site.id)}${tfrFlagHTML(site)}</div></div>${badgeRow}${charRow}${wxG(w)}<div class="pp-fc-title"><span>2-Week Forecast</span><div class="pp-fc-ctrls">${fcResHTML()}${fcModelSelectHTML()}</div></div><div class="pp-fc-wrap"><div class="nb-load" style="padding:10px;">Loading…</div></div>${waltHorizontalHTML(site)}${flightCalcsHTML(site,w)}${windSpecHTML(site)}${bio}${glideRangeHTML(site)}${windAloftHTML(site)}${shadeTimingHTML(site)}${flyBtn}${shareBtnHTML(site.id)}${dir}${stationBtn(site.lat,site.lon)}${launchEditorHTML(site)}</div>`;
+}
+// Compact 3-tile row inside the launch popup showing Thermals / Ridge / Sled scores.
+// The tile with the highest score is highlighted so the pilot can tell at a glance what
+// kind of day it is at this site. When `zeroed` is true (hard No-Fly — night or TFR),
+// every tile forces to 0 with no winner highlight — the day is a hard stop regardless of
+// what character the wx would otherwise suggest.
+function characterRowHTML(w,site,zeroed){
+  const cs=zeroed?{thermals:0,ridge:0,sled:0,best:null,bestScore:0}:characterScore(w,site);
+  const cell=(k)=>{const v=cs[k],lbl=CHAR_LABEL[k],col=charColor(v),win=cs.best===k?'pp-char-win':'';
+    return`<div class="pp-char-cell ${win}"><div class="pp-char-lbl">${lbl}</div><div class="pp-char-val" style="color:${col};">${v}</div></div>`;};
+  return`<div class="pp-char-row" title="Character scorer — separate from fly/no-fly. Grades the day for each flavor of soaring (0-100). Highlighted tile = best flavor today.">${cell('thermals')}${cell('ridge')}${cell('sled')}</div>`;
 }
 function lzPop(site,w){
   const lzBio=site.lzBio||site.desc||'';
@@ -3928,7 +4262,7 @@ async function fetchHRRRBatch(sites,fallback){
   sites.forEach(s=>{
     const k=`${currentModel}|${s.lat.toFixed(2)},${s.lon.toFixed(2)}`;
     const c=wxCache[k];
-    if(c){siteWx[s.id]={...c,status:flyS(c.wind,c.gusts,c.cloud,c.temp,null,s,c.dir)};}
+    if(c){siteWx[s.id]={...c,status:flyS(c.wind,c.gusts,c.cloud,c.temp,null,s,c.dir,null,c)};}   // pass `c` as extraWx so cape/li/rainRate/cloudBase feed the vetoes on first fill — before this, siteWx[s.id] didn't exist yet so flyS's internal merge saw no aloft fields
     else need.push(s);
   });
   sites=need;
@@ -3951,7 +4285,7 @@ async function fetchHRRRBatch(sites,fallback){
         attachAloftFields(eff,d.hourly,hourIdx);
         wxCache[`${currentModel}|${s.lat.toFixed(2)},${s.lon.toFixed(2)}`]=eff;
       }
-      if(eff)siteWx[s.id]={...eff,status:flyS(eff.wind,eff.gusts,eff.cloud,eff.temp,null,s,eff.dir)};
+      if(eff)siteWx[s.id]={...eff,status:flyS(eff.wind,eff.gusts,eff.cloud,eff.temp,null,s,eff.dir,null,eff)};   // extraWx=eff so vetoes see cape/li/rainRate/cloudBase on first fill
     });
   }
   persistWxCache();
@@ -3997,23 +4331,15 @@ function fitAllModelSelects(){document.querySelectorAll('#model-select,.nb-model
 function fitFcLoc(){
   const el=document.getElementById('fc-loc');if(!el||!el.textContent)return;
   const MAX=32,MIN=11;
-  // Measure OFFSCREEN via canvas — never touch el's current fontSize until we know the
-  // final value, so the user never sees an oversized flash before the shrink.
-  const parent=el.parentElement,head=parent&&parent.parentElement;
-  if(!parent||!head)return;
-  const hcs=getComputedStyle(head),pcs=getComputedStyle(parent);
+  // Measure OFFSCREEN via canvas so the user never sees an oversized flash before the shrink.
+  const head=el.parentElement;if(!head)return;
+  const hcs=getComputedStyle(head);
   const hPad=parseFloat(hcs.paddingLeft)+parseFloat(hcs.paddingRight);
   const hGap=parseFloat(hcs.gap)||0;
-  const pGap=parseFloat(pcs.gap)||0;
-  // Slot available to the parent (#fc-left) inside #fc-head = head content width minus
-  // the OTHER top-level children (#fc-head-actions) and the gap between them.
-  let sibHeadW=0;const hKids=[...head.children].filter(c=>c!==parent);
-  hKids.forEach(c=>{sibHeadW+=c.offsetWidth;});
-  const parentSlot=head.clientWidth - hPad - sibHeadW - hGap*hKids.length;
-  // Space left for #fc-loc inside the parent slot after its siblings (buttons) + gaps.
-  let sibParentW=0;const pKids=[...parent.children].filter(c=>c!==el);
-  pKids.forEach(c=>{sibParentW+=c.offsetWidth;});
-  const avail=parentSlot - sibParentW - pGap*pKids.length;
+  // Available slot for #fc-loc = head content width minus its siblings' widths minus gaps.
+  let sibW=0;const sibs=[...head.children].filter(c=>c!==el);
+  sibs.forEach(c=>{sibW+=c.offsetWidth;});
+  const avail=head.clientWidth - hPad - sibW - hGap*sibs.length;
   if(avail<=0){el.style.fontSize=MIN+'px';return;}
   const cs=getComputedStyle(el);
   const font=cs.fontWeight+' '+MAX+'px '+cs.fontFamily;
@@ -4022,6 +4348,7 @@ function fitFcLoc(){
   const need=fitFcLoc._ctx.measureText(el.textContent).width;
   const size=need<=avail?MAX:Math.max(MIN,Math.floor(MAX*avail/need));
   el.style.fontSize=size+'px';
+  el.style.visibility='visible';
 }
 function updateVane(w,label){if(!w)return;_lastVane={w,label};if(label)document.getElementById('wvt').textContent=label;document.getElementById('varrow').setAttribute('transform',`rotate(${w.dir},34,34)`);document.getElementById('vspeed').textContent=cvWind(w.wind)+' '+windU();document.getElementById('vdir').textContent=d2c(w.dir)+' wind';document.getElementById('vgust').textContent='Gust '+(w.gusts!=null?cvWind(w.gusts):'—')+' '+windU();const sc=flyS(w.wind,w.gusts??w.wind,w.cloud??0,w.temp??60);document.getElementById('wind-vane').style.borderTopColor=sc==='flyable'?'#22c55e':sc==='caution'?'#facc15':'#ef4444';syncCtrlPanel();}  // re-match the 2D/Layers row after the wind box resizes with live data
 // Cursor wind probe — debounced + grid-cached current wind wherever the mouse rests.
@@ -4361,7 +4688,7 @@ async function fetchSeries(model,days){
   const key=`fs|${fcTarget.lat.toFixed(3)},${fcTarget.lon.toFixed(3)}|${model}|${fcInterval}|${hPa||'sfc'}|${days}`;
   return apiCached(key,10*60*1000,async()=>{
     let u=`https://api.open-meteo.com/v1/forecast?latitude=${fcTarget.lat}&longitude=${fcTarget.lon}`+
-      `&hourly=temperature_2m,precipitation_probability,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+   // last three drive the live Thermals row
+      `&hourly=temperature_2m,precipitation_probability,precipitation,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+   // last three drive the live Thermals row; `precipitation` is required so the rainRate hard-veto on synthWxFromEntry(e) sees real data (was silently zeroing it)
       (hPa?`,wind_speed_${hPa}hPa,wind_direction_${hPa}hPa`:'');
     // Sub-hourly: also pull the 15-min feed for the fast-changing surface values.
     // cloud_cover and precipitation_probability aren't in minutely_15 — those still come from the hourly row.
@@ -4450,6 +4777,7 @@ async function loadForecast(){
     saveFcCache(series);
   }
   fcSeries=series;renderForecast(series);
+  try{refreshOpenPopupCharToNow();}catch(e){}
 }
 // Windy-like colour ramps
 function windColor(v){              // mph → cool→hot, smoothly interpolated between stops
@@ -4557,8 +4885,8 @@ function dirArrowCell(dir){
 // temp aren't part of the model comparison, so pass benign values and let wind/dir/night decide.
 function cmpDirCell(e,t){
   if(!fcSiteHasWindow())return dirArrowCell(e.dir);
-  const hr=new Date(t).getHours();
-  const fs=flyS(e.wind,e.gust,0,70,hr,fcTarget.site,e.dir);
+  const dt=new Date(t);
+  const fs=flyS(e.wind,e.gust,e.cloud,e.temp,dt.getHours(),fcTarget.site,e.dir,dt,synthWxFromEntry(e));
   const dc={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[fs];
   return windDirCellSVG(e.dir,fcTarget.site,dc,22);
 }
@@ -4674,7 +5002,13 @@ function buildForecast(container,series,labels){
       const h12=((hr+11)%12)+1,suf=hr<12?'a':'p';
       ap=`${h12}:${pad(mn)}${suf}`;
     }
-    const fs=flyS(e.wind,e.gust,e.cloud,e.temp,hr+mn/60,fcTarget.site,e.dir);   // flyability stays on surface wind
+    // For the current-hour cell, defer to siteWx.status (what the badge and pin show) instead
+    // of the hourly forecast. Open-Meteo's `current` block (siteWx) and `hourly[nowIdx]`
+    // (this series) don't always agree — especially on gusts, where hourly can spike while
+    // current is smoothed — and pilots reasonably expect "now" in the strip to match "Flyable
+    // now" in the badge. Future cells still use the per-hour forecast.
+    const siteStatus=fcTarget.site&&typeof siteWx!=='undefined'&&siteWx[fcTarget.site.id]&&siteWx[fcTarget.site.id].status;
+    const fs=(i===nowIdx&&siteStatus)?siteStatus:flyS(e.wind,e.gust,e.cloud,e.temp,hr+mn/60,fcTarget.site,e.dir,d,synthWxFromEntry(e));   // flyability stays on surface wind
     const dc={flyable:'#22c55e',caution:'#facc15',no:'#ef4444'}[fs];
     // When an altitude is selected, the Wind/Direction rows show winds aloft (falls back to
     // surface if the model has no data at that level for this hour).
@@ -4695,7 +5029,11 @@ function buildForecast(container,series,labels){
   // Continuous horizontal gradient across a whole row: each cell's centre is a
   // colour stop, so neighbouring values fade smoothly into each other (no seams).
   const rowGrad=vals=>{const n=vals.length;if(!n)return'';return`background:linear-gradient(to right,${vals.map((v,i)=>`${windColor(v)} ${(((i+0.5)/n)*100).toFixed(2)}%`).join(',')});`;};
-  const colGrad=cols=>{const n=cols.length;if(!n)return'';return`background:linear-gradient(to right,${cols.map((c,i)=>`${c} ${(((i+0.5)/n)*100).toFixed(2)}%`).join(',')});`;};
+  // Flyability row uses HARD stops (each cell is a solid color band, no fade into the
+  // next cell) — a caution hour next to a flyable hour should look like a decisive shift,
+  // not a wide amber-green blend that softens the message. Emit each color twice at the
+  // cell's start/end to force the instant transition.
+  const colGrad=cols=>{const n=cols.length;if(!n)return'';return`background:linear-gradient(to right,${cols.map((c,i)=>`${c} ${((i/n)*100).toFixed(2)}%,${c} ${(((i+1)/n)*100).toFixed(2)}%`).join(',')});`;};
   // row order: [rowClass, frozen label, data cells, optional data-row style]
   const rows=[
     ['fc-r-day',`<span class="fc-day-name">${dayCols[nowIdx>0?nowIdx:0]||''}</span>`,dayRow],
@@ -4819,12 +5157,87 @@ function pickWindTime(iso){
     setBadge('🌬 Wind @ '+lbl+' · click the slot again for live');
     fetchWindGrid(iso).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});
   }                                                       // wind layer off → just highlight, no badge prompt
+  refreshOpenPopupToTime(iso);
 }
 function resetWindTime(){
   windState.time=null;
   document.querySelectorAll('.fc-cell.wt-sel').forEach(c=>c.classList.remove('wt-sel'));
   if(windState.on){setBadge('🌬 Wind: live');fetchWindGrid(null).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});}
   else setBadge('');
+  refreshOpenPopupToTime(null);
+}
+// Turn a forecast-strip entry (hourly wx sample from entriesFrom) into the wx-record
+// shape used by flyS/characterScore/wxG. Derives cloudBase, dp, dirChg the same way
+// fetchHRRR does so the badge/character updates behave consistently.
+function synthWxFromEntry(e){
+  if(!e)return null;
+  const dp=(e.temp!=null&&e.rh!=null)?(e.temp-(100-e.rh)/5):null;
+  const dirChg=(e.dir!=null&&e.dirAlt!=null)?Math.round(angleDiff(e.dir,e.dirAlt)):null;
+  const cloudBase=(e.temp!=null&&dp!=null)?Math.round(((e.temp-dp)/4.4)*1000):null;
+  return{
+    wind:e.wind,gusts:e.gust,cloud:e.cloud,temp:e.temp,dir:e.dir,dp,
+    windAlt:e.windAlt,dirAlt:e.dirAlt,dirChg,
+    rainChance:e.pop,rainRate:e.precip,cloudBase,cape:e.cape,li:e.li
+  };
+}
+// When a forecast time is picked, refresh the OPEN launch popup so its status badge,
+// "Why" panel, character tiles, and now-values grid all match that time slice. When
+// iso is null, snap everything back to live siteWx.
+function refreshOpenPopupToTime(iso){
+  if(!currentLaunchId)return;
+  const site=LAUNCHES.find(x=>x.id===currentLaunchId);if(!site)return;
+  const pp=document.querySelector('#sb-body .pp');if(!pp)return;
+  let wx,hr;
+  if(iso){
+    const e=(fcSeries||[]).find(x=>x.t===iso);if(!e)return;
+    wx=synthWxFromEntry(e);hr=hourOf(iso);
+  }else{
+    wx=siteWx[site.id]||null;hr=null;
+  }
+  const rowDate=iso?new Date(iso):null;
+  const s=(site.inTFR)?'no':(wx?flyS(wx.wind,wx.gusts,wx.cloud,wx.temp,hr,site,wx.dir,rowDate):'caution');
+  const nightNo=isNight(hr==null?curHourLocal():hr,site,rowDate);
+  const badgeRow=pp.querySelector('.pp-badge-row');
+  const reasons=(s!=='flyable'&&wx)?flyReasonList(site,wx,3):[];
+  const whyBtnHTML=reasons.length?`<button type="button" class="pp-why-btn${s==='caution'?' pp-why-btn-caution':''}" aria-expanded="false" onclick="togglePpWhy(this)" title="Show why">?</button>`:'';
+  if(badgeRow)badgeRow.innerHTML=bdg(s,{night:nightNo})+whyBtnHTML;
+  const whyClass=s==='caution'?'pp-nofly-why pp-caution-why':'pp-nofly-why';
+  const whyHTML=reasons.length?`<div class="${whyClass}" style="display:none;"><b>Why:</b><ul style="margin:4px 0 0;padding-left:16px;">${reasons.map(r=>`<li>${r}</li>`).join('')}</ul></div>`:'';
+  const oldWhy=pp.querySelector('.pp-nofly-why');
+  if(oldWhy&&whyHTML){const t=document.createElement('template');t.innerHTML=whyHTML.trim();oldWhy.replaceWith(t.content.firstChild);}
+  else if(oldWhy)oldWhy.remove();
+  else if(whyHTML&&badgeRow)badgeRow.insertAdjacentHTML('afterend',whyHTML);
+  const oldChar=pp.querySelector('.pp-char-row');
+  const hardNo=nightNo||!!(site&&site.inTFR);
+  const newCharHTML=wx?characterRowHTML(wx,site,hardNo):'';
+  if(oldChar&&newCharHTML){const t=document.createElement('template');t.innerHTML=newCharHTML.trim();oldChar.replaceWith(t.content.firstChild);}
+  else if(oldChar)oldChar.remove();
+  else if(newCharHTML){const after=pp.querySelector('.pp-nofly-why')||badgeRow;if(after)after.insertAdjacentHTML('afterend',newCharHTML);}
+  const oldWxG=pp.querySelector('.ppg');
+  if(oldWxG){const t=document.createElement('template');t.innerHTML=wxG(wx).trim();const newWxG=t.content.firstChild;if(newWxG)oldWxG.replaceWith(newWxG);}
+}
+// Refresh ONLY the character tiles (T / R / S) of an open launch popup to the
+// current-hour forecast entry. siteWx is built from Open-Meteo's `d.current` block,
+// which smooths gusts — so the initial character row could show ridge=100 even when
+// the hourly forecast for this same hour had a 12 mph gust spread. This matches what
+// the pilot already sees when they click the "now" cell in the forecast strip.
+// Badge/why stay on siteWx so "Flyable now" remains consistent with the strip's
+// now cell (see the fly-status note in buildForecast).
+function refreshOpenPopupCharToNow(){
+  if(!currentLaunchId||typeof fcSeries==='undefined'||!fcSeries||!fcSeries.length)return;
+  const site=LAUNCHES.find(x=>x.id===currentLaunchId);if(!site)return;
+  const pp=document.querySelector('#sb-body .pp');if(!pp)return;
+  const now=Date.now();
+  const nowWin=Math.max(15,fcInterval)*60*1000/2;
+  const e=fcSeries.find(x=>new Date(x.t).getTime()>=now-nowWin);
+  if(!e)return;
+  const wx=synthWxFromEntry(e);if(!wx)return;
+  const d=new Date(e.t);
+  const nightNo=isNight(d.getHours()+d.getMinutes()/60,site,d);
+  const hardNo=nightNo||!!(site&&site.inTFR);
+  const newCharHTML=characterRowHTML(wx,site,hardNo);
+  const oldChar=pp.querySelector('.pp-char-row');
+  if(oldChar&&newCharHTML){const t=document.createElement('template');t.innerHTML=newCharHTML.trim();oldChar.replaceWith(t.content.firstChild);}
 }
 function renderForecast(series){
   const fcEl=document.getElementById('forecast');
@@ -5179,20 +5592,33 @@ function windStrengthFor(site){
        :lvl===3?{idealLo:5,idealHi:14,max:18,gust:6}
        :{idealLo:5,idealHi:16,max:20,gust:8};
   if(isHG)s={idealLo:s.idealLo,idealHi:s.idealHi+4,max:s.max+6,gust:s.gust+2};
-  // If the fly-score config knows about a customized surface-wind or gust threshold
-  // (either global or per-launch), reflect it here so the pilot-facing "Ideal
-  // conditions" numbers stay coherent with the score/marker color they're seeing.
+  // Reconcile with the fly-score config. Precedence:
+  //   * Per-site flyOverrides on surfaceWind/gustSpread → the admin explicitly tuned
+  //     this launch, so their numbers win (loosen OR tighten as they say).
+  //   * Otherwise the GLOBAL config only ever TIGHTENS the rating baseline. This is the
+  //     bug fix — earlier this branch unconditionally overwrote `s.max` with the global
+  //     `surfaceWind.noFly` (default 20), so every P2 site silently inherited the P4
+  //     ceiling and painted green at 17 mph when the rating baseline says 15.
   try{
     if(typeof effectiveFlyCfg==='function'&&typeof flyConfig!=='undefined'&&flyConfig){
       const cfg=effectiveFlyCfg(site);
       const sw=cfg&&cfg.params&&cfg.params.surfaceWind;
       const gs=cfg&&cfg.params&&cfg.params.gustSpread;
+      const perSiteSw=site&&site.flyOverrides&&site.flyOverrides.params&&site.flyOverrides.params.surfaceWind;
+      const perSiteGs=site&&site.flyOverrides&&site.flyOverrides.params&&site.flyOverrides.params.gustSpread;
       if(sw){
-        if(sw.caution!=null)s.idealHi=sw.caution;   // caution edge = top of the "ideal" range
-        if(sw.noFly!=null)s.max=sw.noFly;           // no-fly edge = hard max
-        if(sw.caution!=null&&s.idealLo>s.idealHi)s.idealLo=Math.max(1,s.idealHi-6);
+        if(perSiteSw){
+          if(sw.caution!=null)s.idealHi=sw.caution;
+          if(sw.noFly!=null)s.max=sw.noFly;
+        }else{
+          if(sw.caution!=null)s.idealHi=Math.min(s.idealHi,sw.caution);
+          if(sw.noFly!=null)s.max=Math.min(s.max,sw.noFly);
+        }
+        if(s.idealLo>s.idealHi)s.idealLo=Math.max(1,s.idealHi-6);
       }
-      if(gs&&gs.noFly!=null)s.gust=gs.noFly;        // hard gust-spread ceiling
+      if(gs&&gs.noFly!=null){
+        s.gust=perSiteGs?gs.noFly:Math.min(s.gust,gs.noFly);
+      }
     }
   }catch(e){}
   return s;
@@ -5392,7 +5818,7 @@ async function flyFromHere(lat,lon){
   createLaunchMarker(site);
   onLaunchClick(site);                                   // opens the standard takeoff menu
   // Weather arrives async; once it does, recolour the pin.
-  fetchHRRR(site.lat,site.lon).then(w=>{if(!w)return;siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};recolorMarkers();});
+  fetchHRRR(site.lat,site.lon).then(w=>{if(!w)return;siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir,null,w)};recolorMarkers();});
 }
 
 // After a launch pin is dragged to a new spot, re-derive everything that depends on location:
@@ -5408,7 +5834,7 @@ async function refreshMovedLaunch(site){
   saveLaunchPos();saveCustomLaunches();                      // persist the re-derived fields
   if(glideState.id===site.id)drawGlide(site);               // redraw glide cone from the new spot
   if(currentLaunchId===site.id)onLaunchClick(site);         // rebuild popup NOW so facing/alt/glide show immediately
-  try{const w=await fetchHRRR(site.lat,site.lon);if(w){siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};recolorMarkers();if(currentLaunchId===site.id)onLaunchClick(site);}}catch(e){}
+  try{const w=await fetchHRRR(site.lat,site.lon);if(w){siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir,null,w)};recolorMarkers();if(currentLaunchId===site.id)onLaunchClick(site);}}catch(e){}
 }
 // Press-and-hold anywhere on the map (touch) to drop an ad-hoc takeoff right there and run the
 // best-glide / reachable-LZ analysis — no "Fly from here?" tap needed. Tap still shows the prompt.
@@ -5939,7 +6365,7 @@ function setBadge(t){const b=document.getElementById('mode-badge');if(b){b.textC
 function startAddLZ(){if(!isAdmin)return;addingLZ=true;addingLaunch=false;setBadge('📍 Click the map to drop a new LZ');}
 function startAddLaunch(){if(!isAdmin)return;addingLaunch=true;addingLZ=false;setBadge('📍 Click the map to drop a new takeoff');}
 function handleEditClick(lon,lat){
-  if(addingLaunch){addingLaunch=false;setBadge('');const site={id:'lnch_user_'+Date.now(),name:'New Takeoff',sub:'Custom',lat,lon,alt:6000,lzAlt:4500,rating:'P2',facing:270,lzLat:null,lzLon:null,desc:'User-added takeoff.',custom:true};LAUNCHES.push(site);saveCustomLaunches();createLaunchMarker(site);fetchHRRR(site.lat,site.lon).then(w=>{if(w){siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir)};recolorMarkers();}});onLaunchClick(site);return true;}
+  if(addingLaunch){addingLaunch=false;setBadge('');const site={id:'lnch_user_'+Date.now(),name:'New Takeoff',sub:'Custom',lat,lon,alt:6000,lzAlt:4500,rating:'P2',facing:270,lzLat:null,lzLon:null,desc:'User-added takeoff.',custom:true};LAUNCHES.push(site);saveCustomLaunches();createLaunchMarker(site);fetchHRRR(site.lat,site.lon).then(w=>{if(w){siteWx[site.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,site,w.dir,null,w)};recolorMarkers();}});onLaunchClick(site);return true;}
   if(addingLZ){addingLZ=false;setBadge('');const lz={id:'lz_user_'+Date.now(),name:'New LZ',sub:'Custom',lat,lon,alt:4500,desc:'User-added landing zone.',launchIds:[],boundary:null,custom:true};lzStore.push(lz);saveLZStore();buildLZMarkers();drawConnectors();openLZ(lz);return true;}
   if(drawingFor){drawVerts.push([lon,lat]);updateDrawPreview();return true;}
   return false;
@@ -6220,7 +6646,15 @@ async function loadWeather(){
     const c=loadWxCache();
     if(c){
       if(c.slcWx){slcWx=c.slcWx;updateVane(slcWx,'SLC Wind');}
-      if(c.siteWx)siteWx=Object.assign({},c.siteWx);
+      if(c.siteWx){
+        siteWx=Object.assign({},c.siteWx);
+        // The cached snapshot has `.status` baked in from whatever fly-score logic ran
+        // when it was saved. If thresholds have changed since (a code update, a user
+        // edit to flyConfig), the pin would keep the old color while the popup runs
+        // fresh flyS and disagrees. Recompute every launch's status against the wx
+        // values so pin and popup agree.
+        LAUNCHES.forEach(s=>{const w=siteWx[s.id];if(w)siteWx[s.id]={...w,status:flyS(w.wind,w.gusts,w.cloud,w.temp,null,s,w.dir)};});
+      }
       showWxCachedBanner(`⚠ Live weather unavailable — showing cached data from ${ageStr(c.ts)} ago`);
     }else{
       showWxCachedBanner('⚠ Live weather unavailable — Open-Meteo request limit reached');
@@ -6236,6 +6670,17 @@ function recolorMarkers(){
     else if(ref.setIcon)ref.setIcon(L.divIcon({html:svg,iconSize:[36,46],iconAnchor:[18,44],popupAnchor:[0,-44],className:zc}));
   });
   cullGhostMarkers();
+  refreshCharLayer();   // character badges follow the same wx snapshot the pin colors use
+  // Popup badge + character tiles are baked at popup-open time from siteWx. When siteWx
+  // refreshes underneath (fetchHRRRBatch, config edits, adds/removes), the pin repaints
+  // but the badge stays stale — the "pin red, badge yellow" mismatch. Nudge the open
+  // popup back into sync. Skip when the pilot has picked a specific forecast time via
+  // pickWindTime — that explicit selection should still win.
+  if(typeof currentLaunchId!=='undefined'&&currentLaunchId&&
+     (typeof windState==='undefined'||!windState.time)&&
+     typeof refreshOpenPopupToTime==='function'){
+    try{refreshOpenPopupToTime(null);}catch(e){}
+  }
 }
 
 // ── Hide "ghost" markers that sit behind the camera ───────────────────────────
