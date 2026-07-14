@@ -106,21 +106,24 @@ body.fc-collapsed #forecast{display:none;}
 #forecast{flex-shrink:0;background:#fff;border-bottom:1px solid #d8dee9;display:flex;overflow:hidden;z-index:10;--fcw:46px;--fcl:74px;}
 /* Frozen left labels column (Hour/Temp/…): a static sibling of the scroller, so it never moves. */
 .fc-labels{flex-shrink:0;width:var(--fcl);position:relative;z-index:6;background:#f8fafc;font-family:system-ui,sans-serif;}
-/* The horizontally-scrolling data grid, sitting to the right of (and sliding behind) the labels. */
-.fc-scroll{flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;}
+/* The horizontally-scrolling data grid, sitting to the right of (and sliding behind) the labels.
+   display:flex align-items:stretch so the click-to-expand cells at each end match fc-data height. */
+.fc-scroll{flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;display:flex;align-items:stretch;}
 /* Hide all scrollbars app-wide (scrolling still works). */
 *{scrollbar-width:none;-ms-overflow-style:none;}
 *::-webkit-scrollbar{width:0;height:0;display:none;}
 .fc-data{display:flex;flex-direction:column;width:max-content;font-family:system-ui,sans-serif;position:relative;}
-/* Click-to-load edge tabs — full-height vertical bars at the strip's start/end. Only shown
-   until the user expands that direction; expanding pulls another 7-14 days from Open-Meteo. */
-.fc-expand{position:sticky;flex-shrink:0;width:40px;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,rgba(37,99,235,.14),rgba(37,99,235,.06));border:1px dashed #93c5fd;cursor:pointer;z-index:5;transition:background .15s;color:#1d4ed8;font-weight:700;text-align:center;line-height:1.15;}
-.fc-expand:hover{background:linear-gradient(90deg,rgba(37,99,235,.24),rgba(37,99,235,.10));}
-.fc-expand-past{left:0;border-radius:6px 0 0 6px;border-right:none;}
-.fc-expand-fut{right:0;border-radius:0 6px 6px 0;border-left:none;background:linear-gradient(-90deg,rgba(37,99,235,.14),rgba(37,99,235,.06));}
-.fc-expand-fut:hover{background:linear-gradient(-90deg,rgba(37,99,235,.24),rgba(37,99,235,.10));}
-.fc-expand-txt{font-size:10px;padding:2px;}
-body.dark .fc-expand{background:linear-gradient(90deg,rgba(96,165,250,.18),rgba(96,165,250,.06));border-color:#3b82f6;color:#93c5fd;}
+/* Click-to-load edge cells — half a normal cell wide, full strip height, styled as inline cells.
+   Past sits at the strip's start; future is appended after the last data cell so it only appears
+   "when the data runs out" (i.e. when you scroll all the way to the end). Expanding pulls another
+   1-2 weeks from Open-Meteo. */
+.fc-expand{width:calc(var(--fcw) * 0.5);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(37,99,235,.10);cursor:pointer;color:#1d4ed8;font-weight:700;text-align:center;line-height:1.05;font-size:9px;transition:background .15s;}
+.fc-expand:hover{background:rgba(37,99,235,.24);}
+.fc-expand-past{border-right:1px dashed #93c5fd;}
+.fc-expand-fut{border-left:1px dashed #93c5fd;}
+.fc-expand-txt{padding:2px;}
+body.dark .fc-expand{background:rgba(96,165,250,.14);color:#93c5fd;}
+body.dark .fc-expand-past,body.dark .fc-expand-fut{border-color:#3b82f6;}
 /* Live "exact time" bar that glides across the forecast at the current minute. */
 .fc-nowline{position:absolute;top:22px;bottom:0;width:2px;background:#ef4444;pointer-events:none;z-index:4;box-shadow:0 0 0 1px rgba(255,255,255,.7);}
 .fc-nowline::before{content:'';position:absolute;top:0;left:-3px;width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 1.5px #fff;}
@@ -5533,11 +5536,11 @@ function renderForecast(series){
     if(scroll){
       if(!fcExpandPast){
         scroll.insertAdjacentHTML('afterbegin',
-          `<div class="fc-expand fc-expand-past" onclick="expandForecastPast()" title="Load the past 2 weeks (extra Open-Meteo call)"><span class="fc-expand-txt">◀ 2&nbsp;wks<br>past</span></div>`);
+          `<div class="fc-expand fc-expand-past" onclick="expandForecastPast()" title="Load the past 2 weeks (extra Open-Meteo call)"><span class="fc-expand-txt">◀<br>2w<br>past</span></div>`);
       }
       if(!fcExpandFuture){
         scroll.insertAdjacentHTML('beforeend',
-          `<div class="fc-expand fc-expand-fut" onclick="expandForecastFuture()" title="Load the next week (extra Open-Meteo call)"><span class="fc-expand-txt">Next<br>week ▶</span></div>`);
+          `<div class="fc-expand fc-expand-fut" onclick="expandForecastFuture()" title="Load the next week (extra Open-Meteo call)"><span class="fc-expand-txt">Next<br>week<br>▶</span></div>`);
       }
     }
   }
