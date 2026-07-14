@@ -553,6 +553,7 @@ body.dark .wh-agl.at{color:#22c55e;}
 .wh-row-bot .wh-mline{bottom:5px;height:30px;}
 .wh-mline-launch{background:#22c55e;}
 .wh-mline-lz{background:#0ea5e9;}
+.wh-mline-surf{background:#0ea5e9;}
 .wh-mline-tick{background:#94a3b8;height:8px;}
 .wh-row-top .wh-mline-tick{top:14px;height:8px;}
 .wh-row-bot .wh-mline-tick{bottom:14px;height:8px;}
@@ -564,8 +565,10 @@ body.dark .wh-mline-tick{background:#475569;}
 .wh-row-bot .wh-lbl{bottom:0;}
 .wh-lbl-launch{color:#166534;background:#dcfce7;border:1px solid #86efac;}
 .wh-lbl-lz{color:#1e40af;background:#dbeafe;border:1px solid #93c5fd;}
+.wh-lbl-surf{color:#0c4a6e;background:#e0f2fe;border:1px solid #7dd3fc;}
 body.dark .wh-lbl-launch{color:#bbf7d0;background:rgba(22,101,52,.6);border-color:#166534;}
 body.dark .wh-lbl-lz{color:#bae6fd;background:rgba(12,74,110,.65);border-color:#1e40af;}
+body.dark .wh-lbl-surf{color:#bae6fd;background:rgba(12,74,110,.6);border-color:#0369a1;}
 .wh-lbl:hover{filter:brightness(1.05);}
 .wh-tick-lbl{position:absolute;bottom:0;font-size:8.5px;color:#64748b;font-weight:700;white-space:nowrap;pointer-events:none;}
 body.dark .wh-tick-lbl{color:#94a3b8;}
@@ -2581,8 +2584,9 @@ const PLEVELS=[{hPa:1000,ft:364},{hPa:975,ft:1000},{hPa:950,ft:1640},{hPa:925,ft
 // Continuous slider: integer ft MSL from WALT_MIN to WALT_MAX. WALT_MIN is set to Utah's
 // lowest realistic ground (~3,000 ft; Mollie's Nipple LZ near Hurricane sits at 3,307) so
 // the slider can't select nonsensical sub-Utah altitudes like 400 ft MSL. Surface wind
-// (windAlt = 0) is a separate mode reached by clicking the ▼ LZ marker — it uses the
-// model's 10 m AGL data, which is the right thing for a pilot on the ground.
+// (windAlt = 0) is a separate mode reached by clicking the 🌱 Surface tick (leftmost) or
+// by dragging the thumb into the surface zone below the LZ altitude — it uses the model's
+// 10 m AGL data, which is the right thing for a pilot on the ground.
 const WALT_MIN=3000,WALT_MAX=18000;
 // Reference altitudes where the atmosphere model has real data (850/800/700/600/500 hPa).
 // Rendered as tick marks under the slider so the user can see where the physical weather
@@ -2621,37 +2625,51 @@ function setWindAlt(v){
   const _lzAlt=_launchSite?connectedLZAlt(_launchSite):null;
   const _launchAlt=_launchSite&&_launchSite.alt!=null?_launchSite.alt:null;
   const _floor=_whPanel&&_whPanel.dataset.floor?parseInt(_whPanel.dataset.floor):((_lzAlt!=null)?_lzAlt:WALT_MIN);
-  // Snap the raw slider value to the Launch or LZ marker when the drag lands close to
-  // either — makes it feel like the thumb "clicks" onto those altitudes. Click-to-snap
-  // from the marker labels already lands exactly on the value, so this is a no-op there.
+  // Surface zone lives at the LEFT of the slider (below the LZ tick). Anything ≤ surfSnapMax
+  // snaps to windAlt=0 (surface). Data attr is set by waltHorizontalHTML at panel-render time.
+  const _surfSnapMax=_whPanel&&_whPanel.dataset.surfSnapMax?parseInt(_whPanel.dataset.surfSnapMax):-1;
+  const _sliderMin=_whPanel&&_whPanel.dataset.sliderMin?parseInt(_whPanel.dataset.sliderMin):_floor;
+  // Snap the raw slider value to the Launch marker when the drag lands close to it —
+  // makes it feel like the thumb "clicks" onto that altitude. LZ snap was removed with
+  // the LZ tick: an invisible snap that jumps the thumb 200 ft with no on-rail indicator
+  // is just confusing. Click-to-snap from the Launch label already lands exactly on the
+  // value, so this is a no-op there.
   let snapped=n;
   const SNAP_FT=200;
-  if(n>0){
-    if(_lzAlt!=null&&Math.abs(n-_lzAlt)<=SNAP_FT)snapped=_lzAlt;
-    else if(_launchAlt!=null&&Math.abs(n-_launchAlt)<=SNAP_FT)snapped=_launchAlt;
-  }
-  windAlt=(snapped<=0||snapped<=_floor)?0:Math.max(WALT_MIN,Math.min(WALT_MAX,snapped));
+  if(n>0&&_launchAlt!=null&&Math.abs(n-_launchAlt)<=SNAP_FT)snapped=_launchAlt;
+  // Surface if: explicit 0, drag into the left-of-LZ surface zone, or (legacy) value at/below floor.
+  const inSurfZone=(_surfSnapMax>=0)?(snapped<=_surfSnapMax):(snapped<=_floor);
+  windAlt=(snapped<=0||inSurfZone)?0:Math.max(WALT_MIN,Math.min(WALT_MAX,snapped));
   // Legacy walt-slider inputs (kept as a safety net for any code path still creating them).
   const sl=document.getElementById('walt-slider');
   if(sl){const target=(windAlt===0)?WALT_MIN:windAlt;if(+sl.value!==target)sl.value=target;}
   const el=document.getElementById('walt-val');if(el)el.textContent=waltLabel(windAlt);
   // In-popup horizontal slider: keep the range input, MSL number, AGL companion and the
   // Surface tag in sync whether the change came from a drag, a marker click, or code.
-  // At Surface we park the slider at the floor (LZ ground) and reveal "· SURFACE".
+  // At Surface we park the slider at sliderMin (leftmost, in the surface zone) and swap the
+  // MSL number for the label "Surface" so it reads clearly instead of showing a bogus altitude.
   const whRefAlt=_whIsLZMode?_floor:_launchAlt;
-  const whDisp=(windAlt===0)?_floor:windAlt;
+  const whDisp=(windAlt===0)?_sliderMin:windAlt;
   const whRng=document.getElementById('wh-range');
   if(whRng&&+whRng.value!==whDisp)whRng.value=whDisp;
   const whMsl=document.getElementById('wh-msl-val');
-  if(whMsl)whMsl.textContent=whDisp.toLocaleString();
+  if(whMsl)whMsl.textContent=(windAlt===0)?'Surface':whDisp.toLocaleString();
+  const whMslUnit=document.querySelector('.wh-msl-unit');
+  if(whMslUnit)whMslUnit.style.display=(windAlt===0)?'none':'inline';
   const whSurf=document.getElementById('wh-surf-tag');
   if(whSurf)whSurf.style.display=(windAlt===0)?'inline':'none';
   const whAgl=document.getElementById('wh-agl-val');
   if(whAgl){
-    let txt=waltAglLabel(whDisp,whRefAlt);
-    if(_whIsLZMode)txt=txt.replace(/launch/g,'LZ');
-    whAgl.textContent=txt;
-    whAgl.classList.toggle('at',whRefAlt!=null&&whDisp===whRefAlt);
+    if(windAlt===0){
+      // Surface mode: the header's "Surface · 10 m AGL" already says it — no extra AGL chatter.
+      whAgl.textContent='';
+      whAgl.classList.remove('at');
+    }else{
+      let txt=waltAglLabel(whDisp,whRefAlt);
+      if(_whIsLZMode)txt=txt.replace(/launch/g,'LZ');
+      whAgl.textContent=txt;
+      whAgl.classList.toggle('at',whRefAlt!=null&&whDisp===whRefAlt);
+    }
   }
   if(windState.on)fetchWindGrid(windState.time).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});
   // Re-pull the forecast so its Wind/Direction rows reflect the chosen altitude (debounced so
@@ -3071,8 +3089,15 @@ function flyStatusCheck(wx,site){
     else if(caut)bump(1,`${pp.label}: ${fmt?fmt(val):val+pp.unit}`);
   };
   // 1. Direction off-axis (derived) — soft check; hard veto already handled above.
+  // Bypass testKey's "Label: value+unit" format so the reason reads as a plain sentence,
+  // e.g. "30° outside launch window", rather than the noisier "Wind Off-Axis (vs launch
+  // window): 30° off-axis". Dedupe by topic still catches the redundant site-window text.
   const off=paramValue(wx,'windOffAxis',site);
-  testKey('windOffAxis',off,v=>Math.round(v)+'° off-axis');
+  if(off!=null&&!isNaN(off)&&off>0){
+    const pp=p.windOffAxis, txt=`${Math.round(off)}° outside launch window`;
+    if(off>=pp.noFly)bump(2,txt);
+    else if(off>=pp.caution)bump(1,txt);
+  }
   // 2. Surface wind speed.
   testKey('surfaceWind',wx&&wx.wind);
   // 3. Gust spread.
@@ -3092,9 +3117,33 @@ function flyStatusCheck(wx,site){
   // paramValue() so it's altitude-scaled for alpine launches.
   testKey('cape',paramValue(wx,'cape',site),v=>Math.round(v)+' J/kg');
   testKey('liftedIdx',paramValue(wx,'liftedIdx',site),v=>v+' LI');
-  // Sort reasons by severity (no-fly first, then caution) but keep first appearance order within a tier.
-  reasons.sort((a,b)=>b.lv-a.lv);
-  return{status:worst===2?'no':worst===1?'caution':'flyable',reasons:reasons.map(r=>r.text)};
+  // Dedupe by topic: the site-window check + windOffAxis param, the site-ceiling + surfaceWind
+  // hard veto + surfaceWind param, etc. all describe the SAME safety concern in different words.
+  // Group by topic → keep the highest-severity + most specific (numeric) reason from each group.
+  const topicOf=t=>{
+    const s=t.toLowerCase();
+    if(s.includes('off-axis')||s.includes('launch window'))return 'wind-axis';
+    if(s.includes('site ceiling')||s.includes('surface wind'))return 'wind-speed';
+    if(s.includes('gust spread'))return 'gust';
+    if(s.includes('wind shear'))return 'shear';
+    if(s.includes('cape')||s.includes('overdevelopment'))return 'cape';
+    if(s.includes('rain'))return 'rain';
+    if(s.includes('cloud base'))return 'cloud';
+    if(s.includes('visibility'))return 'vis';
+    if(s.includes('lifted')||/\bli\b/.test(s))return 'li';
+    if(s.includes('sfc→')||s.includes('dir change'))return 'dir-shift';
+    return t;   // unique text → its own topic (never merges)
+  };
+  const best=new Map();
+  reasons.forEach(r=>{
+    const k=topicOf(r.text);
+    const cur=best.get(k);
+    if(!cur){best.set(k,r);return;}
+    const rHasNum=/\d/.test(r.text), cHasNum=/\d/.test(cur.text);
+    if(r.lv>cur.lv||(r.lv===cur.lv&&rHasNum&&!cHasNum))best.set(k,r);
+  });
+  const merged=Array.from(best.values()).sort((a,b)=>b.lv-a.lv);
+  return{status:worst===2?'no':worst===1?'caution':'flyable',reasons:merged.map(r=>r.text)};
 }
 function flyS(w,g,c,t,hour,site,dir,date,extraWx){
   if(isNight(hour==null?curHourLocal():hour,site,date))return'no';
@@ -3139,13 +3188,15 @@ function characterScore(wx,site){
   const windScale=1+alt/15000;                    // ~1.73× at 11k ft — 15 mph "feels like" 8.7
   const wEff=w/windScale;
   const th_wind=wEff<=6?100:wEff<=12?90:wEff<=16?70:wEff<=20?40:0;
-  // Sun-on-face gate (0.15..1). Blends two effects:
-  //   sunElev  — sin(elevation), so overhead sun ≈ 1, horizon ≈ 0.
-  //   faceBonus — how aligned the sun's azimuth is with the launch's aspect.
-  // When the sun is HIGH, a slope still bakes even if the sun isn't perfectly
-  // on-axis (a west face at noon in July still generates thermals). When the sun
-  // is LOW, aspect matters a lot (a west face at 7am gets none of it). The 0.4
-  // baseline for faceBonus reflects diffuse + terrain-scatter heating.
+  // Sun-on-face gate (0.15..1). Physical model: solar irradiance on a tilted slope.
+  //   incidence = sin(el)·cos(pitch) + cos(el)·sin(pitch)·cos(azOff)
+  //     · sin(el)·cos(pitch)         — horizontal-component of light hitting the slope
+  //     · cos(el)·sin(pitch)·cos(azOff) — bonus/deficit from slope aspect vs sun azimuth
+  //     · azOff = 0 (sun on-face) adds, azOff = 180 (sun behind) subtracts.
+  // Correctly models "overhead sun bakes every slope" — a west face at solar noon in July
+  // still catches ~90% of max irradiance because the sun-elevation term dominates. It's
+  // only near dawn/dusk (low el) that aspect flips the answer sharply. Typical launch pitch
+  // ~25° is a reasonable default; we don't have per-site slope data.
   let sunFace=1;
   if(site&&site.facing!=null&&typeof sunPos==='function'){
     try{
@@ -3153,14 +3204,23 @@ function characterScore(wx,site){
       if(s.el<=0){sunFace=0.15;}
       else{
         const azOff=Math.min(180,Math.abs(((s.az-site.facing+540)%360)-180));
-        const faceBonus=Math.max(0,Math.cos(azOff*Math.PI/180));
-        const sunElev=Math.sin(s.el*Math.PI/180);
-        sunFace=Math.max(0.15,sunElev*(0.4+0.6*faceBonus));
+        const azCos=Math.cos(azOff*Math.PI/180);         // 1 on-face, -1 back-side
+        const elRad=s.el*Math.PI/180;
+        const sunEl=Math.sin(elRad), sunElCos=Math.cos(elRad);
+        const slopeRad=25*Math.PI/180;                    // assumed launch pitch
+        const cosP=Math.cos(slopeRad), sinP=Math.sin(slopeRad);
+        const incidence=sunEl*cosP + sunElCos*sinP*azCos;
+        sunFace=Math.max(0.15,incidence);
       }
     }catch(e){}
   }
   const solarDrive=(th_temp*.32+th_cloud*.25)*sunFace;
-  const thermals=Math.round(solarDrive+th_cape+th_li+th_wind*.18);
+  // Wind direction impact on thermals: matters at surface (launching), nearly zero aloft.
+  // At surface (windAlt=0) it can reduce score if wind is off-axis; above ~1500 ft it fades.
+  const surfaceHeightFt=200;  // height above ground where wind direction starts to matter less
+  const dirFade=Math.max(0,1-Math.max(0,windAlt-surfaceHeightFt)/1300);  // 0→1 at surface, 0→0 by 1500ft aloft
+  const th_dir=off==null?5:(off<=20?5:off<=40?2:off<=60?1:0);  // points lost for off-axis wind; minimal
+  const thermals=Math.round(solarDrive+th_cape+th_li+th_wind*.18-th_dir*dirFade);
   // ── Ridge: steady moderate wind, on-axis, smooth (low gust spread) ────────
   //   wind speed sweet spot 13-18 mph (real ridge lift). Below ~10 you're not going
   //   to stay up on lift alone, so score should reflect that.
@@ -3624,7 +3684,7 @@ function connectedLZAlt(site){
 function waltAglLabel(v,launchAlt){
   if(launchAlt==null||v==null)return '';
   const d=Math.round(v-launchAlt);
-  if(d===0)return '● At launch';
+  if(d===0)return '';   // no "at launch" chatter — the Launch tick + MSL number already say it
   if(d>0)return `↑ +${d.toLocaleString()} ft above launch`;
   return `↓ ${Math.abs(d).toLocaleString()} ft below launch`;
 }
@@ -3655,27 +3715,36 @@ function waltHorizontalHTML(site){
   // LZ popup, the LZ itself IS the ground so the floor is the LZ's own altitude.
   const lzAlt=isLaunch?connectedLZAlt(site):(site.alt!=null?site.alt:null);
   const floor=(lzAlt!=null)?lzAlt:WALT_MIN;
-  const range=Math.max(1,WALT_MAX-floor);
-  const pctOf=v=>Math.max(0,Math.min(100,((v-floor)/range)*100));
+  // A short "surface zone" to the LEFT of the LZ tick — dragging here (or clicking the 🌱
+  // Surface label) means windAlt=0. Gives Surface its own real estate on the rail so it's
+  // no longer confusingly stacked on top of the LZ tick. Anything ≤ surfSnapMax → surface.
+  const SURF_ZONE_FT=Math.max(300,Math.round((WALT_MAX-floor)*0.04));
+  const sliderMin=Math.max(0,floor-SURF_ZONE_FT);
+  const surfSnapMax=sliderMin+Math.round(SURF_ZONE_FT*0.6);   // any drag into most of the zone lands on surface
+  const range=Math.max(1,WALT_MAX-sliderMin);
+  const pctOf=v=>Math.max(0,Math.min(100,((v-sliderMin)/range)*100));
   // ── TOP ROW: Launch marker (label above rail, pip drops down onto rail) ───────────────
   let topRow='';
   if(launchAlt!=null&&launchAlt>floor){
     const p=pctOf(launchAlt);
     topRow=`<div class="wh-mline wh-mline-launch" style="left:${p.toFixed(2)}%;"></div>
-      <div class="wh-lbl wh-lbl-launch" style="${whLblStyle(p)}" onclick="setWindAlt(${launchAlt})" title="Snap to launch altitude">▲ Launch ${launchAlt.toLocaleString()}</div>`;
+      <div class="wh-lbl wh-lbl-launch" style="${whLblStyle(p)}" onclick="setWindAlt(${launchAlt})" title="Snap to launch altitude">▲ Launch alt. ${launchAlt.toLocaleString()} ft</div>`;
   }
-  // ── BOTTOM ROW: LZ marker + pressure ticks (label below rail, pip rises onto rail) ────
+  // ── BOTTOM ROW: Surface + pressure ticks (label below rail, pip rises onto rail) ─
   let botRow='';
   let usedPcts=[];   // percent slots we've already placed a label at; ticks skip if too close
-  if(lzAlt!=null){
-    const p=pctOf(lzAlt);
-    botRow+=`<div class="wh-mline wh-mline-lz" style="left:${p.toFixed(2)}%;"></div>
-      <div class="wh-lbl wh-lbl-lz" style="${whLblStyle(p)}" onclick="setWindAlt(0)" title="Snap to surface wind (10 m AGL)">■ ${isLaunch?'LZ':'Ground'} ${lzAlt.toLocaleString()}</div>`;
+  // Surface tick — leftmost. Clicking sets windAlt=0 (model's 10 m wind at the launch coord —
+  // what you'll feel kiting up). The map pin's arrow ALWAYS shows this reading; the slider
+  // is an analysis view for what's happening above. Launches now open at Surface by default.
+  {
+    const p=pctOf(sliderMin);
+    botRow+=`<div class="wh-mline wh-mline-surf" style="left:${p.toFixed(2)}%;"></div>
+      <div class="wh-lbl wh-lbl-surf" style="${whLblStyle(p)}" onclick="setWindAlt(0)" title="Surface wind at the ${isLaunch?'launch':'LZ'} (10 m AGL) — what the pin shows">Surface</div>`;
     usedPcts.push(p);
   }
   // Pressure-level ticks — only levels that sit above the LZ floor AND at/under WALT_MAX,
   // and only when at least a couple of percent away from an existing label so tick text
-  // doesn't collide with the LZ label. Launch label is on the row above, so no conflict there.
+  // doesn't collide with the Surface label. Launch label is on the row above (no conflict).
   const tickDefs=[
     {ft:4781,lbl:'850'},
     {ft:6394,lbl:'800'},
@@ -3683,7 +3752,7 @@ function waltHorizontalHTML(site){
     {ft:13801,lbl:'600'},
     {ft:17998,lbl:'500'}
   ];
-  const MIN_TICK_GAP=22;   // percent — wide enough that a ~65 px LZ label never overlaps a neighbouring hPa tick label
+  const MIN_TICK_GAP=22;   // percent — wide enough that a ~65 px Surface label never overlaps a neighbouring hPa tick label
   for(const t of tickDefs){
     if(t.ft<=floor||t.ft>WALT_MAX)continue;
     const p=pctOf(t.ft);
@@ -3692,22 +3761,23 @@ function waltHorizontalHTML(site){
       <div class="wh-tick-lbl" style="${whLblStyle(p)}">${t.lbl}hPa</div>`;
     usedPcts.push(p);
   }
-  const initVal=(windAlt===0)?floor:Math.max(floor,Math.min(WALT_MAX,windAlt));
-  const initAgl=isLaunch?waltAglLabel(initVal,launchAlt):(lzAlt!=null?waltAglLabel(initVal,lzAlt).replace(/launch/g,'LZ'):'');
+  const initVal=(windAlt===0)?sliderMin:Math.max(floor,Math.min(WALT_MAX,windAlt));
+  const initAgl=(windAlt===0)?'':(isLaunch?waltAglLabel(initVal,launchAlt):(lzAlt!=null?waltAglLabel(initVal,lzAlt).replace(/launch/g,'LZ'):''));
   const refAlt=isLaunch?launchAlt:lzAlt;
+  const initAtClass=(windAlt!==0&&refAlt!=null&&initVal===refAlt)?' at':'';
   // Double-click anywhere on the panel jumps the slider to this site's "home" altitude:
   //  · Launch popup → the launch's own MSL elevation
   //  · LZ popup → Surface (10 m AGL at the LZ ground)
   const dblTarget=isLaunch&&launchAlt!=null?launchAlt:0;
-  return `<div class="wh-panel" data-launch-id="${site.id}" data-floor="${floor}"${isLaunch?'':' data-lz-mode="1"'} ondblclick="setWindAlt(${dblTarget})" title="Double-click to snap to ${isLaunch?'launch altitude':'surface (LZ ground)'}">
+  return `<div class="wh-panel" data-launch-id="${site.id}" data-floor="${floor}" data-surf-snap-max="${surfSnapMax}" data-slider-min="${sliderMin}"${isLaunch?'':' data-lz-mode="1"'} ondblclick="setWindAlt(${dblTarget})" title="Double-click to snap to ${isLaunch?'launch altitude':'surface (LZ ground)'}">
     <div class="wh-hdr-row">
       <span class="wh-hdr">Weather altitude</span>
-      <span class="wh-msl"><span id="wh-msl-val">${initVal.toLocaleString()}</span><small>ft MSL</small><span id="wh-surf-tag" class="wh-surf-tag" style="display:${windAlt===0?'inline':'none'};">· SURFACE</span></span>
-      <span class="wh-agl${(refAlt!=null&&initVal===refAlt)?' at':''}" id="wh-agl-val">${initAgl}</span>
+      <span class="wh-msl"><span id="wh-msl-val">${(windAlt===0?'Surface':initVal.toLocaleString())}</span><small class="wh-msl-unit" style="display:${windAlt===0?'none':'inline'};">ft MSL</small><span id="wh-surf-tag" class="wh-surf-tag" style="display:${windAlt===0?'inline':'none'};">· 10 m AGL</span></span>
+      <span class="wh-agl${initAtClass}" id="wh-agl-val">${initAgl}</span>
     </div>
     <div class="wh-track-wrap">
       <div class="wh-row-top">${topRow}</div>
-      <input class="wh-range" id="wh-range" type="range" min="${floor}" max="${WALT_MAX}" step="1" value="${initVal}" oninput="setWindAlt(this.value)"/>
+      <input class="wh-range" id="wh-range" type="range" min="${sliderMin}" max="${WALT_MAX}" step="1" value="${initVal}" oninput="setWindAlt(this.value)"/>
       <div class="wh-row-bot">${botRow}</div>
     </div>
   </div>`;
@@ -5156,7 +5226,7 @@ function buildForecast(container,series,labels){
   // data cells (no labels — those live in the static column)
   const cell=(i,inner,style)=>`<div class="fc-cell${i===nowIdx?' now':''}${series[i].t===windState.time?' wt-sel':''}${series[i].model!==(series[i-1]||{}).model&&i>0?' mswitch':''}${i>0&&dayCols[i]!==dayCols[i-1]?' fc-newday':''}" data-t="${series[i].t}"${style?` style="${style}"`:''}>${inner}</div>`;
   let hrRow='',skyRow='',tempRow='',rainRow='',windRow='',gustRow='',dirRow='',thermRow='',flyRow='';
-  const windVals=[],gustVals=[],flyCols=[];
+  const windVals=[],gustVals=[];
   const siteHasWindow=fcSiteHasWindow();   // real flying site → show wedge + Fly/No-Fly; else just the arrow
   series.forEach((e,i)=>{
     const d=new Date(e.t),hr=d.getHours(),mn=d.getMinutes();
@@ -5186,17 +5256,22 @@ function buildForecast(container,series,labels){
     gustRow+=cell(i,cvWind(e.gust));
     dirRow+=cell(i,siteHasWindow?windDirCellSVG(dv,fcTarget.site,dc):dirArrowCell(dv));
     thermRow+=cell(i,thermalBar(e));                   // bar height shows strength
-    flyRow+=cell(i,'');
-    windVals.push(wv);gustVals.push(e.gust);flyCols.push(dc);
+    // Set the background on the cell itself instead of building a 800+ stop row-wide gradient.
+    // With that many linear-gradient stops (2 per hour × 400+ hours × duplicate positions for hard
+    // transitions), browsers drop or interpolate isolated 1-cell color bands — so an isolated
+    // green "8pm" hour sandwiched between red neighbours renders as red on the fly row even
+    // though the wedge above it (rendered in its own SVG) shows green correctly.
+    flyRow+=cell(i,'',`background:${dc};`);
+    windVals.push(wv);gustVals.push(e.gust);
   });
   // Continuous horizontal gradient across a whole row: each cell's centre is a
   // colour stop, so neighbouring values fade smoothly into each other (no seams).
   const rowGrad=vals=>{const n=vals.length;if(!n)return'';return`background:linear-gradient(to right,${vals.map((v,i)=>`${windColor(v)} ${(((i+0.5)/n)*100).toFixed(2)}%`).join(',')});`;};
-  // Flyability row uses HARD stops (each cell is a solid color band, no fade into the
-  // next cell) — a caution hour next to a flyable hour should look like a decisive shift,
-  // not a wide amber-green blend that softens the message. Emit each color twice at the
-  // cell's start/end to force the instant transition.
-  const colGrad=cols=>{const n=cols.length;if(!n)return'';return`background:linear-gradient(to right,${cols.map((c,i)=>`${c} ${((i/n)*100).toFixed(2)}%,${c} ${(((i+1)/n)*100).toFixed(2)}%`).join(',')});`;};
+  // Flyability row: each cell paints its own background (see the flyRow build above).
+  // Historical note: this used to be a row-wide `linear-gradient` with 2 hard stops per cell
+  // (colGrad) — but with 400+ hourly cells (~800 stops, many at duplicate positions to force
+  // hard transitions), browsers dropped isolated single-cell color bands, so a green hour
+  // between two red hours rendered as red. Per-cell backgrounds render each cell exactly.
   // row order: [rowClass, frozen label, data cells, optional data-row style]
   const rows=[
     ['fc-r-day',`<span class="fc-day-name">${dayCols[nowIdx>0?nowIdx:0]||''}</span>`,dayRow],
@@ -5211,7 +5286,7 @@ function buildForecast(container,series,labels){
     ['fc-r-therm','<span title="Thermal strength (climb punch, not ceiling): blends mixing-layer depth, airmass instability (lifted index / CAPE) and time of day. Taller bar = stronger thermals, peaking mid-afternoon. No bar = no thermals (night or overcast)." style="cursor:help;">Thermals</span>',thermRow]
   ];
   // Fly / No-Fly only makes sense at a real launch — skip it entirely for "My location" / flat pins.
-  if(siteHasWindow)rows.push(['fc-r-fly','<span title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature." style="cursor:help;">Flyability</span>',flyRow,colGrad(flyCols)]);
+  if(siteHasWindow)rows.push(['fc-r-fly','<span title="Flyability for this hour at the selected site: green = flyable, yellow = use caution, red = no-fly. Based on wind speed, gusts, direction vs. the launch facing, cloud cover and temperature." style="cursor:help;">Flyability</span>',flyRow]);
   let labelsHTML='',dataHTML='';
   rows.forEach(([cls,lbl,cells,rowStyle])=>{
     labelsHTML+=`<div class="fc-row ${cls}"><div class="fc-lbl">${lbl}</div></div>`;
@@ -6075,6 +6150,15 @@ function compassInner(cx,cy,r,col,site,windDir){
     `<line x1="${tail[0].toFixed(1)}" y1="${tail[1].toFixed(1)}" x2="${back[0].toFixed(1)}" y2="${back[1].toFixed(1)}" stroke="${arrowCol}" stroke-width="${(2*sw).toFixed(2)}" stroke-linecap="round"/>`+
     `<polygon points="${cx.toFixed(1)},${cy.toFixed(1)} ${f2(wL)} ${f2(wR)}" fill="${arrowCol}"/>`;
 }
+// Which wind direction should the pin's arrow show?
+// Always the SURFACE wind (10 m AGL at the launch coord). Launch pins represent takeoff
+// conditions — what the pilot will feel kiting up on the hill — so the arrow stays on the
+// model's surface wind even when the forecast strip is being used to browse winds aloft.
+// The altitude picker in the strip is a separate analysis view for after-you-launch flight
+// planning; it's expected to diverge from the pin, and that divergence is meaningful.
+function siteDirForCurrentMode(w){
+  return(w&&typeof w.dir==='number')?w.dir:null;
+}
 // Launch pin: teardrop body (fly-status colour) with the compass dial inside. The dial is
 // wrapped in a .pin-dial group that is counter-rotated by the map bearing (see rotatePins),
 // so the allowable-wind wedge stays aligned to true compass bearings as the map is twisted.
@@ -6084,7 +6168,7 @@ function mkLaunchSVG(col,site,w){
   return`<svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg">`+
     `<path d="M18 2C11 2 5 8 5 14.5c0 10 13 29.5 13 29.5S31 24.5 31 14.5C31 8 25 2 18 2z" fill="${col}" stroke="white" stroke-width="2.5"/>`+
     `<g class="pin-dial" transform="rotate(${brg} ${cx} ${cy})">`+
-    compassInner(cx,cy,r,col,site,w&&typeof w.dir==='number'?w.dir:null)+
+    compassInner(cx,cy,r,col,site,siteDirForCurrentMode(w))+
     `</g>`+
     `</svg>`;
 }
@@ -6099,7 +6183,7 @@ function windCompassSVG(site,col,size,w){
   size=size||38;const c=size/2,r=size/2-2.5;
   return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="flex:0 0 auto;">`+
     `<circle cx="${c}" cy="${c}" r="${(r+2).toFixed(1)}" fill="#fff" stroke="rgba(15,23,42,.15)" stroke-width="1"/>`+
-    compassInner(c,c,r,col,site,w&&typeof w.dir==='number'?w.dir:null)+
+    compassInner(c,c,r,col,site,siteDirForCurrentMode(w))+
     `</svg>`;
 }
 // Tiny per-hour wind dial for the forecast: same north-up compass as the pin, showing the
@@ -6289,13 +6373,13 @@ function setupLongPress(){
 
 // ── Click handler ─────────────────────────────────────────────────────────────
 // Snap the "Weather altitude" slider up to a launch's real elevation, since you'd never
-// fly the surface wind from an 11,000 ft peak. Nearest 1000 ft step, capped at 18k (the
-// slider's max). Silent no-op if already close — no need to refire loadForecast then.
+// Always reset to Surface (windAlt=0) when a launch is opened. Every reading the app cares
+// about — pin colour, popup badge, "Why", forecast strip's wind/dir rows — should read the
+// surface (10 m AGL) unless the pilot explicitly moves the altitude slider up. Silent no-op
+// if we're already at surface so we don't re-fire loadForecast for nothing.
 function autoSetWindAltForLaunch(site){
-  if(!site||site.alt==null)return;
-  const target=Math.max(0,Math.min(WALT_MAX,site.alt));
-  if(target===windAlt)return;
-  windAlt=target;
+  if(!site||windAlt===0)return;
+  windAlt=0;
   if(windState.on)fetchWindGrid(windState.time).then(g=>{if(g){windState.grid=g;windState.gridKey=windGridKey();}});
   clearTimeout(windAltFcTimer);windAltFcTimer=setTimeout(loadForecast,250);
 }
