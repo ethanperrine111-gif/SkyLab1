@@ -4672,9 +4672,9 @@ function loadCmpCache(){try{return JSON.parse(localStorage.getItem(CMP_CACHE_KEY
 function computeCmpAxis(data){
   const set=new Set();data.forEach(r=>Object.keys(r.byTime).forEach(t=>set.add(t)));
   const now=Date.now();
-  // Visible axis mirrors the strip: default -2h → +7d, expand each side to 14 days.
-  const backMs = cmpExpandPast ? 14*24*3600*1000 : 2*3600*1000;
-  const fwdMs  = cmpExpandFuture ? 14*24*3600*1000 : 7*24*3600*1000;
+  // Visible axis mirrors the strip: default -2h → +7d, each click adds 7 days that direction.
+  const backMs = cmpExpandPastDays>0 ? cmpExpandPastDays*24*3600*1000 : 2*3600*1000;
+  const fwdMs  = (7+cmpExpandFutureDays)*24*3600*1000;
   return[...set].sort().filter(t=>{const ts=new Date(t).getTime();return ts>=now-backMs&&ts<=now+fwdMs;}).slice(0,336);
 }
 function toggleModelCompare(){
@@ -4684,8 +4684,8 @@ function toggleModelCompare(){
 // Fetch all comparison models for the current forecast site (falls back to cache when rate-limited).
 // Returns 'live', 'cached', or false. Populates cmpData/cmpAxis.
 async function loadCompareData(){
-  const days = cmpExpandFuture ? 14 : 7;
-  const pastDays = cmpExpandPast ? 14 : 0;
+  const days = 7 + cmpExpandFutureDays;
+  const pastDays = cmpExpandPastDays;
   const results=await Promise.all(COMPARE_MODELS.map(([m,l])=>fetchCompareModel(m,l,days,pastDays)));
   if(results.some(r=>Object.keys(r.byTime).length>0)){
     cmpData=results;cmpAxis=computeCmpAxis(results);saveCmpCache();return 'live';
@@ -4771,16 +4771,16 @@ function compareGridHTML(){
   const nowLine=`<div class="cmp-nowline" data-t0="${t0}" style="left:${Math.round(nowX)}px;${(nowX<70||nowX>gridW)?'display:none;':''}"></div>`;
   const selI=cmpAxis.indexOf(cmpSelT);
   const selBar=`<div class="cmp-selbar" style="left:${(70+(selI<0?0:selI)*40)}px;${selI<0?'display:none;':''}"></div>`;
-  // Expansion tabs — one-way clicks that pull another week from Open-Meteo. Same guardrail
+  // Expansion tabs — one week per click that pulls another week from Open-Meteo. Same guardrail
   // as the forecast strip: reset per-site, so nothing gets stuck expanded across launches.
-  const expPast = cmpExpandPast ? '' : `<div class="cmp-expand cmp-expand-past" onclick="expandComparePast()" title="Load the past 2 weeks">◀ 2 wks past</div>`;
-  const expFut = cmpExpandFuture ? '' : `<div class="cmp-expand cmp-expand-fut" onclick="expandCompareFuture()" title="Load the next week">Next week ▶</div>`;
+  const expPast = cmpExpandPastDays>=14 ? '' : `<div class="cmp-expand cmp-expand-past" onclick="expandComparePast()" title="Load the previous week">◀ Prev week</div>`;
+  const expFut = cmpExpandFutureDays>=7 ? '' : `<div class="cmp-expand cmp-expand-fut" onclick="expandCompareFuture()" title="Load the next week">Next week ▶</div>`;
   return '<div class="cmp-scroll" ondblclick="compareNow()" title="Double-click to jump back to the current time"><div class="cmp-grid">'+expPast+hdr+rows+nowLine+selBar+expFut+'</div></div>';
 }
-// Compare-panel expansion — same one-way flow as the forecast strip. Refetches with the wider
+// Compare-panel expansion — one week per click, up to 14 total. Refetches with the wider
 // window; the 20-min cache means reopening after this is basically free.
-async function expandComparePast(){cmpExpandPast=true;await loadCompareData();renderModelCompare();}
-async function expandCompareFuture(){cmpExpandFuture=true;await loadCompareData();renderModelCompare();}
+async function expandComparePast(){cmpExpandPastDays=Math.min(14,cmpExpandPastDays+7);await loadCompareData();renderModelCompare();}
+async function expandCompareFuture(){cmpExpandFutureDays=Math.min(7,cmpExpandFutureDays+7);await loadCompareData();renderModelCompare();}
 // Render the comparison inline inside a site menu's 2-Week-Forecast slot (mobile).
 async function openSiteCompare(wrap){
   if(!wrap)return;
@@ -4918,10 +4918,10 @@ function renderNow(w,label){
 let fcSeries=[];
 const FC_TARGET_H=14*24;   // aim for ~14 days of hours (max, when fully expanded)
 // Forecast strip expansion state — starts collapsed to conserve Open-Meteo pulls.
-// Default view: last ~2 hours + next 7 days. User clicks the edge bars to expand each side.
-// Reset per-site (in setForecastSite) so every launch you open starts lean.
-let fcExpandPast=false, fcExpandFuture=false;
-let cmpExpandPast=false, cmpExpandFuture=false;
+// Default view: last ~2 hours + next 7 days. Each click on an edge cell adds 7 more days
+// in that direction, up to 14 total. Reset per-site so every launch opens lean.
+let fcExpandPastDays=0, fcExpandFutureDays=0;   // 0 → 7 → 14
+let cmpExpandPastDays=0, cmpExpandFutureDays=0;
 let fcTarget={lat:40.52,lon:-111.87,label:'Salt Lake City',site:null};   // which site the forecast bar is showing
 // Forecast time resolution in minutes. 60 = hourly (default). 30/15 additionally
 // pulls Open-Meteo minutely_15 and thins/keeps its steps; cloud/pop/wind-aloft
@@ -4944,8 +4944,8 @@ function setFcInterval(n){
 function fcSiteHasWindow(){return !!(fcTarget&&fcTarget.site&&fcTarget.site.facing!=null);}
 function setForecastSite(lat,lon,label,site){
   fcTarget={lat,lon,label,site:site||null};
-  fcExpandPast=false;fcExpandFuture=false;   // reset expansion so new sites start lean
-  cmpExpandPast=false;cmpExpandFuture=false;
+  fcExpandPastDays=0;fcExpandFutureDays=0;   // reset expansion so new sites start lean
+  cmpExpandPastDays=0;cmpExpandFutureDays=0;
   // On mobile, expand the forecast strip so the user can see it.
   if(document.body.classList.contains('fc-collapsed')){
     document.body.classList.remove('fc-collapsed');
@@ -5020,10 +5020,11 @@ function entriesFrom(j,label){
 async function loadForecast(){
   const loc=document.getElementById('fc-loc');if(loc){loc.textContent=fcTarget.label;fitFcLoc();}
   // Expansion state controls the window: default is 7 days forward + 0 past days (relying on
-  // today's own 24-hour block to cover the "last 2 hours" view). Expanding pulls the full
-  // 14/14 window. Compared to the old 16-day fetch this saves ~60% of cells on a typical open.
-  const days = fcExpandFuture ? 14 : 7;
-  const pastDays = fcExpandPast ? 14 : 0;
+  // today's own 24-hour block to cover the "last 2 hours" view). Each click on an edge cell
+  // adds 7 more days that direction (max 14). Compared to the old 16-day fetch this saves
+  // ~60% of cells on a typical open.
+  const days = 7 + fcExpandFutureDays;
+  const pastDays = fcExpandPastDays;
   const reachTargetH = days*24;   // don't try to fill past what the user asked for
   let jsel=null;try{jsel=await fetchSeries(currentModel,days,pastDays);}catch(e){}
   if(jsel&&jsel.daily&&jsel.daily.sunrise&&jsel.daily.sunrise[0]){civilDawnH=hourOf(jsel.daily.sunrise[0])-0.5;civilDuskH=hourOf(jsel.daily.sunset[0])+0.5;}
@@ -5518,13 +5519,14 @@ function renderForecast(series){
   const fcEl=document.getElementById('forecast');
   if(!series||!series.length){if(fcEl)fcEl.innerHTML='<div class="nb-load" style="color:#64748b;">Forecast unavailable</div>';return;}
   const daily=series.daily;   // filter/slice returns a new array — carry the daily-astronomy over
-  // Visible window depends on expansion state:
-  //   default:      last 2 hours behind → next 7 days
-  //   past expanded: 14 days behind → next 7 days (or 14 forward if that's also expanded)
-  //   fut expanded: 2 hours behind → next 14 days
+  // Visible window depends on expansion state (both sides step in 7-day clicks, up to 14).
+  //   default (0/0):     -2 hours → +7 days
+  //   past click (7):    -7 days
+  //   past click x2 (14): -14 days
+  //   future click (7):  +14 days total
   const now=Date.now();
-  const backMs = fcExpandPast ? 14*24*3600*1000 : 2*3600*1000;
-  const fwdMs  = fcExpandFuture ? 14*24*3600*1000 : 7*24*3600*1000;
+  const backMs = fcExpandPastDays>0 ? fcExpandPastDays*24*3600*1000 : 2*3600*1000;
+  const fwdMs  = (7+fcExpandFutureDays)*24*3600*1000;
   const winStart = now - backMs, winEnd = now + fwdMs;
   series=series.filter(e=>{const ts=new Date(e.t).getTime();return ts>=winStart&&ts<=winEnd;});
   if(daily)series.daily=daily;
@@ -5534,11 +5536,11 @@ function renderForecast(series){
   if(fcEl){
     const scroll=fcEl.querySelector('.fc-scroll');
     if(scroll){
-      if(!fcExpandPast){
+      if(fcExpandPastDays<14){
         scroll.insertAdjacentHTML('afterbegin',
-          `<div class="fc-expand fc-expand-past" onclick="expandForecastPast()" title="Load the past 2 weeks (extra Open-Meteo call)"><span class="fc-expand-txt">◀<br>2w<br>past</span></div>`);
+          `<div class="fc-expand fc-expand-past" onclick="expandForecastPast()" title="Load the previous week (extra Open-Meteo call)"><span class="fc-expand-txt">◀<br>Prev<br>week</span></div>`);
       }
-      if(!fcExpandFuture){
+      if(fcExpandFutureDays<7){
         scroll.insertAdjacentHTML('beforeend',
           `<div class="fc-expand fc-expand-fut" onclick="expandForecastFuture()" title="Load the next week (extra Open-Meteo call)"><span class="fc-expand-txt">Next<br>week<br>▶</span></div>`);
       }
@@ -5548,10 +5550,10 @@ function renderForecast(series){
   const ppWrap=document.querySelector('.pp-fc-wrap');
   if(ppWrap&&!ppWrap.classList.contains('pp-cmp')){const mini=series.slice(0,Math.round(336*60/fcInterval));if(daily)mini.daily=daily;buildForecast(ppWrap,mini,{temp:'°F',rain:'Rain%',dir:'Direction'});}
 }
-// User clicked ◀ 2 wks past — flip state and refetch. Old cache still hits for the
-// forward window; only the added past days cost a new pull.
-function expandForecastPast(){fcExpandPast=true;loadForecast();}
-function expandForecastFuture(){fcExpandFuture=true;loadForecast();}
+// One week per click on either side. Max 14 days total each direction. Old cache still
+// hits for whatever window was already fetched; only the newly added days cost a pull.
+function expandForecastPast(){fcExpandPastDays=Math.min(14,fcExpandPastDays+7);loadForecast();}
+function expandForecastFuture(){fcExpandFutureDays=Math.min(7,fcExpandFutureDays+7);loadForecast();}
 // "Now" button: smooth-scroll every visible forecast back to the current-hour column.
 function forecastNow(){
   if(windState.time)resetWindTime();   // a different time was picked → snap the overlay back to live/current
