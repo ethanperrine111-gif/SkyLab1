@@ -4773,8 +4773,9 @@ function compareGridHTML(){
   const selBar=`<div class="cmp-selbar" style="left:${(70+(selI<0?0:selI)*40)}px;${selI<0?'display:none;':''}"></div>`;
   // Expansion tabs — one week per click that pulls another week from Open-Meteo. Same guardrail
   // as the forecast strip: reset per-site, so nothing gets stuck expanded across launches.
-  const expPast = cmpExpandPastDays>=14 ? '' : `<div class="cmp-expand cmp-expand-past" onclick="expandComparePast()" title="Load the previous week">◀ Prev week</div>`;
-  const expFut = cmpExpandFutureDays>=7 ? '' : `<div class="cmp-expand cmp-expand-fut" onclick="expandCompareFuture()" title="Load the next week">Next week ▶</div>`;
+  const cmpNextPastW = ((cmpExpandPastDays+7)/7)|0;
+  const expPast = cmpExpandPastDays>=14 ? '' : `<div class="cmp-expand cmp-expand-past" onclick="expandComparePast()" title="Load past week ${cmpNextPastW}">◀ ${cmpNextPastW}w back</div>`;
+  const expFut = cmpExpandFutureDays>=7 ? '' : `<div class="cmp-expand cmp-expand-fut" onclick="expandCompareFuture()" title="Load the second week ahead">2w ahead ▶</div>`;
   return '<div class="cmp-scroll" ondblclick="compareNow()" title="Double-click to jump back to the current time"><div class="cmp-grid">'+expPast+hdr+rows+nowLine+selBar+expFut+'</div></div>';
 }
 // Compare-panel expansion — one week per click, up to 14 total. Refetches with the wider
@@ -5537,12 +5538,14 @@ function renderForecast(series){
     const scroll=fcEl.querySelector('.fc-scroll');
     if(scroll){
       if(fcExpandPastDays<14){
+        // Label shows the total past window you'll get AFTER clicking (1w or 2w back).
+        const nextPastW = ((fcExpandPastDays+7)/7)|0;   // 0 → 1w, 7 → 2w
         scroll.insertAdjacentHTML('afterbegin',
-          `<div class="fc-expand fc-expand-past" onclick="expandForecastPast()" title="Load the previous week (extra Open-Meteo call)"><span class="fc-expand-txt">◀<br>Prev<br>week</span></div>`);
+          `<div class="fc-expand fc-expand-past" onclick="expandForecastPast()" title="Load past week ${nextPastW} (extra Open-Meteo call)"><span class="fc-expand-txt">◀<br>${nextPastW}w<br>back</span></div>`);
       }
       if(fcExpandFutureDays<7){
         scroll.insertAdjacentHTML('beforeend',
-          `<div class="fc-expand fc-expand-fut" onclick="expandForecastFuture()" title="Load the next week (extra Open-Meteo call)"><span class="fc-expand-txt">Next<br>week<br>▶</span></div>`);
+          `<div class="fc-expand fc-expand-fut" onclick="expandForecastFuture()" title="Load the second week ahead (extra Open-Meteo call)"><span class="fc-expand-txt">2w<br>ahead<br>▶</span></div>`);
       }
     }
   }
