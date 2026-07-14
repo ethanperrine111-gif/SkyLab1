@@ -112,6 +112,15 @@ body.fc-collapsed #forecast{display:none;}
 *{scrollbar-width:none;-ms-overflow-style:none;}
 *::-webkit-scrollbar{width:0;height:0;display:none;}
 .fc-data{display:flex;flex-direction:column;width:max-content;font-family:system-ui,sans-serif;position:relative;}
+/* Click-to-load edge tabs — full-height vertical bars at the strip's start/end. Only shown
+   until the user expands that direction; expanding pulls another 7-14 days from Open-Meteo. */
+.fc-expand{position:sticky;flex-shrink:0;width:40px;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,rgba(37,99,235,.14),rgba(37,99,235,.06));border:1px dashed #93c5fd;cursor:pointer;z-index:5;transition:background .15s;color:#1d4ed8;font-weight:700;text-align:center;line-height:1.15;}
+.fc-expand:hover{background:linear-gradient(90deg,rgba(37,99,235,.24),rgba(37,99,235,.10));}
+.fc-expand-past{left:0;border-radius:6px 0 0 6px;border-right:none;}
+.fc-expand-fut{right:0;border-radius:0 6px 6px 0;border-left:none;background:linear-gradient(-90deg,rgba(37,99,235,.14),rgba(37,99,235,.06));}
+.fc-expand-fut:hover{background:linear-gradient(-90deg,rgba(37,99,235,.24),rgba(37,99,235,.10));}
+.fc-expand-txt{font-size:10px;padding:2px;}
+body.dark .fc-expand{background:linear-gradient(90deg,rgba(96,165,250,.18),rgba(96,165,250,.06));border-color:#3b82f6;color:#93c5fd;}
 /* Live "exact time" bar that glides across the forecast at the current minute. */
 .fc-nowline{position:absolute;top:22px;bottom:0;width:2px;background:#ef4444;pointer-events:none;z-index:4;box-shadow:0 0 0 1px rgba(255,255,255,.7);}
 .fc-nowline::before{content:'';position:absolute;top:0;left:-3px;width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 1.5px #fff;}
@@ -236,6 +245,13 @@ body.dark .cmp-head .cmp-lbl{background:#0b1220;}
 .cmp-head .cmp-c.cmp-tsel{background:rgba(14,165,233,.18);color:#0369a1;}
 /* One continuous rounded rectangle over the selected time column (instead of per-cell outlines) */
 .cmp-selbar{position:absolute;top:0;bottom:0;width:40px;box-sizing:border-box;border:2px solid #0ea5e9;border-radius:7px;pointer-events:none;z-index:2;}
+/* Compare-panel expansion tabs — same intent as the forecast strip's fc-expand: one-way clicks
+   that pull another week of Open-Meteo data. Rendered as vertical bars at the grid edges. */
+.cmp-expand{position:absolute;top:0;bottom:0;width:56px;display:flex;align-items:center;justify-content:center;background:rgba(37,99,235,.10);border:1px dashed #93c5fd;color:#1d4ed8;font-size:10px;font-weight:700;line-height:1.15;text-align:center;cursor:pointer;z-index:3;padding:2px;}
+.cmp-expand:hover{background:rgba(37,99,235,.20);}
+.cmp-expand-past{left:0;border-radius:6px 0 0 6px;}
+.cmp-expand-fut{right:0;border-radius:0 6px 6px 0;position:sticky;float:right;}
+body.dark .cmp-expand{background:rgba(96,165,250,.14);border-color:#3b82f6;color:#93c5fd;}
 .cmp-foot{padding:8px 12px;font-size:11px;color:#64748b;}
 #rocket{position:absolute;z-index:6;display:none;transform:translate(-50%,-100%);pointer-events:none;}
 .rk-fan{display:flex;gap:4px;align-items:flex-end;padding-bottom:2px;}
@@ -1584,7 +1600,7 @@ async function fetchSeriesAt(lat,lon,model,days){
     const u=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
       `&hourly=temperature_2m,precipitation_probability,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+
       (hPa?`,wind_speed_${hPa}hPa,wind_direction_${hPa}hPa`:'')+
-      `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}&past_days=1`;
+      `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}`;
     const r=await fetch(u);const j=await r.json();
     if(!j||j.error||!j.hourly)return null;
     return j;
@@ -1643,7 +1659,7 @@ async function fetchSeriesBatch(sites,model,days){
   let u=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}`+
     `&hourly=temperature_2m,precipitation_probability,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+
     (hPa?`,wind_speed_${hPa}hPa,wind_direction_${hPa}hPa`:'')+
-    `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}&past_days=1`;
+    `&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}`;
   try{
     const j=await(await fetch(u)).json();
     // Bail out on rate-limit / error payloads instead of caching them per-site.
@@ -4625,14 +4641,16 @@ function modelSelectHTML(){return`<select class="nb-model" title="Weather model"
 // On-demand: fetches several models only when the user opens the panel.
 const COMPARE_MODELS=[['gfs_hrrr','HRRR'],['gfs_seamless','GFS'],['ecmwf_ifs025','ECMWF'],['icon_seamless','ICON'],['meteofrance_seamless','MeteoFr'],['gem_seamless','GEM']];
 let cmpData=null,cmpAxis=[],rocketOn=false,cmpSelT=null;   // cmpSelT = clicked forecast hour the map pin shows
-async function fetchCompareModel(model,label){
-  // 5-min TTL: reopening the compare panel or clicking a nearby site within that window
-  // reuses the same six model responses instead of re-firing them.
-  const key=`cmp|${fcTarget.lat.toFixed(3)},${fcTarget.lon.toFixed(3)}|${model}`;
-  const cached=await apiCached(key,5*60*1000,async()=>{
+async function fetchCompareModel(model,label,days=7,pastDays=0){
+  // 20-min TTL: models like HRRR/GFS/ECMWF only publish every 1-6 hours, so a shorter
+  // cache mostly re-fetches identical data. Compare-panel calls are the most expensive
+  // in the app (6 models × several days × 3 vars), so caching aggressively saves the most.
+  const key=`cmp|${fcTarget.lat.toFixed(3)},${fcTarget.lon.toFixed(3)}|${model}|${days}|${pastDays}`;
+  const cached=await apiCached(key,20*60*1000,async()=>{
     try{
-      const u=`https://api.open-meteo.com/v1/forecast?latitude=${fcTarget.lat}&longitude=${fcTarget.lon}`+
-        `&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m&timezone=America%2FDenver&wind_speed_unit=mph&models=${model}&forecast_days=14`;
+      let u=`https://api.open-meteo.com/v1/forecast?latitude=${fcTarget.lat}&longitude=${fcTarget.lon}`+
+        `&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m&timezone=America%2FDenver&wind_speed_unit=mph&models=${model}&forecast_days=${days}`;
+      if(pastDays>0)u+=`&past_days=${pastDays}`;
       const j=await(await fetch(u)).json();const h=j&&j.hourly;
       // Rate-limit / empty response — don't cache; next call will retry when the quota resets.
       if(!j||j.error||!h||!h.time)return null;
@@ -4648,7 +4666,14 @@ async function fetchCompareModel(model,label){
 const CMP_CACHE_KEY='skylab_cmpcache_v1';
 function saveCmpCache(){try{localStorage.setItem(CMP_CACHE_KEY,JSON.stringify({ts:Date.now(),lat:fcTarget.lat,lon:fcTarget.lon,label:fcTarget.label,data:cmpData}));}catch(e){}}
 function loadCmpCache(){try{return JSON.parse(localStorage.getItem(CMP_CACHE_KEY)||'null');}catch(e){return null;}}
-function computeCmpAxis(data){const set=new Set();data.forEach(r=>Object.keys(r.byTime).forEach(t=>set.add(t)));const now=Date.now();return[...set].sort().filter(t=>new Date(t).getTime()>=now-60*60*1000).slice(0,336);}  // ~2 weeks of hours
+function computeCmpAxis(data){
+  const set=new Set();data.forEach(r=>Object.keys(r.byTime).forEach(t=>set.add(t)));
+  const now=Date.now();
+  // Visible axis mirrors the strip: default -2h → +7d, expand each side to 14 days.
+  const backMs = cmpExpandPast ? 14*24*3600*1000 : 2*3600*1000;
+  const fwdMs  = cmpExpandFuture ? 14*24*3600*1000 : 7*24*3600*1000;
+  return[...set].sort().filter(t=>{const ts=new Date(t).getTime();return ts>=now-backMs&&ts<=now+fwdMs;}).slice(0,336);
+}
 function toggleModelCompare(){
   const p=document.getElementById('model-compare');
   if(p&&p.classList.contains('open'))closeModelCompare();else openModelCompare();
@@ -4656,7 +4681,9 @@ function toggleModelCompare(){
 // Fetch all comparison models for the current forecast site (falls back to cache when rate-limited).
 // Returns 'live', 'cached', or false. Populates cmpData/cmpAxis.
 async function loadCompareData(){
-  const results=await Promise.all(COMPARE_MODELS.map(([m,l])=>fetchCompareModel(m,l)));
+  const days = cmpExpandFuture ? 14 : 7;
+  const pastDays = cmpExpandPast ? 14 : 0;
+  const results=await Promise.all(COMPARE_MODELS.map(([m,l])=>fetchCompareModel(m,l,days,pastDays)));
   if(results.some(r=>Object.keys(r.byTime).length>0)){
     cmpData=results;cmpAxis=computeCmpAxis(results);saveCmpCache();return 'live';
   }
@@ -4741,8 +4768,16 @@ function compareGridHTML(){
   const nowLine=`<div class="cmp-nowline" data-t0="${t0}" style="left:${Math.round(nowX)}px;${(nowX<70||nowX>gridW)?'display:none;':''}"></div>`;
   const selI=cmpAxis.indexOf(cmpSelT);
   const selBar=`<div class="cmp-selbar" style="left:${(70+(selI<0?0:selI)*40)}px;${selI<0?'display:none;':''}"></div>`;
-  return '<div class="cmp-scroll" ondblclick="compareNow()" title="Double-click to jump back to the current time"><div class="cmp-grid">'+hdr+rows+nowLine+selBar+'</div></div>';
+  // Expansion tabs — one-way clicks that pull another week from Open-Meteo. Same guardrail
+  // as the forecast strip: reset per-site, so nothing gets stuck expanded across launches.
+  const expPast = cmpExpandPast ? '' : `<div class="cmp-expand cmp-expand-past" onclick="expandComparePast()" title="Load the past 2 weeks">◀ 2 wks past</div>`;
+  const expFut = cmpExpandFuture ? '' : `<div class="cmp-expand cmp-expand-fut" onclick="expandCompareFuture()" title="Load the next week">Next week ▶</div>`;
+  return '<div class="cmp-scroll" ondblclick="compareNow()" title="Double-click to jump back to the current time"><div class="cmp-grid">'+expPast+hdr+rows+nowLine+selBar+expFut+'</div></div>';
 }
+// Compare-panel expansion — same one-way flow as the forecast strip. Refetches with the wider
+// window; the 20-min cache means reopening after this is basically free.
+async function expandComparePast(){cmpExpandPast=true;await loadCompareData();renderModelCompare();}
+async function expandCompareFuture(){cmpExpandFuture=true;await loadCompareData();renderModelCompare();}
 // Render the comparison inline inside a site menu's 2-Week-Forecast slot (mobile).
 async function openSiteCompare(wrap){
   if(!wrap)return;
@@ -4878,7 +4913,12 @@ function renderNow(w,label){
 
 // ── Long scrollable forecast (auto-extends, switches models for range) ─────────
 let fcSeries=[];
-const FC_TARGET_H=14*24;   // aim for ~14 days of hours
+const FC_TARGET_H=14*24;   // aim for ~14 days of hours (max, when fully expanded)
+// Forecast strip expansion state — starts collapsed to conserve Open-Meteo pulls.
+// Default view: last ~2 hours + next 7 days. User clicks the edge bars to expand each side.
+// Reset per-site (in setForecastSite) so every launch you open starts lean.
+let fcExpandPast=false, fcExpandFuture=false;
+let cmpExpandPast=false, cmpExpandFuture=false;
 let fcTarget={lat:40.52,lon:-111.87,label:'Salt Lake City',site:null};   // which site the forecast bar is showing
 // Forecast time resolution in minutes. 60 = hourly (default). 30/15 additionally
 // pulls Open-Meteo minutely_15 and thins/keeps its steps; cloud/pop/wind-aloft
@@ -4901,6 +4941,8 @@ function setFcInterval(n){
 function fcSiteHasWindow(){return !!(fcTarget&&fcTarget.site&&fcTarget.site.facing!=null);}
 function setForecastSite(lat,lon,label,site){
   fcTarget={lat,lon,label,site:site||null};
+  fcExpandPast=false;fcExpandFuture=false;   // reset expansion so new sites start lean
+  cmpExpandPast=false;cmpExpandFuture=false;
   // On mobile, expand the forecast strip so the user can see it.
   if(document.body.classList.contains('fc-collapsed')){
     document.body.classList.remove('fc-collapsed');
@@ -4912,11 +4954,11 @@ function setForecastSite(lat,lon,label,site){
   // (On mobile the comparison transfers into the site menu instead — handled in showPopup.)
   try{const p=document.getElementById('model-compare');if(p&&p.classList.contains('open')&&!isMobileView())openModelCompare();}catch(e){}
 }
-async function fetchSeries(model,days){
+async function fetchSeries(model,days,pastDays=0){
   const hPa=windAltHPa();
   // Key by every URL-affecting input. Same site + same model + same interval + same
   // altitude within 10 minutes → served from memory (fixes the "click same site twice = 2 fetches" waste).
-  const key=`fs|${fcTarget.lat.toFixed(3)},${fcTarget.lon.toFixed(3)}|${model}|${fcInterval}|${hPa||'sfc'}|${days}`;
+  const key=`fs|${fcTarget.lat.toFixed(3)},${fcTarget.lon.toFixed(3)}|${model}|${fcInterval}|${hPa||'sfc'}|${days}|${pastDays}`;
   return apiCached(key,10*60*1000,async()=>{
     let u=`https://api.open-meteo.com/v1/forecast?latitude=${fcTarget.lat}&longitude=${fcTarget.lon}`+
       `&hourly=temperature_2m,precipitation_probability,precipitation,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,lifted_index,boundary_layer_height`+   // last three drive the live Thermals row; `precipitation` is required so the rainRate hard-veto on synthWxFromEntry(e) sees real data (was silently zeroing it)
@@ -4926,7 +4968,8 @@ async function fetchSeries(model,days){
     if(fcInterval<60){
       u+=`&minutely_15=temperature_2m,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cape`;
     }
-    u+=`&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}&past_days=1`;
+    u+=`&daily=sunrise,sunset&timezone=America%2FDenver&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&models=${model}&forecast_days=${days}`;
+    if(pastDays>0)u+=`&past_days=${pastDays}`;
     const r=await fetch(u);const j=await r.json();
     // Don't poison the cache with rate-limit / error payloads (e.g. {error:true, reason:...}).
     if(!j||j.error||!j.hourly)return null;
@@ -4973,19 +5016,25 @@ function entriesFrom(j,label){
 }
 async function loadForecast(){
   const loc=document.getElementById('fc-loc');if(loc){loc.textContent=fcTarget.label;fitFcLoc();}
-  let jsel=null;try{jsel=await fetchSeries(currentModel,16);}catch(e){}
+  // Expansion state controls the window: default is 7 days forward + 0 past days (relying on
+  // today's own 24-hour block to cover the "last 2 hours" view). Expanding pulls the full
+  // 14/14 window. Compared to the old 16-day fetch this saves ~60% of cells on a typical open.
+  const days = fcExpandFuture ? 14 : 7;
+  const pastDays = fcExpandPast ? 14 : 0;
+  const reachTargetH = days*24;   // don't try to fill past what the user asked for
+  let jsel=null;try{jsel=await fetchSeries(currentModel,days,pastDays);}catch(e){}
   if(jsel&&jsel.daily&&jsel.daily.sunrise&&jsel.daily.sunrise[0]){civilDawnH=hourOf(jsel.daily.sunrise[0])-0.5;civilDuskH=hourOf(jsel.daily.sunset[0])+0.5;}
   let series=entriesFrom(jsel,MODEL_LABELS[currentModel]||currentModel);
   const lastT=series.length?new Date(series[series.length-1].t):null;
   const reachH=lastT?(lastT-Date.now())/36e5:0;
-  // If the chosen model can't reach our target horizon, extend with a long-range model.
+  // If the chosen model can't reach the requested horizon, extend with a long-range model.
   // HRRR is short-range (~48h), so once it runs out we continue with GFS; other models
-  // fall back to best-match.
+  // fall back to best-match. Only pay for this when the user has actually expanded to 14 days.
   let jxAll=null;
-  if(currentModel!=='best_match'&&reachH<FC_TARGET_H-12){
+  if(currentModel!=='best_match'&&reachH<reachTargetH-12){
     const extModel=currentModel==='gfs_hrrr'?'gfs_seamless':'best_match';
     const extLabel=MODEL_LABELS[extModel]||'GFS';
-    let jx=null;try{jx=await fetchSeries(extModel,16);}catch(e){}
+    let jx=null;try{jx=await fetchSeries(extModel,days,pastDays);}catch(e){}
     jxAll=jx;
     const ext=entriesFrom(jx,extLabel).filter(e=>!lastT||new Date(e.t)>lastT);
     series=series.concat(ext);
@@ -5466,15 +5515,40 @@ function renderForecast(series){
   const fcEl=document.getElementById('forecast');
   if(!series||!series.length){if(fcEl)fcEl.innerHTML='<div class="nb-load" style="color:#64748b;">Forecast unavailable</div>';return;}
   const daily=series.daily;   // filter/slice returns a new array — carry the daily-astronomy over
-  // Keep from the start of YESTERDAY so you can scroll back a day; drop anything older.
-  const backStart=new Date();backStart.setHours(0,0,0,0);backStart.setDate(backStart.getDate()-1);
-  series=series.filter(e=>new Date(e.t).getTime()>=backStart.getTime());
+  // Visible window depends on expansion state:
+  //   default:      last 2 hours behind → next 7 days
+  //   past expanded: 14 days behind → next 7 days (or 14 forward if that's also expanded)
+  //   fut expanded: 2 hours behind → next 14 days
+  const now=Date.now();
+  const backMs = fcExpandPast ? 14*24*3600*1000 : 2*3600*1000;
+  const fwdMs  = fcExpandFuture ? 14*24*3600*1000 : 7*24*3600*1000;
+  const winStart = now - backMs, winEnd = now + fwdMs;
+  series=series.filter(e=>{const ts=new Date(e.t).getTime();return ts>=winStart&&ts<=winEnd;});
   if(daily)series.daily=daily;
   buildForecast(fcEl,series,{temp:'°F',rain:'Rain %',dir:'Wind dir'});
+  // Inject expansion tabs at the edges of the main strip (not on the popup/favorites versions).
+  // These are one-way "expand" clicks — switching site resets them, per user pref.
+  if(fcEl){
+    const scroll=fcEl.querySelector('.fc-scroll');
+    if(scroll){
+      if(!fcExpandPast){
+        scroll.insertAdjacentHTML('afterbegin',
+          `<div class="fc-expand fc-expand-past" onclick="expandForecastPast()" title="Load the past 2 weeks (extra Open-Meteo call)"><span class="fc-expand-txt">◀ 2&nbsp;wks<br>past</span></div>`);
+      }
+      if(!fcExpandFuture){
+        scroll.insertAdjacentHTML('beforeend',
+          `<div class="fc-expand fc-expand-fut" onclick="expandForecastFuture()" title="Load the next week (extra Open-Meteo call)"><span class="fc-expand-txt">Next<br>week ▶</span></div>`);
+      }
+    }
+  }
   // Also render the mini forecast inside an open launch/LZ popup, if present.
   const ppWrap=document.querySelector('.pp-fc-wrap');
   if(ppWrap&&!ppWrap.classList.contains('pp-cmp')){const mini=series.slice(0,Math.round(336*60/fcInterval));if(daily)mini.daily=daily;buildForecast(ppWrap,mini,{temp:'°F',rain:'Rain%',dir:'Direction'});}
 }
+// User clicked ◀ 2 wks past — flip state and refetch. Old cache still hits for the
+// forward window; only the added past days cost a new pull.
+function expandForecastPast(){fcExpandPast=true;loadForecast();}
+function expandForecastFuture(){fcExpandFuture=true;loadForecast();}
 // "Now" button: smooth-scroll every visible forecast back to the current-hour column.
 function forecastNow(){
   if(windState.time)resetWindTime();   // a different time was picked → snap the overlay back to live/current
