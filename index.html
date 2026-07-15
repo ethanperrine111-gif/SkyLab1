@@ -5783,21 +5783,33 @@ function closeAR(){
   window.removeEventListener('deviceorientation',onARHeading,true);
   if(arRenderTimer){clearInterval(arRenderTimer);arRenderTimer=null;}
 }
-// GPS `p.coords.altitude` is null on most iOS Wi-Fi fixes and some Android setups. Elevation-angle
-// math needs SOME baseline for "where the camera is vertically", so when we don't have one we ask
-// Open-Meteo (already used elsewhere in the app) for the ground elevation at the user's lat/lon.
-// That's a very good proxy — the user is standing on the ground, not floating a few hundred feet
-// above it. Cached in arUserAltFt for the rest of the AR session.
+// GPS `p.coords.altitude` is null on most iOS Wi-Fi fixes and WGS84-ellipsoidal (off by 10-30 m
+// in Utah) when it does return a value. Elevation-angle math needs the pilot's actual eye-level
+// MSL, so we prefer, in order:
+//   1) MapLibre terrain DEM (queryTerrainElevation) — locally loaded, no network, ~1-5 m accurate
+//   2) Open-Meteo elevation API                     — network round-trip, similar accuracy
+//   3) GPS altitude                                  — used as-is only if the above both fail
+// We always add ~5.25 ft (1.6 m) for eye height above the ground, since the phone sits at the
+// pilot's head, not on the ground the DEM samples. Cached in arUserAltFt for the AR session.
+const AR_EYE_HEIGHT_FT=5.25;
 async function ensureARUserAlt(){
-  // Fetch even when arUserAltFt is already populated: the initial value likely came from GPS
-  // altitude, which on iOS/Wi-Fi is WGS84-ellipsoidal (off by 10-30 m in Utah). Open-Meteo returns
-  // ground MSL, which is what the pilot's phone is standing on, and is what the elevation-angle
-  // math actually wants. Once we have that, arAltFromOpenMeteo pins it and blocks GPS overwrites.
-  if(arAltFromOpenMeteo||!lastGeo)return;
+  if(!lastGeo)return;
+  // Fast path — MapLibre terrain is instant when the DEM tile is already loaded. Poll a few
+  // times to catch tiles that arrived milliseconds after AR opened.
+  if(useMapLibre&&mlMap&&mlMap.queryTerrainElevation){
+    for(let i=0;i<6;i++){
+      const m=mlMap.queryTerrainElevation([lastGeo.lon,lastGeo.lat]);
+      if(m!=null&&!isNaN(m)){arUserAltFt=m*3.28084+AR_EYE_HEIGHT_FT;arAltFromOpenMeteo=true;renderAR();return;}
+      await new Promise(r=>setTimeout(r,150));
+    }
+  }
+  // Fall back to Open-Meteo when the DEM tiles haven't arrived (offline, slow network, or the
+  // map hasn't been rendered at the user's zoom yet).
+  if(arAltFromOpenMeteo)return;
   try{
     const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lastGeo.lat.toFixed(4)}&longitude=${lastGeo.lon.toFixed(4)}`);
     const j=await r.json();
-    if(j&&j.elevation&&j.elevation[0]!=null){arUserAltFt=j.elevation[0]*3.28084;arAltFromOpenMeteo=true;renderAR();}
+    if(j&&j.elevation&&j.elevation[0]!=null){arUserAltFt=j.elevation[0]*3.28084+AR_EYE_HEIGHT_FT;arAltFromOpenMeteo=true;renderAR();}
   }catch(e){}
 }
 function setARStatus(msg){const el=document.getElementById('ar-status');if(el){el.textContent=msg;el.style.display=msg?'block':'none';}}
@@ -6100,11 +6112,19 @@ function arItem(site,type,mi,viewportW,hfov,vfov){
   // reads at ~+21° pitch, so pointing the phone at the horizon shows it near the top of the
   // frame and pointing UP at the peak parks it dead-centre. Falls back to a flat horizon
   // when we're missing altitudes on either end.
+  //
+  // Earth-curvature drop: over d meters horizontal, the Earth's surface falls d²/(2·R) below
+  // the line-of-sight tangent (R = 6.371e6 m). At 20 mi this is ~80 m; at 50 mi ~500 m — big
+  // enough to shove a distant peak visibly down the frame if we don't correct for it.
+  // Atmospheric refraction bends light back down by ~14 % of that drop; we use the standard
+  // 0.87 factor so a distant peak on the true horizon reads at 0° instead of a phantom -1°.
   const userAlt=arUserAltFt!=null?arUserAltFt:5000;      // sane Utah baseline while ensureARUserAlt() is in flight
   const siteAlt=(site.alt!=null)?site.alt:userAlt;
   const dAltM=(siteAlt-userAlt)*0.3048;                  // ft → m so the angle math is unitless
   const dHorizM=Math.max(mi*1609.344,1);
-  const elevDeg=Math.atan2(dAltM,dHorizM)*180/Math.PI;
+  const R_EARTH=6371000;
+  const curvDropM=(dHorizM*dHorizM)/(2*R_EARTH)*0.87;    // refraction-corrected line-of-sight drop
+  const elevDeg=Math.atan2(dAltM-curvDropM,dHorizM)*180/Math.PI;
   // Screen Y: 50% = camera axis. Positive vertDelta (site above where camera is pointing)
   // pushes the chip UP the frame. Clamp so out-of-frame vertical still shows the chip
   // pinned near the top/bottom edge as a cue that the user should tilt further.
