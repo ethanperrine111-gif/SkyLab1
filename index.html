@@ -5480,6 +5480,9 @@ async function loadForecast(){
   // have real per-hour data. Everything downstream (score cutoffs, veto reasons, gust
   // spread) then agrees with what the strip cells show.
   try{refreshOpenPopupToTime(null);}catch(e){}
+  // Repaint the open site's pin from the same current-hour source so it agrees with the
+  // badge and Flyability bar (otherwise the pin keeps the older siteWx-nowcast color).
+  try{if(typeof recolorMarkers==='function')recolorMarkers();}catch(e){}
 }
 // Windy-like colour ramps
 function windColor(v){              // mph → cool→hot, smoothly interpolated between stops
@@ -7559,7 +7562,24 @@ function applyZClass(el,status){
   el.classList.add('mk-launch','mk-'+({flyable:'green',caution:'yellow',no:'red'}[status||'caution']));
 }
 // A launch inside an active TFR is always a hard no-fly (red), overriding its weather status.
-function launchStatus(site){if(site&&site.inTFR)return 'no';const w=siteWx[site.id];return w?.status||'caution';}
+// For the currently-open site, prefer the current-hour hourly forecast entry (same source as
+// the popup badge and the forecast strip's "now" cell) so the pin, badge, and Flyability bar
+// all agree. The raw siteWx nowcast can otherwise disagree with the hourly row for the same
+// hour, which showed up as a yellow pin above a green Flyability cell.
+function launchStatus(site){
+  if(site&&site.inTFR)return 'no';
+  if(typeof fcTarget!=='undefined'&&fcTarget&&fcTarget.site&&fcTarget.site.id===site.id&&Array.isArray(fcSeries)&&fcSeries.length){
+    const nowMs=Date.now();
+    const nowWin=Math.max(15,fcInterval)*60*1000/2;
+    const e=fcSeries.find(x=>new Date(x.t).getTime()>=nowMs-nowWin);
+    if(e){
+      const wx=synthWxFromEntry(e);
+      const hr=hourOf(e.t);
+      return flyS(wx.wind,wx.gusts,wx.cloud,wx.temp,hr,site,wx.dir,new Date(e.t),wx);
+    }
+  }
+  const w=siteWx[site.id];return w?.status||'caution';
+}
 function createLaunchMarker(site){
   const w=siteWx[site.id];
   const st=launchStatus(site);
