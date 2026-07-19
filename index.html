@@ -3028,25 +3028,21 @@ function paramValue(wx,key,site){
   }
   return wx[key];
 }
-// Per-parameter score: 100 in the good zone, 0 past the no-fly cutoff, and a linear
-// ramp in between so scores land accurately in the mid-zone (instead of jump-cutting
-// from 100 to 60 to 0). The ramp is compressed into the middle 70% of [caution, noFly]
-// — an extra flat buffer at each end so a value teetering right at "caution" doesn't
-// blur the composite, and a value nearing noFly plunges the score decisively.
+// Per-parameter score: 100 only in the fully-green zone (strictly better than the
+// caution threshold, matching flyStatusCheck's green/yellow/red logic — so the
+// composite can hit 100 only when every contributing item is green, never yellow
+// or red). 0 past the no-fly cutoff, linear ramp between caution and noFly.
 function paramScore(val,p){
   if(val==null||isNaN(val))return null;
-  const c=p.caution,n=p.noFly,BUF=0.15;
-  const range=Math.abs(n-c)||1;
+  const c=p.caution,n=p.noFly;
   if(p.dir==='higher-bad'){
-    const lo=c+range*BUF, hi=n-range*BUF;
-    if(val<=lo)return 100;
-    if(val>=hi)return 0;
-    return Math.round(100*(hi-val)/(hi-lo));
+    if(val<c)return 100;
+    if(val>=n)return 0;
+    return Math.round(100*(n-val)/(n-c));
   }else{
-    const hi=c-range*BUF, lo=n+range*BUF;
-    if(val>=hi)return 100;
-    if(val<=lo)return 0;
-    return Math.round(100*(val-lo)/(hi-lo));
+    if(val>c)return 100;
+    if(val<=n)return 0;
+    return Math.round(100*(val-n)/(c-n));
   }
 }
 // Merge a site's per-launch fly-score overrides on top of the global config.
